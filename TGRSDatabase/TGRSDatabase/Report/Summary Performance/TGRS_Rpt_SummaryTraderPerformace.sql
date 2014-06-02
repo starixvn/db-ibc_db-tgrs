@@ -33,14 +33,14 @@ BEGIN
 	BEGIN 
 		INSERT INTO @Top
 		SELECT  TOP 10  CustId, CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin		
-		FROM	dbo.rpt_TraderPerformance P WITH (NOLOCK)			 
+		FROM	dbo.TraderPerformance P WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
 		ORDER BY Margin DESC
 
 		INSERT INTO @Bottom
 		SELECT  TOP 10 CustId,CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin
-		FROM	dbo.rpt_TraderPerformance WITH (NOLOCK)			 
+		FROM	dbo.TraderPerformance WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
 		ORDER BY Margin ASC

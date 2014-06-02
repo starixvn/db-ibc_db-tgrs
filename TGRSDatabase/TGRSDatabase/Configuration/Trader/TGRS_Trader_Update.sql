@@ -437,11 +437,11 @@ BEGIN
 						RETURN
 					END
 
-			----c.Update EndDate of the last history
+			----c.Update EndDate of the previous history
 			UPDATE	dbo.TraderGrade_History WITH (ROWLOCK, UPDLOCK) 
 			SET		EndDate = DATEADD (dd, -1, @NewGradeEffectiveDate)
 			WHERE	CustId = @CustId
-					AND BeginDate = @LastedGradeEffectiveDate	
+					AND ISNULL(EndDate,'') = ISNULL(@PreGradeEndDate,'')
 	
 			----b.Update trader-Grade history
 			UPDATE	dbo.TraderGrade_History WITH (ROWLOCK, UPDLOCK) 

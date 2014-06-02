@@ -61,8 +61,9 @@
     <Folder Include="Configuration\Trader" />
     <Folder Include="Configuration\Benchmark" />
     <Folder Include="Task" />
-    <Folder Include="Report\Summary" />
-    <Folder Include="Report\Detail" />
+    <Folder Include="Report\Summary Performance" />
+    <Folder Include="Report\Detail Performance" />
+    <Folder Include="Report\Detail Performance\League" />
   </ItemGroup>
   <ItemGroup>
     <PropertiesFile Include="Properties\Database.sqlsettings">
@@ -160,25 +161,40 @@
     <NotInBuild Include="Task\Task_rpt_TraderPerformance.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Report\Summary\TGRS_Rpt_SummaryBetTypePerformance.sql">
+    <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryBetTypePerformance.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Report\Summary\TGRS_Rpt_SummaryGeneralInfo.sql">
+    <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryGeneralInfo.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Report\Summary\TGRS_Rpt_SummaryTeamPerformance.sql">
+    <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryTeamPerformance.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Report\Summary\TGRS_Rpt_SummaryTopLoseLeague.sql">
+    <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryTopLoseLeague.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Report\Summary\TGRS_Rpt_SummaryTopTrader.sql">
+    <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryTopTrader.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Report\Summary\TGRS_Rpt_SummaryTopWinLeague.sql">
+    <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryTopWinLeague.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Report\Summary\TGRS_Rpt_SummaryTraderPerformace.sql">
+    <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryTraderPerformace.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\TGRS_Rpt_Detail_GradeHistory.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\TGRS_Rpt_Detail_TeamHistory.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\League\TGRS_Rpt_DetailLeague_Match.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\League\TGRS_Rpt_DetailLeague_Trader.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\League\TGRS_Rpt_DetailLeaguePerformance.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
   </ItemGroup>
