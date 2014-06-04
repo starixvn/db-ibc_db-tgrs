@@ -28,7 +28,10 @@ BEGIN
 
 	IF @ReportType	= 1 --- by date
 	BEGIN 		
-		SELECT  B.BetType, B.TypeName, SUM(Stake) AS Turnover, SUM(WinLost) - SUM(Comm) AS WinLost, CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost) - SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin 
+		SELECT  B.BetType, B.TypeName, 
+				ISNULL(SUM(Stake),0) AS Turnover, 
+				ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0) AS WinLost, 
+				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0))/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
 		FROM	dbo.SummaryByBetType_Daily S WITH (NOLOCK)
 			INNER JOIN	dbo.BetType B WITH (NOLOCK) 
 					ON	S.BetType = B.BetType
@@ -39,7 +42,10 @@ BEGIN
 	END
 	ELSE
 	BEGIN		
-		SELECT  B.BetType, B.TypeName, SUM(Stake) AS Turnover, SUM(WinLost) - SUM(Comm) AS WinLost, CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost) - SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin 
+		SELECT  B.BetType, B.TypeName, 
+				ISNULL(SUM(Stake),0) AS Turnover,  
+				ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0) AS WinLost, 
+				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0))/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
 		FROM	dbo.SummaryByBetType_Monthly S WITH (NOLOCK)
 			INNER JOIN	dbo.BetType B WITH (NOLOCK) 
 					ON	S.BetType = B.BetType

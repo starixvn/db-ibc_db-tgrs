@@ -27,13 +27,19 @@ BEGIN
 	SET NOCOUNT ON  
 	IF @ReportType	= 1 --- by date
 	BEGIN 
-		SELECT  ISNULL(SUM(Stake),0) AS Turnover,  ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0) AS WinLost, CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin,  ISNULL(SUM(MatchCount),0) AS MatchCount
+		SELECT  ISNULL(SUM(Stake),0) AS Turnover,  
+				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
+				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin, 
+				ISNULL(SUM(MatchCount),0) AS MatchCount
 		FROM	dbo.SummaryByTeam_Daily WITH (NOLOCK)
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 	END
 	ELSE
 	BEGIN 
-		SELECT  ISNULL(SUM(Stake),0) AS Turnover,  ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0) AS WinLost,  CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin,  ISNULL(SUM(MatchCount),0) AS MatchCount
+		SELECT  ISNULL(SUM(Stake),0) AS Turnover,  
+				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,  
+				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin, 
+				ISNULL(SUM(MatchCount),0) AS MatchCount
 		FROM	dbo.SummaryByTeam_Monthly WITH (NOLOCK)
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate	
 		

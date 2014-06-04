@@ -28,18 +28,19 @@ BEGIN
 	
 	DECLARE @Top AS TABLE (CustId INT, Margin MONEY) 
 	DECLARE @Bottom AS TABLE (CustId INT, Margin MONEY) 
+	DECLARE @TopMinMargin MONEY, @TopMaxMargin MONEY, @BottomMinMargin MONEY, @BottomMaxMargin MONEY
 
 	IF @ReportType	= 1 --- By Date
 	BEGIN 
 		INSERT INTO @Top
-		SELECT  TOP 10  CustId, CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin		
+		SELECT  TOP 10  CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin		
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
 		ORDER BY Margin DESC
 
 		INSERT INTO @Bottom
-		SELECT  TOP 10 CustId,CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin
+		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin	
 		FROM	dbo.TraderPerformance WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
@@ -49,22 +50,24 @@ BEGIN
 	ELSE  -- By Month, year
 	BEGIN
 		INSERT INTO @Top
-		SELECT  TOP 10 CustId,CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin		
+		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin			
 		FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
 		ORDER BY Margin DESC
 
 		INSERT INTO @Bottom
-		SELECT  TOP 10 CustId, CASE WHEN SUM(Stake) <> 0 THEN (SUM(WinLost)-SUM(Comm))/SUM(Stake) ELSE NULL END AS Margin
+		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin	
 		FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
 		ORDER BY Margin ASC
 	END
 
-	SELECT  MIN(Margin) AS TopMinMargin, MAX(Margin) AS TopMaxMargin FROM @Top 
-	SELECT  MIN(Margin) AS BottomMinMargin, MAX(Margin) AS BottomMaxMargin FROM @Bottom  
+	SELECT @TopMinMargin = MIN(Margin), @TopMaxMargin = MAX(Margin) FROM @Top 
+	SELECT @BottomMinMargin = MIN(Margin), @BottomMaxMargin = MAX(Margin) FROM @Bottom  
+	
+	SELECT @TopMinMargin AS TopMinMargin, @TopMaxMargin AS TopMaxMargin, @BottomMinMargin AS BottomMinMargin, @BottomMaxMargin AS BottomMaxMargin
 
 
 END 

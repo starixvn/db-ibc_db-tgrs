@@ -158,9 +158,6 @@
     <NotInBuild Include="Configuration\strSplit_Key.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
-    <NotInBuild Include="Task\Task_rpt_TraderPerformance.sql">
-      <SubType>NotInBuild</SubType>
-    </NotInBuild>
     <NotInBuild Include="Report\Summary Performance\TGRS_Rpt_SummaryBetTypePerformance.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>

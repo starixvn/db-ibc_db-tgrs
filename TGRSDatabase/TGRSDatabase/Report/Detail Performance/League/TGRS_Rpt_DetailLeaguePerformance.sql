@@ -21,7 +21,7 @@ AS
  Param's Explanation:  	
 
  Exam: 
-	  EXEC  TGRS_Rpt_DailyLeaguePerformance @FromDate = '2014-01-01', @ToDate= '2014-05-30' 
+	  EXEC  TGRS_Rpt_DetailLeaguePerformance @FromDate = '2014-01-01', @ToDate= '2014-05-30' 
   
 */  
  
@@ -37,13 +37,14 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 		 
 		 	
-	 SELECT	P.LeagueId , L.LeagueName, ISNULL(BL.Benchmark,0) AS LeagueBenchmark,
-			COUNT(DISTINCT P.CustId) AS TraderCount, 
-			COUNT(DISTINCT P.MatchId) AS MatchCount, 
-			SUM(P.Stake) AS Turnover, 
-			SUM(P.WinLost) - SUM (P.Comm) AS WinLost, 
-			SUM (BetCount) AS BetCount,
-			CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE NULL END AS Margin	
+	 SELECT	P.LeagueId , L.LeagueName, 
+			ISNULL(BL.Benchmark,0) AS LeagueBenchmark,
+			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
+			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
+			ISNULL(SUM(P.Stake),0) AS Turnover, 
+			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
+			ISNULL(SUM (BetCount),0) AS BetCount,
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)
 	 INNER JOIN bodb02.dbo.League L WITH (NOLOCK) 
 			 ON P.LeagueId = L.LeagueId
@@ -55,14 +56,18 @@ BEGIN
 			AND ISNULL(BL.Benchmark,0) <= CASE WHEN @LeagueBMTo IS NULL THEN ISNULL(BL.Benchmark,0) ELSE @LeagueBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.LeagueId , L.LeagueName, ISNULL(BL.Benchmark,0)
-	HAVING	SUM(P.Stake) >= ISNULL(@Turnover,0)
-			AND SUM(P.WinLost) - SUM (P.Comm) >= ISNULL(@WinLost,0)
-			AND CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE 0 END >= CASE	WHEN @MarginFrom IS NULL 
-																												THEN CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE 0 END 
-																												ELSE @MarginFrom END 
-			AND CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE 0 END <= CASE	WHEN @MarginTo IS NULL 
-																												THEN CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE 0 END 
-																												ELSE @MarginTo END 
+	HAVING	ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0)
+			AND ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0)
+			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) 
+					 ELSE 0 END >=  CASE WHEN @MarginFrom IS NULL 
+										 THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE 0 END 
+										 ELSE @MarginFrom END 
+			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+					 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0)
+					 ELSE 0 END <=  CASE WHEN @MarginTo IS NULL 
+									THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE 0 END 
+									ELSE @MarginTo END 
 	ORDER BY L.LeagueName
 
 END 

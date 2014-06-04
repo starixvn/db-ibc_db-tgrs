@@ -16,6 +16,7 @@ AS
  Param's Explanation:  
 	 
  Exam: 
+	EXEC TGRS_Rpt_Detail_GradeHistory @CustId= 2843, @FromDate = '2014-01-01', @ToDate ='2015-01-18' 
 
 	 
 */  
@@ -30,23 +31,25 @@ BEGIN
 	ELSE 
 		INSERT INTO @BettypeList
 		SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
-		
+	
 
-	SELECT	H.Grade, H.BeginDate AS EffectiveDate
-	FROM	dbo.TraderGrade_History H WITH (NOLOCK)			
- 	WHERE	H.CustId = @CustId
-	ORDER BY H.BeginDate
-
-
-	SELECT  P.CustId, P.Grade, COUNT(MatchID) AS MatchCount, SUM(Betcount) as Betcount,
-			SUM(Stake) AS Turnover, SUM(WinLost)-SUM(Comm) AS WinLost, CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE NULL END AS Margin
+	SELECT  P.CustId, P.Grade, GH.BeginDate AS GradeEffectiveDate, 
+			ISNULL(COUNT(MatchID),0) AS MatchCount, 
+			ISNULL(SUM(Betcount),0) as Betcount,
+			ISNULL(SUM(Stake),0) AS Turnover, 
+			ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin
 	FROM	dbo.TraderPerformance P WITH (NOLOCK) 
+	LEFT JOIN dbo.TraderGrade_History GH WITH (NOLOCK)
+			ON  P.EventDate BETWEEN ISNULL(GH.BeginDate,'1900-01-01') AND ISNULL(GH.EndDate,'9999-12-31')
+				AND P.Grade = GH.Grade
+				AND P.CustId = GH.CustId
 	WHERE	P.CustId = @CustId	
 			AND P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.LeagueId = CASE WHEN @LeagueId <> 0 THEN @LeagueId ELSE P.LeagueId END
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)							 						 					 							
-	GROUP BY P.CustId, P.Grade 
-	ORDER BY P.Grade
+	GROUP BY P.CustId, P.Grade, GH.BeginDate 
+	ORDER BY GH.BeginDate 
 
 	 
 END 

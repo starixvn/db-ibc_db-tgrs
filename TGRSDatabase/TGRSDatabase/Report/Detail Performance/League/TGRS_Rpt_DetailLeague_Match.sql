@@ -33,19 +33,19 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 		 
 		 	
-	 SELECT M.MatchId, M.HomeId, M.AwayId, M.MatchCode, M.EventDate,
-			COUNT(DISTINCT P.MatchId) AS MatchCount, 
-			SUM(P.Stake) AS Turnover, SUM(P.WinLost) - SUM (P.Comm) AS WinLost, SUM (BetCount) as BetCount,
-			CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE NULL END AS Margin	
-	 FROM	dbo.TraderPerformance P WITH (NOLOCK)	
-		INNER JOIN bodb02.dbo.Match M WITH (NOLOCK) 
-				ON M.MatchId = P.MatchId		 
+	 SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
+			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
+			ISNULL(SUM(P.Stake),0) AS Turnover, 
+			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
+			ISNULL(SUM(BetCount),0) as BetCount,
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
+	 FROM	dbo.TraderPerformance P WITH (NOLOCK)		 
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.LeagueId = @LeagueId
 			AND P.CustId = @CustId
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-	GROUP BY M.MatchId, M.HomeId, M.AwayId, M.MatchCode, M.EventDate 
-	ORDER BY M.EventDate 
+	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
+	ORDER BY Margin DESC, P.EventDate 
 	
 
 END 

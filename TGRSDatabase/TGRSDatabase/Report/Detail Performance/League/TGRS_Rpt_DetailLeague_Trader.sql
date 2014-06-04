@@ -1,7 +1,7 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailLeague_Trader]  	
 	@FromDate	DATE,
 	@ToDate		DATE,
-	@LeagueId	INT,
+	@LeagueId	INT = 0,
 	@Bettypes	VARCHAR(200) =  '0'
 AS    
 /*  
@@ -15,16 +15,16 @@ AS
  Param's Explanation:  	
 
  Exam: 
-	EXEC TGRS_Rpt_DailyLeague_Trader @FromDate = '2014-01-01', @ToDate= '2014-05-31', @LeagueId = 6394, @Bettypes = '0'
-	 
+	EXEC [TGRS_Rpt_DetailLeague_Trader] @FromDate = '2014-01-01', @ToDate= '2014-05-31', @LeagueId = 6394, @Bettypes = '0'
+	EXEC [TGRS_Rpt_DetailLeague_Trader_Xtest] @FromDate = '2014-01-01', @ToDate= '2014-05-31', @LeagueId = 6394, @Bettypes = '0' 
   
 */  
  
 BEGIN 
 	 SET NOCOUNT ON  
 
-	 DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), Grade TINYINT, TeamId SMALLINT, TeamName NVARCHAR(50), MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
-							   FromTeamBeginDate DATE NULL, ToTeamBeginDate DATE NULL, FromGradeBeginDate DATE NULL, ToGradeBeginDate DATE NULL)	 
+	 --DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), Grade TINYINT, TeamId SMALLINT, TeamName NVARCHAR(50), MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
+		--					   NoOfTeamChange INT,  NoOfGradeChange INT)
 
 	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	 IF @Bettypes <> '0'
@@ -35,14 +35,26 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 	
 		 
-	 INSERT INTO @Trader (CustId, Username, Grade, TeamId, TeamName, MatchCount, Turnover, WinLost, BetCount, Margin)
+	-- INSERT INTO @Trader (CustId, Username, Grade, TeamId, TeamName, MatchCount, Turnover, WinLost, BetCount, Margin, NoOfTeamChange,NoOfGradeChange)
 	 SELECT P.CustId, TR.Username, TR.Grade, TR.TeamId, T.TeamName, 
-			COUNT(DISTINCT P.MatchId) AS MatchCount, 
-			SUM(P.Stake) AS Turnover, 
-			SUM(P.WinLost) - SUM (P.Comm) AS WinLost, 
-			SUM (BetCount) as BetCount,
-			CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE NULL END AS Margin	
-	 FROM	dbo.TraderPerformance P WITH (NOLOCK)	
+			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
+			ISNULL(SUM(P.Stake),0) AS Turnover, 
+			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
+			ISNULL(SUM (BetCount),0) as BetCount,
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin,
+			ISNULL(COUNT(DISTINCT TH.TeamId),0) AS NoOfTeamChange, 
+			ISNULL(COUNT(DISTINCT GH.Grade),0) AS NoOfGradeChange	
+	 FROM	dbo.TraderPerformance P WITH (NOLOCK)
+		LEFT JOIN dbo.TraderTeam_History TH WITH (NOLOCK) 
+				ON TH.CustId = P.CustId
+				    AND (@FromDate BETWEEN ISNULL(TH.BeginDate, '1900-01-01') AND ISNULL(TH.EndDate,'9999-12-31')
+						OR @ToDate BETWEEN ISNULL(TH.BeginDate, '1900-01-01') AND ISNULL(TH.EndDate,'9999-12-31')
+						)
+		LEFT JOIN dbo.TraderGrade_History GH WITH (NOLOCK) 
+				ON GH.CustId = P.CustId
+				    AND (@FromDate BETWEEN ISNULL(GH.BeginDate, '1900-01-01') AND ISNULL(GH.EndDate,'9999-12-31')
+						OR @ToDate BETWEEN ISNULL(GH.BeginDate, '1900-01-01') AND ISNULL(GH.EndDate,'9999-12-31')
+						)	
 		INNER JOIN dbo.Trader TR WITH (NOLOCK) 
 				ON TR.CustId= P.CustId
 		INNER JOIN dbo.Team T WITH (NOLOCK) 
@@ -51,63 +63,10 @@ BEGIN
 			AND P.LeagueId = @LeagueId
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.CustId, TR.Username, TR.Grade, TR.TeamId, T.TeamName
-
-
-
----------------
-
-	UPDATE  T
-	SET		FromTeamBeginDate = H.BeginDate
-	FROM	@Trader T
-	INNER JOIN TraderTeam_History H WITH (NOLOCK)
-			ON	H.CustId = T.CustId
-	WHERE	 @FromDate BETWEEN BeginDate AND ISNULL(EndDate,'9999-12-31')
-			 
-	UPDATE  T
-	SET		ToTeamBeginDate = H.BeginDate
-	FROM	@Trader T
-	INNER JOIN TraderTeam_History H WITH (NOLOCK)
-			ON	H.CustId = T.CustId
-	WHERE	 @ToDate BETWEEN BeginDate AND ISNULL(EndDate,'9999-12-31')
-
-	UPDATE  T
-	SET		FromGradeBeginDate = H.BeginDate
-	FROM	@Trader T
-	INNER JOIN TraderGrade_History H WITH (NOLOCK)
-			ON	H.CustId = T.CustId
-	WHERE	 @FromDate BETWEEN BeginDate AND ISNULL(EndDate,'9999-12-31')
-			 
-	UPDATE  T
-	SET		ToGradeBeginDate = H.BeginDate
-	FROM	@Trader T
-	INNER JOIN TraderGrade_History H WITH (NOLOCK)
-			ON	H.CustId = T.CustId
-	WHERE	 @ToDate BETWEEN BeginDate AND ISNULL(EndDate,'9999-12-31')		
-
------------------
-		SELECT	T.CustId, T.Username, T.TeamName, T.Grade, T.MatchCount, T.BetCount, T.Turnover, T.WinLost, T.Margin, 
-				ISNULL(TH.NoOfTeamChange,0) AS NoOfTeamChange,    -----( if NoOfTeamChange > 1 : had been changed team)
-				ISNULL(GH.NoOfGradeChange,0) AS NoOfGradeChange 
-		FROM	@Trader T
-		LEFT JOIN (     SELECT H.CustId, COUNT(DISTINCT H.TeamId) AS NoOfTeamChange
-						FROM	@Trader T 
-						INNER JOIN dbo.TraderTeam_History H WITH (NOLOCK) 
-								ON T.CustId = H.CustId
-						WHERE  H.BeginDate >= ISNULL(T.FromTeamBeginDate, '1900-01-01')
-							AND H.BeginDate <= ISNULL(T.ToTeamBeginDate, '1900-01-01')											 						 					 							
-						GROUP BY H.CustId
-					) TH
-				ON TH.CustId = T.CustId
-		LEFT JOIN (     SELECT H.CustId, COUNT(DISTINCT H.Grade) AS NoOfGradeChange
-						FROM	@Trader T 
-						INNER JOIN dbo.TraderGrade_History H WITH (NOLOCK) 
-								ON T.CustId = H.CustId
-						WHERE  H.BeginDate >= ISNULL(T.FromGradeBeginDate, '1900-01-01')
-							AND H.BeginDate <= ISNULL(T.ToGradeBeginDate, '1900-01-01')											 						 					 							
-						GROUP BY H.CustId
-					) GH
-				ON GH.CustID = T.CustID
-		ORDER BY T.Username 
+	ORDER BY Margin DESC
+	 
+ 
+---- 
 
 END 
 GO
