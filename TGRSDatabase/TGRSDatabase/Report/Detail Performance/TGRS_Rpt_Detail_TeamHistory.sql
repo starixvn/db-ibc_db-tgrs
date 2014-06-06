@@ -34,7 +34,7 @@ BEGIN
   
 	SELECT  P.CustId, P.TeamId, T.TeamName, 
 			TH.BeginDate AS TeamEffectiveDate, 
-			ISNULL(COUNT(MatchID),0) AS MatchCount, 
+			ISNULL(COUNT( DISTINCT MatchID),0) AS MatchCount, 
 			ISNULL(SUM(Betcount),0) as Betcount,
 			ISNULL(SUM(Stake),0) AS Turnover, 
 			ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,

@@ -64,6 +64,7 @@
     <Folder Include="Report\Summary Performance" />
     <Folder Include="Report\Detail Performance" />
     <Folder Include="Report\Detail Performance\League" />
+    <Folder Include="Report\Detail Performance\Trader" />
   </ItemGroup>
   <ItemGroup>
     <PropertiesFile Include="Properties\Database.sqlsettings">
@@ -192,6 +193,24 @@
       <SubType>NotInBuild</SubType>
     </NotInBuild>
     <NotInBuild Include="Report\Detail Performance\League\TGRS_Rpt_DetailLeaguePerformance.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Task\Staging Data from DW Source.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Task\Task_StagingDataTGRS.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Task\Task_StagingTraderPerformanceByDate.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Task\Task_StagingTraderPerformanceByMonth.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\Trader\TGRS_Rpt_DetailTraderPerformance.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\Trader\TGRS_Rpt_DetailTrader_Match.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
   </ItemGroup>

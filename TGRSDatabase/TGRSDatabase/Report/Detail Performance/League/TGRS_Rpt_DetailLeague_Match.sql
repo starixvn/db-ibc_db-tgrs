@@ -34,7 +34,6 @@ BEGIN
 		 
 		 	
 	 SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
-			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
 			ISNULL(SUM(BetCount),0) as BetCount,
