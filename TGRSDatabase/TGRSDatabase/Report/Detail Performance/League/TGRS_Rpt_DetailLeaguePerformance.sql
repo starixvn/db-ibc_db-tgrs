@@ -68,7 +68,7 @@ BEGIN
 					 ELSE 0 END <=  CASE WHEN @MarginTo IS NULL 
 									THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE 0 END 
 									ELSE @MarginTo END 
-	ORDER BY L.LeagueName
+	ORDER BY Margin DESC,L.LeagueName ASC 
 
 END 
 

@@ -7,7 +7,7 @@
 AS    
 /*  
  Created:	20140523@Sophia
- Task :		Detail report League Performance - Detail Match of List
+ Task :		Detail report League Performance - Detail Match 
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
@@ -44,7 +44,7 @@ BEGIN
 			AND P.CustId = @CustId
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
-	ORDER BY Margin DESC, P.EventDate 
+	ORDER BY Margin DESC, P.EventDate ASC
 	
 
 END 

@@ -6,7 +6,7 @@
 AS    
 /*  
  Created:	20140523@Sophia
- Task :		Detail report League Performance - Detail Match of List
+ Task :		Detail report Trader Performance - Detail Match
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
@@ -32,7 +32,7 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 		 
 		 	
-	 SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
+	 SELECT P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate,
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
 			ISNULL(SUM(BetCount),0) as BetCount,
@@ -41,8 +41,8 @@ BEGIN
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.CustId = @CustId
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
-	ORDER BY P.EventDate 
+	GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate
+	ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC
 	
 
 END 

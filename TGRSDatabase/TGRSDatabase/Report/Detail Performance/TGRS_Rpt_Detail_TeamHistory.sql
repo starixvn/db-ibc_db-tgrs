@@ -1,5 +1,6 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_Detail_TeamHistory]  
 	@CustId		 INT,
+	@Grade		 TINYINT = 0,
 	@FromDate	 DATE,
 	@ToDate		 DATE,
 	@LeagueId	 INT = 0, 
@@ -16,7 +17,7 @@ AS
  Param's Explanation:  
 	
  Exam: 
-   EXEC TGRS_Rpt_Detail_TeamHistory @CustId = 772205, @FromDate='2013-07-14', @Todate= '2015-07-14'
+   EXEC TGRS_Rpt_Detail_TeamHistory @CustId = 772205, @FromDate='2013-07-14', @Todate= '2015-07-14', @Grade= 5
 	 
 */  
  
@@ -49,6 +50,7 @@ BEGIN
 	WHERE	P.CustId = @CustId	
 			AND P.EventDate BETWEEN @FromDate AND @ToDate	
 			AND P.LeagueId = CASE WHEN @LeagueId <> 0 THEN @LeagueId ELSE P.LeagueId END
+			AND P.Grade = CASE WHEN @Grade <> 0 THEN @Grade ELSE P.Grade END
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)							 						 					 							
 	GROUP BY P.CustId, P.TeamId, T.TeamName, TH.BeginDate
 	ORDER BY TH.BeginDate

@@ -10,7 +10,7 @@
 AS    
 /*  
  Created:	20140523@Sophia
- Task :		Detail report League Performance - Detail Trader of List
+ Task :		Detail report Trader Performance 
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
@@ -28,8 +28,8 @@ AS
 BEGIN 
 	 SET NOCOUNT ON  
 	 
-	  DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), Grade TINYINT, TeamId SMALLINT, TeamName NVARCHAR(50), MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
-							   NoOfTeamChanged INT,  NoOfGradeChanged INT)
+	  DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), Grade TINYINT, TeamId SMALLINT, TeamName NVARCHAR(50), LeagueCount INT, MatchCount INT, 
+								Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY, NoOfTeamChanged INT,  NoOfGradeChanged INT)
  
 	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	 IF @Bettypes <> '0'
@@ -40,8 +40,9 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 	
 	 
-	 INSERT INTO @Trader (CustId, Username, Grade, TeamId, MatchCount, Turnover, WinLost, BetCount, Margin)
+	 INSERT INTO @Trader (CustId, Username, Grade, TeamId, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin)
 	 SELECT P.CustId, TR.Username, TR.Grade, TR.TeamId,
+	 		ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount, 
 			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
@@ -104,7 +105,7 @@ BEGIN
 	--------------------------------------------------------------
 
 	SELECT * FROM @Trader 
-	ORDER BY Margin DESC
+	ORDER BY Margin DESC, Username ASC
 	 
  
 ---- 

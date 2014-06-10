@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <TargetDatabase>TGRSDatabase</TargetDatabase>
+    <DeployToDatabase>False</DeployToDatabase>
+    <DeployToScript>True</DeployToScript>
+    <SourceModel>TGRSDatabase.dbschema</SourceModel>
+    <DeployScriptFileName>TGRSDatabase.sql</DeployScriptFileName>
+    <DeploymentConfigurationFile>TGRSDatabase_Database.sqldeployment</DeploymentConfigurationFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SqlCommandVariablesFile>TGRSDatabase_Database.sqlcmdvars</SqlCommandVariablesFile>
+  </PropertyGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <DeploymentExtension Include="Microsoft.Data.Schema.Sql.Build.SqlPlanOrderModifier">
+      <Assembly>Microsoft.Data.Schema.Sql</Assembly>
+      <Version>10.0.0.0</Version>
+      <Token>sD9ffxHVCjo=</Token>
+    </DeploymentExtension>
+    <DeploymentExtension Include="Microsoft.Data.Schema.Sql.Build.SqlPrePostDeploymentModifier">
+      <Assembly>Microsoft.Data.Schema.Sql</Assembly>
+      <Version>10.0.0.0</Version>
+      <Token>sD9ffxHVCjo=</Token>
+    </DeploymentExtension>
+    <DeploymentExtension Include="Microsoft.Data.Schema.Sql.Refactoring.SqlRefactoringDeploymentContributor">
+      <Assembly>Microsoft.Data.Schema.Sql</Assembly>
+      <Version>10.0.0.0</Version>
+      <Token>sD9ffxHVCjo=</Token>
+    </DeploymentExtension>
+  </ItemGroup>
+</Project>

@@ -1,5 +1,6 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_Detail_GradeHistory]  
 	@CustId		 INT,
+	@TeamId		 SMALLINT = 0,
 	@FromDate	 DATE,
 	@ToDate		 DATE,
 	@LeagueId	 INT = 0, 
@@ -47,6 +48,7 @@ BEGIN
 	WHERE	P.CustId = @CustId	
 			AND P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.LeagueId = CASE WHEN @LeagueId <> 0 THEN @LeagueId ELSE P.LeagueId END
+			AND P.TeamId = CASE WHEN @TeamId <> 0 THEN @TeamId ELSE P.TeamId END
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)							 						 					 							
 	GROUP BY P.CustId, P.Grade, GH.BeginDate 
 	ORDER BY GH.BeginDate 

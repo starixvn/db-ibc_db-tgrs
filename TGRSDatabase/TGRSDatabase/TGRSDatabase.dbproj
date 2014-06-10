@@ -65,6 +65,7 @@
     <Folder Include="Report\Detail Performance" />
     <Folder Include="Report\Detail Performance\League" />
     <Folder Include="Report\Detail Performance\Trader" />
+    <Folder Include="Report\Detail Performance\Grade" />
   </ItemGroup>
   <ItemGroup>
     <PropertiesFile Include="Properties\Database.sqlsettings">
@@ -211,6 +212,15 @@
       <SubType>NotInBuild</SubType>
     </NotInBuild>
     <NotInBuild Include="Report\Detail Performance\Trader\TGRS_Rpt_DetailTrader_Match.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\Grade\TGRS_Rpt_DetailGradePerformance.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\Grade\TGRS_Rpt_DetailGrade_Trader.sql">
+      <SubType>NotInBuild</SubType>
+    </NotInBuild>
+    <NotInBuild Include="Report\Detail Performance\Grade\TGRS_Rpt_DetailGrade_Match.sql">
       <SubType>NotInBuild</SubType>
     </NotInBuild>
   </ItemGroup>

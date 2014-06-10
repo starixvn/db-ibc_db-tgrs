@@ -6,7 +6,7 @@
 AS    
 /*  
  Created:	20140523@Sophia
- Task :		Detail report League Performance - Detail Trader of List
+ Task :		Detail report League Performance - Detail Trader
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
@@ -23,8 +23,9 @@ AS
 BEGIN 
 	 SET NOCOUNT ON  
 
-	 DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), Grade TINYINT, TeamId SMALLINT, TeamName NVARCHAR(50), MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
-							   NoOfTeamChanged INT,  NoOfGradeChanged INT)
+	 DECLARE @Trader AS TABLE ( CustId INT, Username VARCHAR(30), Grade TINYINT, TeamId SMALLINT, TeamName NVARCHAR(50), 
+								MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
+							    NoOfTeamChanged INT,  NoOfGradeChanged INT)
 
 	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	 IF @Bettypes <> '0'
@@ -88,7 +89,7 @@ BEGIN
 
 	 SELECT * 
 	 FROM @Trader
-	 ORDER BY Margin DESC
+	 ORDER BY Margin DESC, Username ASC
  
 
 
