@@ -28,7 +28,7 @@ BEGIN
 				ON	T.BetType = B.BetType AND B.LeagueId = @LeagueId
 		LEFT JOIN	(	SELECT AVG (A.Margin) AS Margin, A.BetType, A.LeagueId
 						FROM (
-								SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) ELSE NULL END AS Margin, P.BetType, P.LeagueId, YEAR(P.EventDate) AS Year  
+								SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) *100 ELSE NULL END AS Margin, P.BetType, P.LeagueId, YEAR(P.EventDate) AS Year  
 								FROM	dbo.SummaryByBetType_Monthly P WITH (NOLOCK)  
 								WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 										AND P.LeagueId = @LeagueId

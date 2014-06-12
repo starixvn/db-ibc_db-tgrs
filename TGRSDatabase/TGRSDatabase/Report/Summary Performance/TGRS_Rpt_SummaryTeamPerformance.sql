@@ -27,7 +27,7 @@ BEGIN
 		SELECT  T.TeamId, T.TeamName, 
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
+				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) * 100 ELSE NULL END AS Margin 
 		FROM	dbo.SummaryByTeam_Daily S WITH (NOLOCK)
 			INNER JOIN	dbo.Team T WITH (NOLOCK) 
 					ON	T.TeamId = S.TeamId
@@ -40,7 +40,7 @@ BEGIN
 		SELECT  T.TeamId, T.TeamName, 
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
+				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) *100 ELSE NULL END AS Margin 
 		FROM	dbo.SummaryByTeam_Monthly S WITH (NOLOCK)
 			INNER JOIN	dbo.Team T WITH (NOLOCK) 
 					ON	T.TeamId = S.TeamId

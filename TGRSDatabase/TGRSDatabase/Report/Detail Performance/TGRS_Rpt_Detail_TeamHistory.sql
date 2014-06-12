@@ -39,7 +39,7 @@ BEGIN
 			ISNULL(SUM(Betcount),0) as Betcount,
 			ISNULL(SUM(Stake),0) AS Turnover, 
 			ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,
-			 CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin
+			 CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 ELSE NULL END AS Margin
 	FROM	TraderPerformance P WITH (NOLOCK) 
 	LEFT JOIN dbo.TraderTeam_History TH WITH (NOLOCK)
 			ON  P.EventDate BETWEEN ISNULL(TH.BeginDate,'1900-01-01') AND ISNULL(TH.EndDate,'9999-12-31')

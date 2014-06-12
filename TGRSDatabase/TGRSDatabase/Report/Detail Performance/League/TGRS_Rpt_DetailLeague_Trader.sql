@@ -1,7 +1,7 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailLeague_Trader]  	
 	@FromDate	DATE,
 	@ToDate		DATE,
-	@LeagueId	INT = 0,
+	@LeagueId	INT,
 	@Bettypes	VARCHAR(200) =  '0'
 AS    
 /*  
@@ -42,7 +42,7 @@ BEGIN
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM (BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin			
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 ELSE NULL END AS Margin			
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)	
 		INNER JOIN dbo.Trader TR WITH (NOLOCK) 
 				ON TR.CustId= P.CustId	

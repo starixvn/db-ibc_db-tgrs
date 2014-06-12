@@ -28,7 +28,7 @@ BEGIN
 		SELECT  TOP 5 L.LeagueId, L.LeagueName,
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 												
+				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) * 100 ELSE NULL END AS Margin 												
 		FROM	dbo.SummaryByLeague_Daily S WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.League L WITH (NOLOCK) 
 					ON	S.LeagueId = L.LeagueId
@@ -41,7 +41,7 @@ BEGIN
 		SELECT  TOP 5 L.LeagueId, L.LeagueName,
 				ISNULL(SUM(Stake),0) AS Turnover,  
 				ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
+				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) * 100 ELSE NULL END AS Margin 
 		FROM	dbo.SummaryByLeague_Monthly S WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.League L WITH (NOLOCK) 
 					ON	S.LeagueId = L.LeagueId

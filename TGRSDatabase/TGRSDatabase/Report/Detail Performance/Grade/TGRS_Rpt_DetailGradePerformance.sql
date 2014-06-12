@@ -41,23 +41,29 @@ BEGIN
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM(P.BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 ELSE NULL END AS Margin	
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)					    
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.Grade
 	HAVING  ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0)
-			AND ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) >= ISNULL(@WinLost,0)
+			AND ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) >= ISNULL(@WinLost,0) * 100
 			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) 
-					 ELSE 0 END >=  CASE WHEN @MarginFrom IS NULL 
-										 THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE 0 END 
-										 ELSE @MarginFrom END 
+					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) *100 
+					 ELSE 0 END 
+				>= CASE WHEN @MarginFrom IS NULL 
+						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100
+								  ELSE 0 END 
+						ELSE @MarginFrom END 
 			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0)
-					 ELSE 0 END <=  CASE WHEN @MarginTo IS NULL 
-									THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE 0 END 
-									ELSE @MarginTo END 		
+					 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100
+					 ELSE 0 END 
+				<= CASE WHEN @MarginTo IS NULL 
+						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 
+								  ELSE 0 END 
+						ELSE @MarginTo END 		
 	ORDER BY Margin DESC, Grade ASC
 	 
  
