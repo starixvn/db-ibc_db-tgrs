@@ -47,7 +47,7 @@ BEGIN
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.Grade
 	HAVING  ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0)
-			AND ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) >= ISNULL(@WinLost,0) * 100
+			AND ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) >= ISNULL(@WinLost,0)
 			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
 					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) *100 
 					 ELSE 0 END 

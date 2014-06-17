@@ -1,6 +1,0 @@
-D:\GIT\TGRS\db-tgrs\TGRSDatabase\TGRSDatabase\sql\debug\TGRSDatabase_Database.sqlsettings
-D:\GIT\TGRS\db-tgrs\TGRSDatabase\TGRSDatabase\sql\debug\TGRSDatabase_Database.sqldeployment
-D:\GIT\TGRS\db-tgrs\TGRSDatabase\TGRSDatabase\sql\debug\TGRSDatabase_Database.sqlcmdvars
-D:\GIT\TGRS\db-tgrs\TGRSDatabase\TGRSDatabase\sql\debug\TGRSDatabase.deploymanifest
-D:\GIT\TGRS\db-tgrs\TGRSDatabase\TGRSDatabase\sql\debug\TGRSDatabase.dbschema
-D:\GIT\TGRS\db-tgrs\TGRSDatabase\TGRSDatabase\obj\Debug\TGRSDatabase.dbschema
