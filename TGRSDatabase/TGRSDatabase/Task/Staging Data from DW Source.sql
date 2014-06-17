@@ -97,8 +97,10 @@ SELECT
 		when b.bettype =15 then 1 
 		when b.bettype =5 and cm.OUtype =0 then 2
 		when b.bettype =5 and cm.OUtype =2 then 3
+		WHEN b.BetType =5 AND cm.OUtype =8 THEN 22		--10mins 1x2
 		when b.bettype =7 then 4
 		when b.bettype =1 and cm.OUtype =0 then 5
+		WHEN b.BetType =1 AND cm.OUtype =8 THEN 23		--10mins HDP
 		when b.bettype =1 and cm.OUType =2 then 6
 		when b.bettype =8 and cm.OUtype =0 then 7
 		when b.bettype =3 and cm.OUtype =0 then 8
@@ -139,8 +141,10 @@ SELECT
 		when b.bettype =15 then 1 
 		when b.bettype =5 and cm.OUtype =0 then 2
 		when b.bettype =5 and cm.OUtype =2 then 3
+		WHEN b.BetType =5 AND cm.OUtype =8 THEN 22		--10mins 1x2
 		when b.bettype =7 then 4
 		when b.bettype =1 and cm.OUtype =0 then 5
+		WHEN b.BetType =1 AND cm.OUtype =8 THEN 23		--10mins HDP
 		when b.bettype =1 and cm.OUType =2 then 6
 		when b.bettype =8 and cm.OUtype =0 then 7
 		when b.bettype =3 and cm.OUtype =0 then 8
@@ -191,7 +195,9 @@ SELECT
 		(18,'Total Bookings 15mins O/U',-10),
 		(19,'Next Booking',-3),
 		(20,'1st O/E',12),
-		(21,'O/E',2)
+		(21,'O/E',2),
+		(22,'10mins 1X2',-14),
+		(23,'10mins HDP',-15)
 		  
 
 	DELETE DBACC.[bodb_TGRS].[dbo].[TraderPerformance]
