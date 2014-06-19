@@ -55,7 +55,7 @@ BEGIN
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM (BetCount),0) AS BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 ELSE NULL END AS Margin	
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)
 	 INNER JOIN dbo.Team T WITH (NOLOCK) 
 			 ON T.TeamId = P.TeamId
@@ -67,22 +67,22 @@ BEGIN
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 			AND P.TeamId IN (SELECT TeamId FROM @TeamList)			
 	GROUP BY P.TeamId, ISNULL(BT.Benchmark,0), T.TeamName
-	HAVING	ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0)
-			AND ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0)
+	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
+			AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
 			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 
+					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))* 100 /ISNULL(SUM(P.Stake),0) 
 					 ELSE 0 END 
 				>= CASE WHEN @MarginFrom IS NULL 
 						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0	
-								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 
+								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 /ISNULL(SUM(P.Stake),0)
 								  ELSE 0 END 
 						ELSE @MarginFrom END 
 			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100
+					 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0)
 					 ELSE 0 END 
 				<= CASE WHEN @MarginTo IS NULL 
 						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 
+								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 /ISNULL(SUM(P.Stake),0)
 								  ELSE 0 END 
 						ELSE @MarginTo END 
 	ORDER BY Margin DESC, TeamName ASC

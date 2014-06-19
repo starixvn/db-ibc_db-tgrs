@@ -33,14 +33,14 @@ BEGIN
 	IF @ReportType	= 1 --- By Date
 	BEGIN 
 		INSERT INTO @Top
-		SELECT  TOP 10  CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) *100 ELSE NULL END AS Margin		
+		SELECT  TOP 10  CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)ELSE NULL END AS Margin		
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
 		ORDER BY Margin DESC
 
 		INSERT INTO @Bottom
-		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) *100 ELSE NULL END AS Margin	
+		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin	
 		FROM	dbo.TraderPerformance WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
@@ -50,14 +50,14 @@ BEGIN
 	ELSE  -- By Month, year
 	BEGIN
 		INSERT INTO @Top
-		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) *100 ELSE NULL END AS Margin			
+		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin			
 		FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId
 		ORDER BY Margin DESC
 
 		INSERT INTO @Bottom
-		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ISNULL(SUM(Stake),0) *100 ELSE NULL END AS Margin	
+		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin	
 		FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY CustId

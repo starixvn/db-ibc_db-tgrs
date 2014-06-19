@@ -10,10 +10,6 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailBetType_TraderByLeague]
 	@ToDate		DATE,
 	@BetTypeBMFrom MONEY = NULL,
 	@BetTypeBMTo MONEY = NULL,
-	@Turnover	MONEY = NULL,
-	@WinLost	MONEY = NULL,
-	@MarginFrom	MONEY = NULL,
-	@MarginTo   MONEY = NULL,
 	@Bettype	SMALLINT,
 	@LeagueId	INT
 AS    
@@ -28,8 +24,7 @@ AS
  Param's Explanation:  	
 	
 EXEC [TGRS_Rpt_DetailBetType_TraderByLeague]  @FromDate='2014-06-03 00:00:00'
-	,@WinLost=NULL,@Turnover=NULL,@BetTypeBMTo=NULL,@MarginTo=NULL
-	,@Bettype=-5,@MarginFrom=NULL,@BetTypeBMFrom=NULL,@ToDate='2014-06-17 00:00:00'
+	,@Bettype=-5,@ToDate='2014-06-17 00:00:00'
 	,@leagueID =38505
 
  Exam: 
@@ -48,7 +43,7 @@ BEGIN
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM (BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin			
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin			
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)	
 		LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
 			 ON BT.LeagueId = P.LeagueId
@@ -59,27 +54,8 @@ BEGIN
 			AND P.Bettype = @Bettype
 			AND P.LeagueId = @LeagueId
 			AND ISNULL(BT.Benchmark,0) >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMFrom END 
-			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMTo END 			
+			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMTo END 
 	GROUP BY P.BetType, P.CustId, TR.Username, TR.Grade, TR.TeamId
-	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
-			AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
-			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 
-					 ELSE 0 END 
-				>= CASE WHEN @MarginFrom IS NULL 
-						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-							 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 
-							 ELSE 0 END 
-						ELSE @MarginFrom END 
-			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100
-					 ELSE 0 END 
-				<= CASE WHEN @MarginTo IS NULL 
-						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))/ISNULL(SUM(P.Stake),0) * 100 
-								  ELSE 0 END 
-						ELSE @MarginTo END END 
-
 
 	UPDATE  T
 	SET		TeamName = TE.TeamName
@@ -119,6 +95,8 @@ BEGIN
 	 FROM @Trader
 	 ORDER BY Margin DESC, Username ASC
  
+ 
+ END
 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_DetailBetType_TraderByLeague] TO [bodbTGRSNet]
