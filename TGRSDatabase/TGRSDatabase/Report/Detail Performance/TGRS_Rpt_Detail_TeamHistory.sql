@@ -4,7 +4,9 @@
 	@FromDate	 DATE,
 	@ToDate		 DATE,
 	@LeagueId	 INT = 0, 
-	@Bettypes    VARCHAR(200) = '0'    
+	@Bettypes    VARCHAR(200) = '0',
+	@BetTypeBMFrom MONEY = NULL,
+	@BetTypeBMTo MONEY = NULL
 AS    
 /*  
  Created:	20140523@Sophia
@@ -45,13 +47,18 @@ BEGIN
 			ON  P.EventDate BETWEEN ISNULL(TH.BeginDate,'1900-01-01') AND ISNULL(TH.EndDate,'9999-12-31')
 				AND P.TeamId = TH.TeamId
 				AND P.CustId = TH.CustId
+	LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
+			 ON BT.LeagueId = P.LeagueId
+				AND BT.BetType = P.BetType
 	INNER JOIN Team T WITH (NOLOCK)
 			ON T.TeamId = P.TeamId
 	WHERE	P.CustId = @CustId	
 			AND P.EventDate BETWEEN @FromDate AND @ToDate	
 			AND P.LeagueId = CASE WHEN @LeagueId <> 0 THEN @LeagueId ELSE P.LeagueId END
 			AND P.Grade = CASE WHEN @Grade <> 0 THEN @Grade ELSE P.Grade END
-			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)							 						 					 							
+			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+			AND ISNULL(BT.Benchmark,0) >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMFrom END 
+			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMTo END 
 	GROUP BY P.CustId, P.TeamId, T.TeamName, TH.BeginDate
 	ORDER BY TH.BeginDate
 
