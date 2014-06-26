@@ -26,6 +26,8 @@ AS
 BEGIN 
 	SET NOCOUNT ON 
 
+	SELECT @Grade = ISNULL(@Grade,0),@LeagueId = ISNULL(@LeagueId,0),	@Bettypes = ISNULL(@Bettypes,0)
+
 	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	IF @Bettypes <> '0'
 		INSERT INTO @BettypeList
