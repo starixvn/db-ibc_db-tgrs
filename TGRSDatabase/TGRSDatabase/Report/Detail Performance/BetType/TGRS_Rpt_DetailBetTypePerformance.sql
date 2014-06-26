@@ -1,7 +1,6 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailBetTypePerformance]  	
 	@FromDate	 DATE,
 	@ToDate		 DATE,
-	---@LeagueName  NVARCHAR(100)= '',
 	@BetTypeBMFrom MONEY = NULL,
 	@BetTypeBMTo MONEY = NULL,
 	@Turnover	MONEY = NULL,
@@ -37,31 +36,25 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 		 
 		 	
-	 SELECT	----P.LeagueId , L.LeagueName, 
-			P.BetType, 
+	 SELECT	P.BetType, 
 			TN.TypeName,
-			--ISNULL(BT.Benchmark,0) AS BetTypeBenchmark,
 			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
 			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount, 
 			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
-			ISNULL(SUM (BetCount),0) AS BetCount,
+			ISNULL(SUM(P.BetCount),0) AS BetCount,
 			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)
-	 --INNER JOIN bodb02.dbo.League L WITH (NOLOCK) 
-		--	 ON P.LeagueId = L.LeagueId
 	 LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
 			 ON BT.LeagueId = P.LeagueId
 				AND BT.BetType = P.BetType
 	 LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON
 			  TN.BetType = P.BetType
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
-			---AND L.LeagueName LIKE '%'+@LeagueName+'%'
 			AND ISNULL(BT.Benchmark,0) >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMFrom END 
 			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-	---GROUP BY P.LeagueId , L.LeagueName, ISNULL(BT.Benchmark,0), P.BetType
 	GROUP BY P.BetType,TN.TypeName
 	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
 			AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
@@ -81,7 +74,6 @@ BEGIN
 								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0) 
 								  ELSE 0 END 
 						ELSE @MarginTo END 
-	---ORDER BY Margin DESC,L.LeagueName ASC, P.Bettype ASC 
 	ORDER BY Margin DESC, P.Bettype ASC 
 
 END 
