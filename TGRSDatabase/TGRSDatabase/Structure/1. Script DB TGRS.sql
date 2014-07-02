@@ -1,31 +1,31 @@
 USE [master]
 GO
 
-/****** Object:  Database [bodb_TGRS]    Script Date: 6/17/2014 9:34:52 AM ******/
+/****** Object:  Database [bodb_TGRS]    Script Date: 7/2/2014 11:37:40 AM ******/
 CREATE DATABASE [bodb_TGRS] ON  PRIMARY 
-( NAME = N'bodb_TGRS', FILENAME = N'D:\IBC_DB\bodb_TGRS\bodb_TGRS.mdf' , SIZE = 10240KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10240KB ), 
+( NAME = N'bodb_TGRS', FILENAME = N'G:\IBC_DB\bodb_TGRS\bodb_TGRS.mdf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10240KB ), 
  FILEGROUP [DATA] 
-( NAME = N'Data', FILENAME = N'D:\IBC_DB\bodb_TGRS\Data.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'Data', FILENAME = N'G:\IBC_DB\bodb_TGRS\Data.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [INDEX] 
-( NAME = N'Index', FILENAME = N'D:\IBC_DB\bodb_TGRS\Index.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'Index', FILENAME = N'G:\IBC_DB\bodb_TGRS\Index.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [Trader_StaingDB] 
-( NAME = N'Trader_StagingDB', FILENAME = N'D:\IBC_DB\bodb_TGRS\Trader_StagingDB.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 102400KB ), 
+( NAME = N'Trader_StagingDB', FILENAME = N'G:\IBC_DB\bodb_TGRS\Trader_StagingDB.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 102400KB ), 
  FILEGROUP [TraderInfo_Index] 
-( NAME = N'TraderInfo_Index', FILENAME = N'D:\IBC_DB\bodb_TGRS\TraderInfo_Index.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'TraderInfo_Index', FILENAME = N'G:\IBC_DB\bodb_TGRS\TraderInfo_Index.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [TraderInfo_Table] 
-( NAME = N'TraderInfo_Table', FILENAME = N'D:\IBC_DB\bodb_TGRS\TraderInfo_Table.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'TraderInfo_Table', FILENAME = N'G:\IBC_DB\bodb_TGRS\TraderInfo_Table.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [TraderPerformanceDetail_Index] 
-( NAME = N'TraderPerformanceDetail_Index', FILENAME = N'D:\IBC_DB\bodb_TGRS\TraderPerformanceDetail_Index.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'TraderPerformanceDetail_Index', FILENAME = N'M:\IBC_DB\bodb_TGRS\TraderPerformanceDetail_Index.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [TraderPerformanceDetail_Table] 
-( NAME = N'TraderPerformanceDetail_Table', FILENAME = N'D:\IBC_DB\bodb_TGRS\TraderPerformanceDetail_Table.ndf' , SIZE = 29440KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'TraderPerformanceDetail_Table', FILENAME = N'M:\IBC_DB\bodb_TGRS\TraderPerformanceDetail_Table.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [TraderPerformanceSummary_Index] 
-( NAME = N'TraderPerformanceSummary_Index', FILENAME = N'D:\IBC_DB\bodb_TGRS\TraderPerformanceSummary_Index.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'TraderPerformanceSummary_Index', FILENAME = N'M:\IBC_DB\bodb_TGRS\TraderPerformanceSummary_Index.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [TraderPerformanceSummary_Table] 
-( NAME = N'TraderPerformanceSummary_Table', FILENAME = N'D:\IBC_DB\bodb_TGRS\TraderPerformanceSummary_Table.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
+( NAME = N'TraderPerformanceSummary_Table', FILENAME = N'M:\IBC_DB\bodb_TGRS\TraderPerformanceSummary_Table.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%), 
  FILEGROUP [UserLog_RunSp] 
-( NAME = N'UserLog_RunSp', FILENAME = N'D:\IBC_DB\bodb_TGRS\UserLog_RunSp.ndf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%)
+( NAME = N'UserLog_RunSp', FILENAME = N'M:\IBC_DB\bodb_TGRS\UserLog_RunSp.ndf' , SIZE = 1024KB , MAXSIZE = UNLIMITED, FILEGROWTH = 10%)
  LOG ON 
-( NAME = N'bodb_TGRS_log', FILENAME = N'D:\IBC_DB\bodb_TGRS\bodb_TGRS_log.ldf' , SIZE = 116736KB , MAXSIZE = 2048GB , FILEGROWTH = 32768KB )
+( NAME = N'bodb_TGRS_log', FILENAME = N'M:\IBC_DB\bodb_TGRS\bodb_TGRS_log.ldf' , SIZE = 1024KB , MAXSIZE = 2048GB , FILEGROWTH = 32768KB )
 GO
 
 ALTER DATABASE [bodb_TGRS] SET COMPATIBILITY_LEVEL = 100
@@ -117,6 +117,17 @@ GO
 
 ALTER DATABASE [bodb_TGRS] SET DB_CHAINING OFF 
 GO
+
+USE [bodb_TGRS]
+GO
+
+/****** Object:  User [bodbTGRSNet]    Script Date: 7/2/2014 11:37:41 AM ******/
+CREATE USER [bodbTGRSNet] FOR LOGIN [bodbTGRSNet] WITH DEFAULT_SCHEMA=[dbo]
+GO
+
+GRANT CONNECT TO [bodbTGRSNet] AS [dbo]
+GO
+
 
 ALTER DATABASE [bodb_TGRS] SET  READ_WRITE 
 GO
