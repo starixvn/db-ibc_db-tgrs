@@ -45,7 +45,7 @@ BEGIN
 				ISNULL(SUM(BetCount),0) AS BetCount,
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ ISNULL(SUM(Stake),0) * 100 ELSE NULL END AS Margin				
+				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin				
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)			
 			INNER JOIN dbo.Trader TR WITH (NOLOCK) 
 					ON TR.CustID = P.CustId	 				
@@ -60,7 +60,7 @@ BEGIN
 				ISNULL(SUM (BetCount),0) AS BetCount,
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))/ ISNULL(SUM(Stake),0) *100 ELSE NULL END AS Margin		
+				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin		
 		FROM	dbo.SummaryByTrader_Monthly P WITH (NOLOCK)	
 			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = P.CustId				
 		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
