@@ -33,6 +33,7 @@ SET NOCOUNT ON
 	INSERT INTO [dbo].[TraderPerformance]
            ([CustId]
            ,[MatchId]
+		   ,[MatchCode]
            ,[EventDate]
            ,[SportType]
            ,[BetType]
@@ -49,6 +50,7 @@ SET NOCOUNT ON
  
 	SELECT [CustId]
            ,[MatchId]
+		   ,[MatchCode]
            ,[EventDate]
            ,[SportType]
            ,[BetType]
@@ -132,3 +134,8 @@ SET NOCOUNT ON
 	  FROM [dbo].[Staging_TraderPerformance] WITH(NOLOCK)
 	  WHERE EventDate = @Date
 	  GROUP BY [TeamId]
+
+GO
+
+GRANT EXECUTE ON [dbo].[Task_StagingTraderPerformanceByDate] TO [bodbTGRSNet]
+GRANT VIEW DEFINITION ON [dbo].[Task_StagingTraderPerformanceByDate] TO [vnteam]
