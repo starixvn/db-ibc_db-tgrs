@@ -17,7 +17,7 @@ AS
  Original:  
   
  Revisions:      
-   			
+   	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
  Param's Explanation:  	
 
  Exam: 
@@ -38,7 +38,7 @@ BEGIN
 		 
 		 	
 	 SELECT	P.LeagueId , L.LeagueName, 
-			ISNULL(BL.Benchmark,0) AS LeagueBenchmark,
+			ISNULL(BL.Benchmark,0) * 100 AS LeagueBenchmark,
 			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
 			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
@@ -52,8 +52,8 @@ BEGIN
 			 ON BL.LeagueId = P.LeagueId
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 			AND L.LeagueName LIKE '%'+@LeagueName+'%'
-			AND ISNULL(BL.Benchmark,0) >= CASE WHEN @LeagueBMFrom IS NULL THEN ISNULL(BL.Benchmark,0) ELSE @LeagueBMFrom END 
-			AND ISNULL(BL.Benchmark,0) <= CASE WHEN @LeagueBMTo IS NULL THEN ISNULL(BL.Benchmark,0) ELSE @LeagueBMTo END 
+			AND ISNULL(BL.Benchmark,0) * 100 >= CASE WHEN @LeagueBMFrom IS NULL THEN ISNULL(BL.Benchmark,0) * 100 ELSE @LeagueBMFrom END 
+			AND ISNULL(BL.Benchmark,0) * 100 <= CASE WHEN @LeagueBMTo IS NULL THEN ISNULL(BL.Benchmark,0) * 100 ELSE @LeagueBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.LeagueId , L.LeagueName, ISNULL(BL.Benchmark,0)
 	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))

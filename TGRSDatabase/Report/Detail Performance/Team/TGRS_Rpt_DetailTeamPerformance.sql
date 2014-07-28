@@ -15,9 +15,9 @@ AS
  Task :		Detail report Team Performance
  DB:		DBTGRS.bodb_TGRS
  Original:  
-  
+	
  Revisions:      
-   			
+   	  	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number				
  Param's Explanation: 	
 	@TeamIds = '0' : All 			
 	@Bettypes = '0': All
@@ -48,7 +48,7 @@ BEGIN
 	
 		 	
 	 SELECT	P.TeamId, T.TeamName,
-			ISNULL(BT.Benchmark,0) AS TeamBenchmark,
+			ISNULL(BT.Benchmark,0) * 100 AS TeamBenchmark,
 			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
 			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount, 
 			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
@@ -62,8 +62,8 @@ BEGIN
 	 LEFT JOIN dbo.Benchmark_Team BT WITH (NOLOCK)
 			 ON BT.TeamId = P.TeamId
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
-			AND ISNULL(BT.Benchmark,0) >= CASE WHEN @TeamBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @TeamBMFrom END 
-			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @TeamBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @TeamBMTo END 
+			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @TeamBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @TeamBMFrom END 
+			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @TeamBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @TeamBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 			AND P.TeamId IN (SELECT TeamId FROM @TeamList)			
 	GROUP BY P.TeamId, ISNULL(BT.Benchmark,0), T.TeamName

@@ -12,7 +12,8 @@ Task : List of Benchmark by League
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
-
+	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
+					   Calculate average Margin of 3 years -> yesterday
 Explanation : 
 	
    
@@ -24,9 +25,9 @@ BEGIN
 	DECLARE @Year INT, @FromDate DATE, @ToDate DATE
 	SELECT @Year = YEAR(GETDATE())
 
-	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(yy,@Year-1 -1899,-1)
+	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(dd, -1 ,getdate())
 
-	SELECT	L.Leagueid, L.LeagueName, ISNULL(P.Margin,0) AS Margin, ISNULL(B.Benchmark,0) as Benchmark
+	SELECT	L.Leagueid, L.LeagueName, ISNULL(P.Margin,0) AS Margin, ISNULL(B.Benchmark,0) * 100 as Benchmark
 	FROM	bodb02.dbo.League L WITH (NOLOCK) 
 		LEFT JOIN dbo.BenchMark_League B WITH (NOLOCK)
 				ON	B.LeagueId = L.LeagueId

@@ -7,7 +7,8 @@ Task : List of Benchmark by bettype
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
-
+	 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
+					  Calculate average Margin of 3 years -> yesterday
 Explanation : 
 	
    
@@ -19,16 +20,16 @@ BEGIN
 	DECLARE @Year INT, @FromDate DATE, @ToDate DATE
 	SELECT @Year = YEAR(GETDATE())
 
-	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(yy,@Year-1 -1899,-1)
+	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0),  @ToDate = DATEADD(dd, -1 ,getdate())
 
 
-	SELECT	T.BetType, T.TypeName, ISNULL(P.Margin,0) AS Margin, ISNULL(B.BenchMark,0 ) AS BenchMark
+	SELECT	T.BetType, T.TypeName, ISNULL(P.Margin,0) AS Margin, ISNULL(B.BenchMark,0) * 100 AS BenchMark
 	FROM	dbo.BetType T WITH (NOLOCK) 
 		LEFT JOIN dbo.BenchMark_BetType B WITH (NOLOCK)
 				ON	T.BetType = B.BetType AND B.LeagueId = @LeagueId
 		LEFT JOIN	(	SELECT AVG (A.Margin) AS Margin, A.BetType, A.LeagueId
 						FROM (
-								SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) *100 ELSE NULL END AS Margin, P.BetType, P.LeagueId, YEAR(P.EventDate) AS Year  
+								SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) * 100 ELSE NULL END AS Margin, P.BetType, P.LeagueId, YEAR(P.EventDate) AS Year  
 								FROM	dbo.SummaryByBetType_Monthly P WITH (NOLOCK)  
 								WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 										AND P.LeagueId = @LeagueId

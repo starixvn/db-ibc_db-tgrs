@@ -15,7 +15,8 @@ AS
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
- Revisions:      
+ Revisions: 
+	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		     
    			
  Param's Explanation:  	
 
@@ -52,8 +53,8 @@ BEGIN
 	 LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON
 			  TN.BetType = P.BetType
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
-			AND ISNULL(BT.Benchmark,0) >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMFrom END 
-			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMTo END 
+			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
+			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.BetType,TN.TypeName
 	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))

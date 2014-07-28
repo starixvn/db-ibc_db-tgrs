@@ -7,7 +7,8 @@ Task : List of Benchmark by Team
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
-
+	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
+					   Calculate average Margin of 3 years -> yesterday
 Explanation : 
 	
    
@@ -19,10 +20,10 @@ BEGIN
 	DECLARE @Year INT, @FromDate DATE, @ToDate DATE
 	SELECT @Year = YEAR(GETDATE())
 
-	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(yy,@Year-1 -1899,-1)
+	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(dd, -1 ,getdate())
 
 
-	SELECT	T.TeamId, T.TeamName, ISNULL(P.Margin,0) AS Margin, ISNULL(B.BenchMark,0 ) AS BenchMark
+	SELECT	T.TeamId, T.TeamName, ISNULL(P.Margin,0) AS Margin, ISNULL(B.BenchMark,0 ) * 100 AS BenchMark
 	FROM	dbo.Team T WITH (NOLOCK) 
 		LEFT JOIN dbo.BenchMark_Team B WITH (NOLOCK)
 				ON	T.TeamId = B.TeamId

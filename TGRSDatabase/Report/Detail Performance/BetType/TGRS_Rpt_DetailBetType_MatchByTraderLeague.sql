@@ -21,7 +21,7 @@ AS
  Original:  
   
  Revisions:      
-   			
+   	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number	
  Param's Explanation:  	
 	
 EXEC [TGRS_Rpt_DetailBetType_MatchByTraderLeague]  
@@ -54,8 +54,8 @@ BEGIN
 			AND P.Bettype = @Bettype
 			AND P.LeagueId = @LeagueId
 			AND P.CustId = @CustId
-			AND ISNULL(BT.Benchmark,0) >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMFrom END 
-			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMTo END 
+			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
+			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
 	GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate 
 
 END

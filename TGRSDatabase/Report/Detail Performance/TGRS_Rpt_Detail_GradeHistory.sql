@@ -14,7 +14,8 @@ AS
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
- Revisions:      
+ Revisions: 
+	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		     
    			
  Param's Explanation:  
 	 
@@ -57,8 +58,8 @@ BEGIN
 			AND P.LeagueId = CASE WHEN @LeagueId <> 0 THEN @LeagueId ELSE P.LeagueId END
 			AND P.TeamId = CASE WHEN @TeamId <> 0 THEN @TeamId ELSE P.TeamId END
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)			 
-			AND ISNULL(BT.Benchmark,0) >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMFrom END 
-			AND ISNULL(BT.Benchmark,0) <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) ELSE @BetTypeBMTo END 
+			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
+			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
 	GROUP BY P.CustId, P.Grade, GH.BeginDate 
 	ORDER BY GH.BeginDate 
 

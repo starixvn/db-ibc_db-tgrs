@@ -8,7 +8,7 @@ Task : Benchmark by BetType - Profit Margin
 DB: DBTGRS.bodb_TGRS
 
 Revisions:
-
+	- 20140728@Sophia: Calculate average Margin of 3 years -> yesterday
 Explanation : 
 
 Exam:
@@ -24,7 +24,7 @@ BEGIN
 	DECLARE @Year INT, @FromDate DATE, @ToDate DATE
 	SELECT @Year = YEAR(GETDATE())
 
-	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(yy,@Year-1 -1899,-1)
+	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0),  @ToDate = DATEADD(dd, -1 ,getdate())
 
 
 	SELECT  P.LeagueId, P.BetType, YEAR(P.EventDate) AS Year,CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) * 100 ELSE NULL END AS Margin 
