@@ -11,7 +11,7 @@ Task : Update Benchmark By League
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
-
+	- 20140728@Sophia: Convert Benchmark to decimal number before save
 Explanation : 
 	
    
@@ -39,7 +39,9 @@ BEGIN
 		@Xml						XML 		 
 
 	SET @StartRun = GETDATE()
-	
+
+	SELECT @Benchmark = @Benchmark / 100
+
 	IF NOT EXISTS (SELECT  TOP 1 1 FROM dbo.BenchMark_League WITH (NOLOCK) WHERE LeagueId = @LeagueId)
 	BEGIN 
 		INSERT INTO dbo.BenchMark_League (
