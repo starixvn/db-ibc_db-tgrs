@@ -21,7 +21,7 @@ BEGIN
 
 	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(dd, -1 ,getdate())
 	
-	SELECT  P.LeagueId, YEAR(P.EventDate) AS Year, CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) *100 ELSE NULL END AS Margin 
+	SELECT  P.LeagueId, YEAR(P.EventDate) AS Year, CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm)) *100/SUM(P.Stake) ELSE NULL END AS Margin 
 	FROM	dbo.SummaryByLeague_Monthly P WITH (NOLOCK)  
 	WHERE	P.LeagueId = @LeagueId
 			AND P.EventDate BETWEEN @FromDate AND @ToDate	

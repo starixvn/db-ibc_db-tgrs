@@ -22,7 +22,7 @@ BEGIN
 	SELECT @FromDate = DATEADD(yy,@Year-3 -1900,0), @ToDate = DATEADD(dd, -1 ,getdate())
 
  
-	SELECT  P.TeamId, YEAR(P.EventDate) AS Year, CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) *100 ELSE NULL END AS Margin 
+	SELECT  P.TeamId, YEAR(P.EventDate) AS Year, CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm)) *100/SUM(P.Stake) ELSE NULL END AS Margin 
 	FROM	dbo.SummaryByTeam_Monthly P WITH (NOLOCK)  
 	WHERE	P.TeamId = @TeamId
 			AND P.EventDate BETWEEN @FromDate AND @ToDate		

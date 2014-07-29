@@ -28,7 +28,7 @@ BEGIN
 		LEFT JOIN dbo.BenchMark_Team B WITH (NOLOCK)
 				ON	T.TeamId = B.TeamId
 		LEFT JOIN	(	SELECT AVG (Margin) as Margin, A.TeamId
-						FROM (	SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) * 100 ELSE NULL END AS Margin, P.TeamId, YEAR(P.EventDate) AS Year  
+						FROM (	SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm)) * 100/SUM(P.Stake) ELSE NULL END AS Margin, P.TeamId, YEAR(P.EventDate) AS Year  
 								FROM	dbo.SummaryByTeam_Monthly P WITH (NOLOCK)  
 								WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 								GROUP BY P.TeamId, YEAR(P.EventDate) 

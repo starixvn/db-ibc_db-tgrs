@@ -33,7 +33,7 @@ BEGIN
 				ON	B.LeagueId = L.LeagueId
 		LEFT JOIN	(	SELECT AVG(A.Margin) AS Margin, A.LeagueId
 						FROM (
-								SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))/SUM(P.Stake) * 100 ELSE NULL END AS Margin, P.LeagueId, YEAR(P.EventDate) AS Year  
+								SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))* 100/SUM(P.Stake) ELSE NULL END AS Margin, P.LeagueId, YEAR(P.EventDate) AS Year  
 								FROM	dbo.SummaryByLeague_Monthly P WITH (NOLOCK)  
 								WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 								GROUP BY P.LeagueId, YEAR(P.EventDate) 
