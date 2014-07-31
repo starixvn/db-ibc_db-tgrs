@@ -41,7 +41,7 @@ BEGIN
 		SELECT  ISNULL(SUM(S.Stake),0) AS Turnover,  
 				ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0) AS WinLost, 
 				CASE WHEN ISNULL(SUM(S.Stake),0) <> 0 THEN (ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0)) * 100/ISNULL(SUM(S.Stake),0) ELSE NULL END AS Margin,
-				@MatchCount				
+				@MatchCount as MatchCount				
 		FROM	dbo.SummaryByTeam_Daily S WITH (NOLOCK)		
 		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
 	
@@ -52,7 +52,7 @@ BEGIN
 		SELECT  ISNULL(SUM(Stake),0) AS Turnover,  
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,  
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) * 100/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin, 
-				@MatchCount
+				@MatchCount as MatchCount
 		FROM	dbo.SummaryByTeam_Monthly WITH (NOLOCK)
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate	
 		
