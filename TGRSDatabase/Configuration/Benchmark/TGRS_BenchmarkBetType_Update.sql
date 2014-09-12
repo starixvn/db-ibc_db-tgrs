@@ -86,7 +86,7 @@ BEGIN
 	
 		EXEC	dbo.TGRS_WriteLog_RunSp
 				@UserId		= @UserId,
-				@SPName		= 'TGRS_BenchmarkLeague_Update',
+				@SPName		= 'TGRS_BenchmarkBetType_Update',
 				@LogDate	= @StartRun,
 				@Duration	= @Duration,
 				@ObjectId	= @BetType,
