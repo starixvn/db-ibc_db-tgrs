@@ -12,6 +12,7 @@ AS
  Original:  
   
  Revisions:      
+	- 20140918@Sophia: fix @MatchId
    			
  Param's Explanation:  	
 
@@ -47,6 +48,7 @@ BEGIN
 				ON TN.BetType = P.BetType	 
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.CustId = @CustId
+			AND P.MatchId = @MatchId	
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.BetType, TN.TypeName, ISNULL(B.Benchmark, 0)
 	ORDER BY Margin DESC
