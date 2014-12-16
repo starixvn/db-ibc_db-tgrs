@@ -1,7 +1,8 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_BenchmarkBetType_Update]
 	@LeagueId	INT,
 	@BetType	SMALLINT,
-	@Benchmark	MONEY,
+	@Benchmark	MONEY ,
+	@WorkShift	TINYINT ,
 	@UserId		INT,
 	@ErrCode	INT = 0 OUTPUT,
 	@ErrMsg		NVARCHAR(200) = '' OUTPUT
@@ -13,8 +14,15 @@ DB:  DBTGRS.bodb_TGRS
 
 Revisions:
 	- 20140728@Sophia: Convert Benchmark to decimal number before save
-Explanation : 
-	
+	- 20141130: Update benchmark by workshift
+
+Explanation : 	
+	EXEC TGRS_BenchmarkBetType_Update_Xtest 	
+		@LeagueId	= 3,
+		@BetType	= -1,
+		@Benchmark	= 40 ,
+		@WorkShift	= 2 , 
+		@UserID = 8
    
 */ 
 
@@ -40,22 +48,29 @@ BEGIN
 		@Xml						XML 		 
 
 	SET @StartRun = GETDATE()
-
-	SELECT @Benchmark = @Benchmark / 100
 	
-	IF NOT EXISTS (SELECT  TOP 1 1 FROM dbo.BenchMark_BetType WITH (NOLOCK) WHERE LeagueId = @LeagueId AND BetType = @BetType)
+	SELECT @Benchmark = @Benchmark / 100
+
+	IF NOT EXISTS (SELECT TOP 1 1 FROM dbo.BenchMark_BetType WITH (NOLOCK) WHERE LeagueId = @LeagueId AND BetType = @BetType AND WorkShift = @WorkShift)
 	BEGIN 
+		----1. insert into BenchMark_BetType
 		INSERT INTO dbo.BenchMark_BetType(
 					LeagueId
 					,BetType
 					,Benchmark
+					,WorkShift
 					,CreatedDate
 					,CreatedBy
+					,ModifiedDate
+					,ModifiedBy
 					)
 			VALUES (
 					@LeagueId
 					,@BetType
 					,@Benchmark
+					,@WorkShift
+					,GETDATE()
+					,@UserId
 					,GETDATE()
 					,@UserId
 					)
@@ -65,18 +80,46 @@ BEGIN
 			BEGIN
 				SELECT 
 					@ErrCode = 406, 
-					@ErrMsg = 'Failed to insert benchmark by bet type [Benchmark = ' + CONVERT(VARCHAR(20),@Benchmark) +']'
+					@ErrMsg = 'Failed to insert benchmark by bet type [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +']'
 				RETURN
 			END
 
-	 	
-		-- Write log 
+
+		-----2. insert into history table
+			INSERT INTO dbo.Benchmark_BetType_History(
+					LeagueId
+					,BetType
+					,Benchmark
+					,WorkShift					
+					,ModifiedDate
+					,ModifiedBy
+					)
+			VALUES (
+					@LeagueId
+					,@BetType
+					,@Benchmark
+					,@WorkShift
+					,GETDATE()
+					,@UserId
+					)
+
+		-- Check fail
+		IF @@ERROR > 0
+			BEGIN
+				SELECT 
+					@ErrCode = 408, 
+					@ErrMsg = 'Failed to insert benchmark by bet type hisory [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +']'
+				RETURN
+			END
+				
+		----3. Write log 
 		SET @xml = (
 						SELECT							
 							@LeagueId			AS '@l',
 							@BetType			AS '@b',
-							@Benchmark			AS '@v' 	
-						 FOR XML PATH('z'), ROOT('r')
+							@Benchmark			AS '@v',
+							@WorkShift			AS '@s'	 	
+							FOR XML PATH('z'), ROOT('r')
 					)
 
 		SET @LogBenchmarkData = REPLACE(CONVERT(NVARCHAR(MAX), @Xml), '" />', '"/"')
@@ -92,65 +135,99 @@ BEGIN
 				@ObjectId	= @BetType,
 				@Data		= @LogBenchmarkData,
 				@OldData	= NULL
+	END 	
+	ELSE
+	BEGIN 
+			-- 1. write log before update				
+			SET @xml = (
+							SELECT  LeagueId	AS '@l',
+									BetType		AS '@b',
+									Benchmark	AS '@v',
+									WorkShift 	AS '@s'
+							FROM	dbo.BenchMark_BetType WITH (NOLOCK)							
+							WHERE	LeagueId = @LeagueId
+									AND BetType = @BetType	
+									AND WorkShift = @WorkShift			
+							FOR XML PATH('z'),ROOT('r')
+						)	 
+
+			SET @LogBenchmarkOldData = REPLACE(CONVERT(VARCHAR(MAX), @xml), '" />', '"/"')
+			-- end write log					
+		 
+			-----2. update to BenchMark_BetType
+
+			UPDATE  dbo.BenchMark_BetType WITH (ROWLOCK, UPDLOCK)
+			SET		Benchmark		= @Benchmark,
+					ModifiedDate	= Getdate(),
+					ModifiedBy		= @UserId
+			WHERE	LeagueId = @LeagueId
+					AND BetType = @BetType
+					AND WorkShift = @WorkShift
+
+			-- Check fail
+			IF @@ERROR > 0
+				BEGIN
+					SELECT 
+						@ErrCode = 407, 
+						@ErrMsg = 'Failed to update benchmark by bet type [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@Bettype) +']'
+					RETURN
+				END
+
+			
+			-----3. insert into history table
+				INSERT INTO dbo.Benchmark_BetType_History(
+						LeagueId
+						,BetType
+						,Benchmark
+						,WorkShift					
+						,ModifiedDate
+						,ModifiedBy
+						)
+				VALUES (
+						@LeagueId
+						,@BetType
+						,@Benchmark
+						,@WorkShift
+						,GETDATE()
+						,@UserId
+						)
+
+			-- Check fail
+			IF @@ERROR > 0
+				BEGIN
+					SELECT 
+						@ErrCode = 408, 
+						@ErrMsg = 'Failed to insert benchmark by bet type hisory [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +']'
+					RETURN
+				END
+				
+
+
+			----4. Write log after update			
+			SET @xml = (	SELECT 	@LeagueId		AS '@l',
+									@BetType		AS '@b',
+									@Benchmark		AS '@v',
+									@WorkShift		AS '@s' 
+							FOR XML PATH('z'), ROOT('r')
+						)
+
+			SET @LogBenchmarkData = REPLACE(CONVERT(NVARCHAR(MAX), @Xml), '" />', '"/"')
+
+			SET @EndRun = GETDATE()
+			SET @Duration = DATEDIFF(MILLISECOND, @StartRun, @EndRun) 
+	
+			EXEC	dbo.TGRS_WriteLog_RunSp
+					@UserId		= @UserId,
+					@SPName		= 'TGRS_BenchmarkBetType_Update',
+					@LogDate	= @StartRun,
+					@Duration	= @Duration,
+					@ObjectId	= @BetType,
+					@Data		= @LogBenchmarkData,
+					@OldData	= @LogBenchmarkOldData
 
 	END
-	ELSE
-	BEGIN		
+ 
 
-		-- write log before update				
-		SET @xml = (
-						SELECT  LeagueId	AS '@l',
-								BetType		AS '@b',
-								Benchmark	AS '@v' 		
-						FROM	dbo.BenchMark_BetType WITH (NOLOCK)							
-						WHERE	LeagueId = @LeagueId
-								AND BetType = @BetType				
-						FOR XML PATH('z'),ROOT('r')
-					)	 
-
-		SET @LogBenchmarkOldData = REPLACE(CONVERT(VARCHAR(MAX), @xml), '" />', '"/"')
-		-- end write log					
-		
-		---update
-		UPDATE  dbo.BenchMark_BetType WITH (ROWLOCK, UPDLOCK)
-		SET		Benchmark		= @Benchmark,
-				ModifiedDate	= Getdate(),
-				ModifiedBy		= @UserId
-		WHERE	LeagueId = @LeagueId
-				AND BetType = @BetType
-
-		-- Check fail
-		IF @@ERROR > 0
-			BEGIN
-				SELECT 
-					@ErrCode = 407, 
-					@ErrMsg = 'Failed to update benchmark by bet type [Benchmark = ' + CONVERT(VARCHAR(20),@Benchmark) +']'
-				RETURN
-			END
-
-
-		-- Write log after update			
-		SET @xml = (	SELECT 	@LeagueId		AS '@l',
-								@BetType		AS '@b',
-								@Benchmark		AS '@v' 			
-						FOR XML PATH('z'), ROOT('r')
-					)
-
-		SET @LogBenchmarkData = REPLACE(CONVERT(NVARCHAR(MAX), @Xml), '" />', '"/"')
-
-		SET @EndRun = GETDATE()
-		SET @Duration = DATEDIFF(MILLISECOND, @StartRun, @EndRun) 
-	
-		EXEC	dbo.TGRS_WriteLog_RunSp
-				@UserId		= @UserId,
-				@SPName		= 'TGRS_BenchmarkBetType_Update',
-				@LogDate	= @StartRun,
-				@Duration	= @Duration,
-				@ObjectId	= @BetType,
-				@Data		= @LogBenchmarkData,
-				@OldData	= @LogBenchmarkOldData
-
-	END  
 
 END
  

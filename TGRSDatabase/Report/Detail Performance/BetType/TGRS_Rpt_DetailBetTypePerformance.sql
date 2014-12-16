@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailBetTypePerformance]  	
+﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailBetTypePerformance]
 	@FromDate	 DATE,
 	@ToDate		 DATE,
 	@BetTypeBMFrom MONEY = NULL,
@@ -50,6 +50,7 @@ BEGIN
 	 LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
 			 ON BT.LeagueId = P.LeagueId
 				AND BT.BetType = P.BetType
+				AND BT.WorkShift = P.WorkShift
 	 LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON
 			  TN.BetType = P.BetType
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate

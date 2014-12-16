@@ -1,5 +1,5 @@
 ﻿ 
-ALTER PROCEDURE [dbo].[TGRS_BenchmarkTeam_SelectAll]
+CREATE PROCEDURE [dbo].[TGRS_BenchmarkTeam_SelectAll]
 	 
 /*
 Created: 20140513@Sophia
@@ -9,6 +9,8 @@ DB:  DBTGRS.bodb_TGRS
 Revisions:
 	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
 					   Calculate average Margin of 3 years -> yesterday
+	- 20141121@Sophia:  Change the calculation of margin
+
 Explanation : 
 	
    
@@ -27,13 +29,10 @@ BEGIN
 	FROM	dbo.Team T WITH (NOLOCK) 
 		LEFT JOIN dbo.BenchMark_Team B WITH (NOLOCK)
 				ON	T.TeamId = B.TeamId
-		LEFT JOIN	(	SELECT AVG (Margin) as Margin, A.TeamId
-						FROM (	SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm)) * 100/SUM(P.Stake) ELSE NULL END AS Margin, P.TeamId, YEAR(P.EventDate) AS Year  
-								FROM	dbo.SummaryByTeam_Monthly P WITH (NOLOCK)  
-								WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
-								GROUP BY P.TeamId, YEAR(P.EventDate) 
-								) A	
-						GROUP BY A.TeamId		 
+		LEFT JOIN	(		SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm)) * 100/SUM(P.Stake) ELSE NULL END AS Margin, P.TeamId 
+							FROM	dbo.SummaryByTeam_Monthly P WITH (NOLOCK)  
+							WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
+							GROUP BY P.TeamId 								 
 					) P  
 				ON	T.TeamId = P.TeamId
 	ORDER BY T.TeamName

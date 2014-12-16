@@ -14,11 +14,13 @@ AS
  Original:  
   
  Revisions:      
-   			
+   	- 20141205@Sophia: Calculate the Score 	
  Param's Explanation:  	
 
- Exam: 
-	EXEC TGRS_Rpt_DetailGradePerformance @FromDate = '2013-01-01', @ToDate= '2014-05-31',  @Bettypes = '0'
+ Exam: 	
+	EXEC TGRS_Rpt_DetailGradePerformance_xtest  @FromDate='2014-11-19 00:00:00',@WinLost=NULL,@Turnover=NULL,@MarginTo=NULL,@MarginFrom=NULL,@Bettypes='0',@ToDate='2014-12-03 00:00:00'
+
+
 
 */  
  
@@ -32,18 +34,23 @@ BEGIN
 	 ELSE 
 		 INSERT INTO @BettypeList
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
-	 
-	
-	 SELECT P.Grade,
+
+
+	DECLARE @Grade TABLE (Grade TINYINT, TraderCount INT, LeagueCount INT, MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY, Score MONEY)
+	DECLARE @AVGScore AS TABLE (Grade TINYINT, Score MONEY)
+
+
+	INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin) 	
+	SELECT P.Grade,
 			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
 			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount,  
 			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM(P.BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
-	 FROM	dbo.TraderPerformance P WITH (NOLOCK)					    
-	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin			 
+	FROM	dbo.TraderPerformance P WITH (NOLOCK)			     
+	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 	GROUP BY P.Grade
 	HAVING  (@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
@@ -64,9 +71,35 @@ BEGIN
 								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
 								  ELSE 0 END 
 						ELSE @MarginTo END 		
+	
+
+	INSERT INTO @AVGScore (Grade, Score)
+	SELECT S.Grade , AVG (S.Score) as Score
+	FROM (
+	SELECT P.Grade, P.LeagueId, P.BetType, P.WorkShift, 
+		(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
+	FROM	dbo.TraderPerformance P WITH (NOLOCK)		
+	INNER JOIN Benchmark_BetType B WITH (NOLOCK)		    
+		ON	P.LeagueId = B.LeagueId
+		AND P.Bettype = B.Bettype
+		AND P.WorkShift = B.WorkShift
+	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+		AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+		AND ISNULL(B.Benchmark,0) <> 0
+	GROUP BY P.Grade, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
+	) S
+	GROUP BY S.Grade
+
+
+	UPDATE  G 
+	SET		G.Score = S.Score
+	FROM	@Grade G 
+	INNER JOIN @AVGScore S 
+		ON S.Grade = G.Grade
+
+
+	SELECT * FROM @Grade
 	ORDER BY Margin DESC, Grade ASC
-	 
- 
 
 END 
 GO

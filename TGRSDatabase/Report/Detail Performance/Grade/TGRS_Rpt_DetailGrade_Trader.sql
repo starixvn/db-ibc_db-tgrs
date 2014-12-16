@@ -11,7 +11,7 @@ AS
  Original:  
   
  Revisions:      
-   			
+   	 - 20141208@Sophia: Calculate the Score    	
  Param's Explanation:  	
 
  Exam: 
@@ -24,7 +24,9 @@ BEGIN
 	 SET NOCOUNT ON  
 
 	 DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), TeamId SMALLINT, TeamName NVARCHAR(50), LeagueCount INT, MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
-							   NoOfTeamChanged INT,  NoOfGradeChanged INT)
+							   NoOfTeamChanged INT,  NoOfGradeChanged INT, Score MONEY)
+	 DECLARE @AVGScore AS TABLE (CustId INT, Score MONEY)
+	
 
 	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	 IF @Bettypes <> '0'
@@ -42,7 +44,7 @@ BEGIN
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM (BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0)  ELSE NULL END AS Margin			
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0)  ELSE NULL END AS Margin					
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)	
 		INNER JOIN dbo.Trader TR WITH (NOLOCK) 
 				ON TR.CustId= P.CustId	
@@ -84,7 +86,34 @@ BEGIN
 				) GH
 			ON GH.CustId = T.CustId
 	
-	 
+	 ------------------------------
+	---Calculate Score 
+
+	INSERT INTO @AVGScore (CustId, Score)
+	SELECT S.CustId , AVG (S.Score) as Score
+	FROM (
+			SELECT  P.CustId, P.LeagueId, P.BetType, P.WorkShift, 
+					(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
+			FROM	dbo.TraderPerformance P WITH (NOLOCK)		
+			INNER JOIN Benchmark_BetType B WITH (NOLOCK)		    
+				ON	P.LeagueId = B.LeagueId
+				AND P.Bettype = B.Bettype
+				AND P.WorkShift = B.WorkShift
+			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)				
+				AND ISNULL(B.Benchmark,0) <> 0
+			GROUP BY P.CustId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
+		) S
+	GROUP BY S.CustId
+
+
+	UPDATE  T 
+	SET		T.Score = S.Score
+	FROM	@Trader T 
+	INNER JOIN @AVGScore S 
+		ON S.CustId = T.CustId
+
+
 	 ---------------Get Data-------------------
 
 	 SELECT * 

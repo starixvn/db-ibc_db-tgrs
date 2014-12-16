@@ -18,6 +18,7 @@ AS
 	
  Revisions:      
    	  	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number				
+		- 20141205@Sophia: Calculate the Score 	
  Param's Explanation: 	
 	@TeamIds = '0' : All 			
 	@Bettypes = '0': All
@@ -46,8 +47,12 @@ BEGIN
 		 INSERT INTO @TeamList
 		 SELECT TeamId FROM dbo.Team WITH (NOLOCK) 
 	
-		 	
-	 SELECT	P.TeamId, T.TeamName,
+	DECLARE @Rpt TABLE (TeamId SMALLINT, TeamName NVARCHAR(50), TeamBenchmark MONEY, TraderCount INT, LeagueCount INT, MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY, Score MONEY)
+	DECLARE @AVGScore AS TABLE (TeamId SMALLINT, Score MONEY)
+	
+	
+	INSERT INTO @Rpt (TeamId, TeamName, TeamBenchmark, TraderCount, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin)	 	
+	SELECT	P.TeamId, T.TeamName,
 			ISNULL(BT.Benchmark,0) * 100 AS TeamBenchmark,
 			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
 			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount, 
@@ -55,13 +60,13 @@ BEGIN
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM (BetCount),0) AS BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
-	 FROM	dbo.TraderPerformance P WITH (NOLOCK)
-	 INNER JOIN dbo.Team T WITH (NOLOCK) 
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin				
+	FROM	dbo.TraderPerformance P WITH (NOLOCK)
+	INNER JOIN dbo.Team T WITH (NOLOCK) 
 			 ON T.TeamId = P.TeamId
-	 LEFT JOIN dbo.Benchmark_Team BT WITH (NOLOCK)
+	LEFT JOIN dbo.Benchmark_Team BT WITH (NOLOCK)
 			 ON BT.TeamId = P.TeamId
-	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
 			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @TeamBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @TeamBMFrom END 
 			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @TeamBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @TeamBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
@@ -85,6 +90,40 @@ BEGIN
 								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 /ISNULL(SUM(P.Stake),0)
 								  ELSE 0 END 
 						ELSE @MarginTo END 
+	
+
+	------------------------------
+	---Calculate Score 
+
+	INSERT INTO @AVGScore (TeamId, Score)
+	SELECT S.TeamId , AVG (S.Score) as Score
+	FROM (
+			SELECT  P.TeamId, P.LeagueId, P.BetType, P.WorkShift, 
+					(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
+			FROM	dbo.TraderPerformance P WITH (NOLOCK)		
+			INNER JOIN Benchmark_BetType B WITH (NOLOCK)		    
+				ON	P.LeagueId = B.LeagueId
+				AND P.Bettype = B.Bettype
+				AND P.WorkShift = B.WorkShift
+			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+				AND P.TeamId IN (SELECT TeamId FROM @TeamList)	
+				AND ISNULL(B.Benchmark,0) <> 0
+			GROUP BY P.TeamId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
+		) S
+	GROUP BY S.TeamId
+
+
+	UPDATE  T 
+	SET		T.Score = S.Score
+	FROM	@Rpt T 
+	INNER JOIN @AVGScore S 
+		ON S.TeamId = T.TeamId
+
+
+
+	------------------------------------------------------------
+	SELECT * FROM @Rpt 
 	ORDER BY Margin DESC, TeamName ASC
 	 
  

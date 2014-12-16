@@ -6,6 +6,7 @@ Task : Select dropdown bettype
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
+	- 20141208@Sophia: get IsDefault
    
 */ 
 
@@ -13,7 +14,7 @@ AS
 BEGIN
 	SET NOCOUNT ON 	
 	
-	SELECT	BetType, TypeName
+	SELECT	BetType, TypeName, IsDefault
 	FROM	dbo.BetType WITH (NOLOCK)
 	ORDER BY OrderId
 END 
