@@ -1,5 +1,17 @@
 ALTER PROCEDURE [dbo].[TGRS_Setting_ScorePeriodSel]
 AS
+/*
+Created: 20141203@Sophia
+Task : Select Setting Score Period
+DB:  DBTGRS/bodb_TGRS
+
+Revisions:
+	 
+Explanation : 
+	 
+
+   
+*/ 
 BEGIN 
 	 SET NOCOUNT ON  
 	 DECLARE @BeginDay VARCHAR(20),

@@ -54,7 +54,7 @@ BEGIN
 			AND P.CustId = @CustId
 			AND P.MatchId = @MatchId		
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-	GROUP BY P.BetType, TN.TypeName, ISNULL(B.Benchmark, 0)
+	GROUP BY P.BetType, TN.TypeName, P.WorkShift, ISNULL(B.Benchmark, 0)
 	ORDER BY Margin DESC 
 	
 

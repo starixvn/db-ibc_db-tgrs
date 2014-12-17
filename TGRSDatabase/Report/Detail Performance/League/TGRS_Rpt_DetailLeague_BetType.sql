@@ -34,7 +34,7 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 		 
 		 	
-	 SELECT P.BetType, TN.TypeName, P.WorkShift,
+	 SELECT P.BetType, TN.TypeName,
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
 			ISNULL(SUM(P.BetCount),0) as BetCount,

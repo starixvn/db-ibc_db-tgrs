@@ -17,7 +17,7 @@ AS
  Param's Explanation:  	
 
  Exam: 
-	EXEC TGRS_Rpt_ScroreDetail  @FromDate='2014-11-23 00:00:00', @CustId=4244272,@Bettypes='0',@MatchId=11146182,@ToDate='2014-12-07 00:00:00' 
+	EXEC [TGRS_Rpt_ScoreDetail]  @FromDate='2014-11-23 00:00:00', @CustId=4244272,@Bettypes='0',@MatchId=11146182,@ToDate='2014-12-07 00:00:00' 
 	   
 */  
  
@@ -25,7 +25,8 @@ BEGIN
 	SET NOCOUNT ON  
 	
 	DECLARE @Detail AS TABLE (LeagueId INT, BetType SMALLINT, WorkShift TINYINT, Benchmark MONEY, ModifiedDate DATE, Margin MONEY ,FromDate DATE, ToDate DATE)
-	
+	DECLARE @BenchMark AS TABLE (LeagueId INT, BetType SMALLINT, WorkShift TINYINT, Benchmark MONEY)	
+
 	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	 IF @Bettypes <> '0'
 		 INSERT INTO @BettypeList
@@ -78,13 +79,14 @@ BEGIN
 		SELECT CONVERT(VARCHAR(4),@i) + '-' + @BeginDay
 
 		INSERT INTO @Period (PointDate)
-		SELECT CONVERT(VARCHAR(4),@i) + '-' + @SelectedDay
+		SELECT DATEADD (DD, 1, CONVERT(DATE, (CONVERT(VARCHAR(4),@i) + '-' + @SelectedDay)))
 
-		INSERT INTO @Period (PointDate)
-		SELECT CONVERT(VARCHAR(4),@i) + '-' + @EndDay
+		--INSERT INTO @Period (PointDate)
+		--SELECT CONVERT(VARCHAR(4),@i) + '-' + @EndDay
 
 		SELECT @i = @i + 1
 	END 
+
 
 	SELECT  @D1 = MAX (PointDate)
 	FROM	@Period
@@ -105,10 +107,12 @@ BEGIN
 	ORDER BY PointDate ASC
 
 	SELECT	@M = MAX(ID) 
-	FROM	@CurPeriod
+	FROM	@CurPeriod	
+	 
 	 
 	-----------------------------------------------
-	
+	 
+
 	SELECT	@i = 1
 	WHILE	(@i < @M)
 	BEGIN 
@@ -116,39 +120,63 @@ BEGIN
 		FROM	@CurPeriod
 		WHERE	ID = @i
 
-		SELECT	@DateE = PointDate
+		SELECT	@DateE = DATEADD (DD, -1 ,PointDate)
 		FROM	@CurPeriod
 		WHERE	ID = @i + 1
 
-		INSERT INTO @Detail (LeagueId, BetType, WorkShift, Benchmark, ModifiedDate, Margin, FromDate, ToDate)
+		DELETE  @BenchMark
+
+		INSERT	INTO @BenchMark
+		SELECT	B.LeagueId, B.BetType, B.WorkShift, B.Benchmark		
+		FROM	dbo.Benchmark_BetType_History B WITH (NOLOCK)
+		INNER JOIN (
+						SELECT MAX(ModifiedDate) AS ModifiedDate, LeagueId, BetType, WorkShift
+						FROM ( 
+								SELECT MAX(ModifiedDate) AS ModifiedDate, B.LeagueId, B.BetType, B.WorkShift 
+								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)		
+								WHERE  B.ModifiedDate BETWEEN @DateB AND @DateE
+									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
+								GROUP BY  B.LeagueId, B.BetType, B.WorkShift
+								UNION 
+								SELECT MAX(ModifiedDate) AS ModifiedDate, B.LeagueId, B.BetType, B.WorkShift
+								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)		
+								WHERE  B.ModifiedDate < @DateB
+									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
+								GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
+								) B
+						GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
+					) M
+			ON  M.LeagueId = B.LeagueId
+				AND M.BetType = B.BetType
+				AND M.WorkShift = B.WorkShift
+				AND M.ModifiedDate = B.ModifiedDate
+			WHERE 	M.Bettype IN (SELECT Bettype FROM @BettypeList)	
+			
+
+		INSERT INTO @Detail (LeagueId, BetType, WorkShift, Benchmark, Margin, FromDate, ToDate)	 	
 		SELECT  P.LeagueId, P.BetType, P.WorkShift,  
-				CASE WHEN B.Benchmark IS NOT NULL THEN B.Benchmark
-					 ELSE (	SELECT TOP 1 H.Benchmark 
-							FROM Benchmark_BetType_History H WITH (NOLOCK)
-							WHERE H.LeagueId = P.LeagueId AND H.BetType = P.BetType AND H.WorkShift = P.WorkShift
-							ORDER BY H.ModifiedDate DESC
-							) END AS Benchmark, 
-				MAX (B.ModifiedDate) AS ModifiedDate,
+				CASE WHEN B.Benchmark IS NOT NULL THEN B.Benchmark ELSE NULL END AS Benchmark,	
 				(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ ISNULL(SUM(P.Stake),0))  ELSE NULL END) AS Margin,
 				@DateB, @DateE
 		FROM	TraderPerformance P WITH (NOLOCK)
-		LEFT JOIN Benchmark_BetType_History B WITH (NOLOCK)
+		LEFT JOIN @BenchMark B  
 				ON B.LeagueId = P.LeagueId
-				   AND B.BetType = P.BetType 
-				   AND B.WorkShift = P.WorkShift
+					AND B.BetType = P.BetType 
+					AND B.WorkShift = P.WorkShift
 		WHERE   P.EventDate BETWEEN @FromDate AND @ToDate
+				AND P.EventDate BETWEEN @DateB AND @DateE
 				AND P.CustId = @CustId
 				AND P.MatchId = @MatchId	
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)	
-				AND B.ModifiedDate BETWEEN @DateB AND @DateE
 		GROUP BY  P.LeagueId, P.BetType, P.WorkShift, B.Benchmark
-		
+
+		 
 		SELECT @i = @i + 1
 	END		
 			  
-	 	
+	 
 	----------------------------------------------
-	SELECT	BetType, FromDate, ToDate, SUM(Margin) * 100 / SUM(Benchmark) AS Score
+	SELECT	BetType, FromDate, ToDate, CASE WHEN SUM(ISNULL(Benchmark,0)) <> 0 THEN SUM(Margin) * 50 / SUM(Benchmark) ELSE 0 END AS Score
 	FROM	@Detail
 	GROUP BY BetType, FromDate, ToDate
 	ORDER BY FromDate
