@@ -17,6 +17,7 @@ AS
  Original:  
   
  Revisions:      
+	- 20141203@Tom.Vo: Staging data with new requirement
    			
  Param's Explanation:  
 	 
@@ -33,6 +34,7 @@ SET NOCOUNT ON
 	INSERT INTO [dbo].[TraderPerformance]
            ([CustId]
            ,[MatchId]
+		   ,[WorkShift]
 		   ,[MatchCode]
            ,[EventDate]
            ,[SportType]
@@ -50,6 +52,7 @@ SET NOCOUNT ON
  
 	SELECT [CustId]
            ,[MatchId]
+		   ,[WorkShift]
 		   ,[MatchCode]
            ,[EventDate]
            ,[SportType]
@@ -72,6 +75,7 @@ SET NOCOUNT ON
 		([EventDate]
 		  ,[LeagueId]
 		  ,[BetType]
+		   ,[WorkShift]
 		  ,[Stake]
 		  ,[WinLost]
 		  ,[Comm]
@@ -81,6 +85,7 @@ SET NOCOUNT ON
 	SELECT @Date [EventDate]
 		  ,[LeagueId]
 		  ,[BetType]
+		   ,[WorkShift]
 		  ,SUM([Stake]) [Stake]
 		  ,SUM([WinLost]) [WinLost]
 		  ,SUM([Comm]) [Comm]
@@ -90,12 +95,14 @@ SET NOCOUNT ON
 	  WHERE EventDate = @Date
 	  GROUP BY [LeagueId]
 		  ,[BetType]
+		   ,[WorkShift]
 
 	DELETE [dbo].[SummaryByLeague_Daily]	WHERE EventDate = @Date
 
 	INSERT INTO [dbo].[SummaryByLeague_Daily]
 		([EventDate]
 		  ,[LeagueId]
+		   ,[WorkShift]
 		  ,[Stake]
 		  ,[WinLost]
 		  ,[Comm]
@@ -104,6 +111,7 @@ SET NOCOUNT ON
 		)
 	SELECT @Date [EventDate]
 		  ,[LeagueId]
+		   ,[WorkShift]
 		  ,SUM([Stake]) [Stake]
 		  ,SUM([WinLost]) [WinLost]
 		  ,SUM([Comm]) [Comm]
@@ -112,12 +120,14 @@ SET NOCOUNT ON
 	  FROM [dbo].[Staging_TraderPerformance] WITH(NOLOCK)
 	  WHERE EventDate = @Date
 	  GROUP BY [LeagueId]
+		   ,[WorkShift]
 
 	DELETE [dbo].[SummaryByTeam_Daily]	WHERE EventDate = @Date
 
 	INSERT INTO [dbo].[SummaryByTeam_Daily]
 		([EventDate]
 		  ,[TeamId]
+		   ,[WorkShift]
 		  ,[Stake]
 		  ,[WinLost]
 		  ,[Comm]
@@ -126,6 +136,7 @@ SET NOCOUNT ON
 		)
 	SELECT @Date [EventDate]
 		  ,[TeamId]
+		   ,[WorkShift]
 		  ,SUM([Stake]) [Stake]
 		  ,SUM([WinLost]) [WinLost]
 		  ,SUM([Comm]) [Comm]
@@ -134,8 +145,9 @@ SET NOCOUNT ON
 	  FROM [dbo].[Staging_TraderPerformance] WITH(NOLOCK)
 	  WHERE EventDate = @Date
 	  GROUP BY [TeamId]
+		   ,[WorkShift]
 
 GO
 
 GRANT EXECUTE ON [dbo].[Task_StagingTraderPerformanceByDate] TO [bodbTGRSNet]
-GRANT VIEW DEFINITION ON [dbo].[Task_StagingTraderPerformanceByDate] TO [vnteam]
+--GRANT VIEW DEFINITION ON [dbo].[Task_StagingTraderPerformanceByDate] TO [vnteam]
