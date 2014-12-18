@@ -24,7 +24,7 @@ AS
 BEGIN 
 	SET NOCOUNT ON  
 	
-	DECLARE @Detail AS TABLE (LeagueId INT, BetType SMALLINT, WorkShift TINYINT, Benchmark MONEY, ModifiedDate DATE, Margin MONEY ,FromDate DATE, ToDate DATE)
+	DECLARE @Detail AS TABLE (LeagueId INT, BetType SMALLINT, WorkShift TINYINT, Benchmark MONEY, Winlost MONEY, Comm MONEY, Stake MONEY, FromDate DATE, ToDate DATE)
 	DECLARE @BenchMark AS TABLE (LeagueId INT, BetType SMALLINT, WorkShift TINYINT, Benchmark MONEY)	
 
 	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
@@ -80,9 +80,6 @@ BEGIN
 
 		INSERT INTO @Period (PointDate)
 		SELECT DATEADD (DD, 1, CONVERT(DATE, (CONVERT(VARCHAR(4),@i) + '-' + @SelectedDay)))
-
-		--INSERT INTO @Period (PointDate)
-		--SELECT CONVERT(VARCHAR(4),@i) + '-' + @EndDay
 
 		SELECT @i = @i + 1
 	END 
@@ -153,10 +150,12 @@ BEGIN
 			WHERE 	M.Bettype IN (SELECT Bettype FROM @BettypeList)	
 			
 
-		INSERT INTO @Detail (LeagueId, BetType, WorkShift, Benchmark, Margin, FromDate, ToDate)	 	
+		INSERT INTO @Detail (LeagueId, BetType, WorkShift, Benchmark, Winlost, Comm, Stake, FromDate, ToDate)	 	
 		SELECT  P.LeagueId, P.BetType, P.WorkShift,  
 				CASE WHEN B.Benchmark IS NOT NULL THEN B.Benchmark ELSE NULL END AS Benchmark,	
-				(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ ISNULL(SUM(P.Stake),0))  ELSE NULL END) AS Margin,
+				ISNULL(SUM(P.WinLost),0) AS Winlost,
+				ISNULL(SUM(P.Comm),0) AS Comm,
+				ISNULL(SUM(P.Stake),0) AS Stake,
 				@DateB, @DateE
 		FROM	TraderPerformance P WITH (NOLOCK)
 		LEFT JOIN @BenchMark B  
@@ -173,10 +172,10 @@ BEGIN
 		 
 		SELECT @i = @i + 1
 	END		
-			  
-	 
+			   
 	----------------------------------------------
-	SELECT	BetType, FromDate, ToDate, CASE WHEN SUM(ISNULL(Benchmark,0)) <> 0 THEN SUM(Margin) * 50 / SUM(Benchmark) ELSE 0 END AS Score
+	SELECT	BetType, FromDate, ToDate, 
+			(CASE WHEN ISNULL(SUM(Stake),0) <> 0 AND ISNULL(SUM(Benchmark), 0) <> 0 THEN ((ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) * 100 * 50 / ISNULL(SUM(Stake),0))/ ISNULL(SUM(Benchmark), 0) ELSE NULL END) AS Score			 
 	FROM	@Detail
 	GROUP BY BetType, FromDate, ToDate
 	ORDER BY FromDate
