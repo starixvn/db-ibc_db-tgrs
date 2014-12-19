@@ -64,11 +64,11 @@ BEGIN
 		INSERT INTO #tmpTrader(CustId,LeagueId,WorkShift,MatchId,SportType,EventDate,HomeId,AwayId,BetType,SpecialType,Matchcode)
 		SELECT DISTINCT  a.OperatorID AS CustId
 			,m.LeagueId
-			,CASE 
-				WHEN CAST(m.kickofftime AS TIME) >= '04:00:00' AND CAST(m.kickofftime AS TIME) <'12:00:00'THEN 3 --at Midnight  
-				WHEN CAST(m.kickofftime AS TIME) >= '12:00:00' AND CAST(m.kickofftime AS TIME) <'18:00:00'THEN 1 --in the morning
-				--WHEN CAST(m.kickofftime AS TIME) >= '18:00:00' AND CAST(m.kickofftime AS TIME) <'04:00:00' THEN 2--in the afternoon
-				ELSE 2
+			,CASE
+				WHEN CAST(m.kickofftime AS TIME) >= '00:00:00' AND CAST(m.kickofftime AS TIME) <'6:00:00' THEN 1--  Afternoon: 12:00:00 ~ 17:59:59 (GMT + 8)
+				WHEN CAST(m.kickofftime AS TIME) >= '6:00:00' AND CAST(m.kickofftime AS TIME) <'16:00:00'THEN 2 -- Night: 18:00:00 ~ 3:59:59 (GMT + 8)				
+				--WHEN CAST(m.kickofftime AS TIME) >= '16:00:00' AND CAST(m.kickofftime AS TIME) <'24:00:00'THEN 3 --  Midnight: 4:00:00 ~ 11:59:59 (GMT + 8)
+				ELSE 3
 			END [WorkShift]
 			,m.MatchId
 			,m.sporttype as SportType
@@ -250,10 +250,10 @@ BEGIN
 			,m.LeagueId
 			,m.MatchId
 			,CASE 
-			WHEN CAST(m.kickofftime AS TIME) BETWEEN '04:00:00' AND '04:00:00'THEN 1
-			WHEN CAST(m.kickofftime AS TIME) BETWEEN '10:00:00' AND '19:59:59'THEN 2
-			--WHEN CAST(m.kickofftime AS TIME) BETWEEN '20:00:00' AND '03:59:59'THEN 3
-			ELSE 3
+				WHEN CAST(m.kickofftime AS TIME) >= '00:00:00' AND CAST(m.kickofftime AS TIME) <'6:00:00' THEN 1--  Afternoon: 12:00:00 ~ 17:59:59 (GMT + 8)
+				WHEN CAST(m.kickofftime AS TIME) >= '6:00:00' AND CAST(m.kickofftime AS TIME) <'16:00:00'THEN 2 -- Night: 18:00:00 ~ 3:59:59 (GMT + 8)				
+				--WHEN CAST(m.kickofftime AS TIME) >= '16:00:00' AND CAST(m.kickofftime AS TIME) <'24:00:00'THEN 3 --  Midnight: 4:00:00 ~ 11:59:59 (GMT + 8)
+				ELSE 3
 			END [WorkShift]
 			,m.sporttype as SportType,
 			m.EventDate, m.HomeId, m.AwayId,
