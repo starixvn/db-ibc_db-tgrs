@@ -87,10 +87,10 @@ INSERT INTO #tmpTraderPer (
 	)
 SELECT a.operatorid CustID
 	,CASE 
-		WHEN CAST(m.kickofftime AS TIME) >= '04:00:00' AND CAST(m.kickofftime AS TIME) <'12:00:00'THEN 3 --at Midnight  
-		WHEN CAST(m.kickofftime AS TIME) >= '12:00:00' AND CAST(m.kickofftime AS TIME) <'18:00:00'THEN 1 --in the morning
-		--WHEN CAST(m.kickofftime AS TIME) >= '18:00:00' AND CAST(m.kickofftime AS TIME) <'04:00:00' THEN 2--in the afternoon
-		ELSE 2
+		WHEN CAST(m.kickofftime AS TIME) >= '00:00:00' AND CAST(m.kickofftime AS TIME) <'6:00:00' THEN 1--  Afternoon: 12:00:00 ~ 17:59:59 (GMT + 8)
+		WHEN CAST(m.kickofftime AS TIME) >= '6:00:00' AND CAST(m.kickofftime AS TIME) <'16:00:00'THEN 2 -- Night: 18:00:00 ~ 3:59:59 (GMT + 8)		
+		--WHEN CAST(m.kickofftime AS TIME) >= '16:00:00' AND CAST(m.kickofftime AS TIME) <'24:00:00'THEN 3 --  Midnight: 4:00:00 ~ 11:59:59 (GMT + 8)
+		ELSE 3
 	END [WorkShift]
 	,m.matchID
 	,CASE WHEN (a.bettype = 1 OR a.bettype = 5)
