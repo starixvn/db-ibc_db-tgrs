@@ -10,6 +10,7 @@ AS
  Original:  
   
  Revisions:      
+	-20141219@Sophia: Order by Margin DESC
    			
  Param's Explanation:  
  	@ReportType = 1: by Date
@@ -24,8 +25,6 @@ AS
 BEGIN 
 	SET NOCOUNT ON  
 
-
-
 	IF @ReportType	= 1 --- by date
 	BEGIN 		
 		SELECT  B.BetType, B.TypeName, 
@@ -37,11 +36,13 @@ BEGIN
 					ON	S.BetType = B.BetType
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY B.BetType, B.TypeName, B.OrderId
-		ORDER BY B.OrderId
+		ORDER BY Margin DESC, B.OrderId
 
 	END
-	ELSE
-	BEGIN		
+	ELSE  ----by month
+	BEGIN	
+		SELECT @FromDate = DATEADD(DD, -DAY(@FromDate)+1, @FromDate)
+				
 		SELECT  B.BetType, B.TypeName, 
 				ISNULL(SUM(Stake),0) AS Turnover,  
 				ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0) AS WinLost, 
@@ -51,7 +52,7 @@ BEGIN
 					ON	S.BetType = B.BetType
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY B.BetType, B.TypeName, B.OrderId
-		ORDER BY B.OrderId
+		ORDER BY Margin DESC, B.OrderId
 
 	END
 

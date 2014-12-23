@@ -52,6 +52,7 @@ BEGIN
 	LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
 			 ON BT.LeagueId = P.LeagueId
 				AND BT.BetType = P.BetType
+				AND BT.WorkShift = P.WorkShift
 	INNER JOIN Team T WITH (NOLOCK)
 			ON T.TeamId = P.TeamId
 	WHERE	P.CustId = @CustId	

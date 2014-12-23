@@ -1,7 +1,7 @@
 ﻿
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
-	@ReportType	 TINYINT = 1,
+	@ReportType	 TINYINT = 2,
 	@FromDate	 DATE,
 	@ToDate		 DATE	   
 AS    
@@ -31,32 +31,30 @@ BEGIN
 
 	DECLARE @MatchCount INT
 	 
-	SELECT @MatchCount = COUNT(DISTINCT T.MatchId)
-	FROM   dbo.TraderPerformance T WITH (NOLOCK)
-	WHERE  T.EventDate BETWEEN @FromDate AND @ToDate
-
-
-	IF @ReportType	= 1 --- by date
+	IF @ReportType	= 2  ---by month 
 	BEGIN 
-		SELECT  ISNULL(SUM(S.Stake),0) AS Turnover,  
-				ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0) AS WinLost, 
-				CASE WHEN ISNULL(SUM(S.Stake),0) <> 0 THEN (ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0)) * 100/ISNULL(SUM(S.Stake),0) ELSE NULL END AS Margin,
-				@MatchCount as MatchCount				
-		FROM	dbo.SummaryByTeam_Daily S WITH (NOLOCK)		
-		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
-	
 		
-	END
-	ELSE
-	BEGIN 
 		SELECT  ISNULL(SUM(Stake),0) AS Turnover,  
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,  
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) * 100/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin, 
-				@MatchCount as MatchCount
-		FROM	dbo.SummaryByTeam_Monthly WITH (NOLOCK)
+				SUM(MatchCount) AS MatchCount
+		FROM	dbo.SummaryByLeague_Monthly WITH (NOLOCK)
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate	
 		
 	END
+	ELSE---- by date
+	BEGIN 
+	
+		SELECT  ISNULL(SUM(S.Stake),0) AS Turnover,  
+				ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0) AS WinLost, 
+				CASE WHEN ISNULL(SUM(S.Stake),0) <> 0 THEN (ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0)) * 100/ISNULL(SUM(S.Stake),0) ELSE NULL END AS Margin,
+				SUM(MatchCount) AS MatchCount		
+		FROM	dbo.SummaryByLeague_Daily S WITH (NOLOCK)		
+		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
+		
+	END
+	 
+	
 
 END 
 GO

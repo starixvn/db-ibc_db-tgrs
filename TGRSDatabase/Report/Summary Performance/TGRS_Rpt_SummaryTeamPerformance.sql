@@ -9,15 +9,15 @@ AS
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
- Revisions:      
-	 - 20141211@Sophia: Get Match Count
+ Revisions:   
+ 
    			
  Param's Explanation:  
 	@ReportType = 1: by Date
 			 = 2: By Month
 			 = 3: By Year
  Exam: 
-	EXEC TGRS_Rpt_SummaryTeamPerformance  @FromDate = '2014-05-01', @ToDate = '2014-05-20'
+	EXEC TGRS_Rpt_SummaryTeamPerformance @FromDate = '2014-05-01', @ToDate = '2014-05-20'
   
 */  
  
@@ -26,7 +26,6 @@ BEGIN
 	IF @ReportType	= 1 --- by date
 	BEGIN 
 		SELECT  T.TeamId, T.TeamName, 
-				ISNULL(SUM(MatchCount),0) AS Match,
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
@@ -40,7 +39,6 @@ BEGIN
 	ELSE
 	BEGIN
 		SELECT  T.TeamId, T.TeamName, 
-				ISNULL(SUM(MatchCount),0) AS Match,
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 

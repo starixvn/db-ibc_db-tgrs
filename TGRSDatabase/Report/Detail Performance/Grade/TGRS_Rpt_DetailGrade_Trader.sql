@@ -93,14 +93,15 @@ BEGIN
 	SELECT S.CustId , AVG (S.Score) as Score
 	FROM (
 			SELECT  P.CustId, P.LeagueId, P.BetType, P.WorkShift, 
-					(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
+					(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
 			FROM	dbo.TraderPerformance P WITH (NOLOCK)		
 			INNER JOIN Benchmark_BetType B WITH (NOLOCK)		    
 				ON	P.LeagueId = B.LeagueId
 				AND P.Bettype = B.Bettype
 				AND P.WorkShift = B.WorkShift
 			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
-				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)				
+				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)		
+				AND P.Grade = @Grade		
 				AND ISNULL(B.Benchmark,0) <> 0
 			GROUP BY P.CustId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
 		) S

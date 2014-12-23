@@ -53,6 +53,7 @@ BEGIN
 		LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
 			 ON BT.LeagueId = P.LeagueId
 				AND BT.BetType = P.BetType
+				AND BT.WorkShift = P.WorkShift
 	WHERE	P.CustId = @CustId	
 			AND P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.LeagueId = CASE WHEN @LeagueId <> 0 THEN @LeagueId ELSE P.LeagueId END

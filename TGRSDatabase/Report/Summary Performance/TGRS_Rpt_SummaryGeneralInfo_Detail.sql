@@ -31,27 +31,14 @@ BEGIN
 
 	IF @ReportType = 2
 	BEGIN 
-		SELECT @FromDate = DATEADD(DD, -DAY(@FromDate)+1, @FromDate)
-		SELECT @ToDate =  DATEADD(DD, -1, DATEADD(mm, DATEDIFF(m,0,@ToDate)+1,0) )
-
-
-		INSERT INTO @MatchCount (EventDate, MatchCount)		 
-		SELECT  DATEADD(DD, -DAY(EventDate)+1, EventDate), COUNT(DISTINCT MatchId)
-		FROM    dbo.TraderPerformance  WITH (NOLOCK)
-		WHERE   EventDate BETWEEN @FromDate AND @ToDate
-		GROUP BY DATEADD(DD,-DAY(EventDate)+1, EventDate) 
-
-
 		SELECT  S.EventDate,
 				ISNULL(SUM(Stake),0) AS Turnover,  
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,  
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) * 100/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin, 
-				M.MatchCount
-		FROM	dbo.SummaryByTeam_Monthly S WITH (NOLOCK)
-			INNER JOIN @MatchCount M 
-				ON M.EventDate = S.EventDate
+				SUM(MatchCount) AS MatchCount
+		FROM	dbo.SummaryByLeague_Monthly S WITH (NOLOCK)			
 		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate	
-		GROUP BY S.EventDate, M.MatchCount
+		GROUP BY S.EventDate
 	END	
 	ELSE 
 	BEGIN 
@@ -59,11 +46,10 @@ BEGIN
 				ISNULL(SUM(Stake),0) AS Turnover,  
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,  
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) * 100/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin, 
-				SUM(S.MatchCount) AS MatchCount
-		FROM	dbo.SummaryByTeam_Daily S WITH (NOLOCK)
+				SUM(MatchCount) AS MatchCount
+		FROM	dbo.SummaryByLeague_Daily S WITH (NOLOCK)	
 		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate	
-		GROUP BY S.EventDate 
-
+		GROUP BY S.EventDate
 	END 
 
 END 

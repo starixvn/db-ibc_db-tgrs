@@ -40,6 +40,7 @@ BEGIN
 
 	-- For write log
 	DECLARE 
+		@ModifiedDate				DATE,
 		@StartRun					DATETIME,
 		@EndRun						DATETIME,
 		@Duration					INT,
@@ -48,6 +49,7 @@ BEGIN
 		@Xml						XML 		 
 
 	SET @StartRun = GETDATE()
+	SET @ModifiedDate = GETDATE()
 	
 	SELECT @Benchmark = @Benchmark / 100
 
@@ -69,9 +71,9 @@ BEGIN
 					,@BetType
 					,@Benchmark
 					,@WorkShift
-					,GETDATE()
+					,@ModifiedDate
 					,@UserId
-					,GETDATE()
+					,@ModifiedDate
 					,@UserId
 					)
 
@@ -80,12 +82,14 @@ BEGIN
 			BEGIN
 				SELECT 
 					@ErrCode = 406, 
-					@ErrMsg = 'Failed to insert benchmark by bet type [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +']'
+					@ErrMsg = 'Failed to insert benchmark by bet type [LeagueId = '+ CONVERT(VARCHAR(20),@LeagueId) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +', WorkShift = ' + CONVERT(VARCHAR(20),@WorkShift)+']'
 				RETURN
 			END
 
 
 		-----2. insert into history table
+		IF NOT EXISTS (SELECT TOP 1 1 FROM dbo.Benchmark_BetType_History WITH (NOLOCK) WHERE LeagueId = @LeagueId AND BetType = @BetType AND WorkShift = @WorkShift AND ModifiedDate = @ModifiedDate)
+		BEGIN 
 			INSERT INTO dbo.Benchmark_BetType_History(
 					LeagueId
 					,BetType
@@ -99,18 +103,39 @@ BEGIN
 					,@BetType
 					,@Benchmark
 					,@WorkShift
-					,GETDATE()
+					,@ModifiedDate
 					,@UserId
 					)
 
-		-- Check fail
-		IF @@ERROR > 0
-			BEGIN
-				SELECT 
-					@ErrCode = 408, 
-					@ErrMsg = 'Failed to insert benchmark by bet type hisory [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +']'
-				RETURN
-			END
+			-- Check fail
+			IF @@ERROR > 0
+				BEGIN
+					SELECT 
+						@ErrCode = 408, 
+						@ErrMsg = 'Failed to insert benchmark by bet type history [LeagueId = '+ CONVERT(VARCHAR(20),@LeagueId) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +', WorkShift = ' + CONVERT(VARCHAR(20),@WorkShift)+']'
+					RETURN
+				END
+		END 
+		ELSE 
+		BEGIN 
+
+			UPDATE dbo.Benchmark_BetType_History WITH (UPDLOCK, ROWLOCK)
+			SET    LeagueId = @LeagueId				
+					,BetType = @BetType
+					,Benchmark = @Benchmark
+					,WorkShift = @WorkShift				
+					,ModifiedDate = @ModifiedDate
+					,ModifiedBy = @UserId	
+			WHERE  LeagueId = @LeagueId AND BetType = @BetType AND WorkShift = @WorkShift AND ModifiedDate = @ModifiedDate			
+
+			-- Check fail
+			IF @@ERROR > 0
+				BEGIN
+					SELECT 
+						@ErrCode = 409, 
+						@ErrMsg = 'Failed to update benchmark by bet type history [LeagueId = '+ CONVERT(VARCHAR(20),@LeagueId) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +', WorkShift = ' + CONVERT(VARCHAR(20),@WorkShift)+']'
+				END
+		END
 				
 		----3. Write log 
 		SET @xml = (
@@ -158,7 +183,7 @@ BEGIN
 
 			UPDATE  dbo.BenchMark_BetType WITH (ROWLOCK, UPDLOCK)
 			SET		Benchmark		= @Benchmark,
-					ModifiedDate	= Getdate(),
+					ModifiedDate	= @ModifiedDate,
 					ModifiedBy		= @UserId
 			WHERE	LeagueId = @LeagueId
 					AND BetType = @BetType
@@ -169,38 +194,60 @@ BEGIN
 				BEGIN
 					SELECT 
 						@ErrCode = 407, 
-						@ErrMsg = 'Failed to update benchmark by bet type [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@Bettype) +']'
+						@ErrMsg = 'Failed to update benchmark by bet type  [LeagueId = '+ CONVERT(VARCHAR(20),@LeagueId) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +', WorkShift = ' + CONVERT(VARCHAR(20),@WorkShift)+']'
 					RETURN
 				END
 
 			
 			-----3. insert into history table
-				INSERT INTO dbo.Benchmark_BetType_History(
-						LeagueId
-						,BetType
-						,Benchmark
-						,WorkShift					
-						,ModifiedDate
-						,ModifiedBy
-						)
-				VALUES (
-						@LeagueId
-						,@BetType
-						,@Benchmark
-						,@WorkShift
-						,GETDATE()
-						,@UserId
-						)
+		IF NOT EXISTS (SELECT TOP 1 1 FROM dbo.Benchmark_BetType_History WITH (NOLOCK) WHERE LeagueId = @LeagueId AND BetType = @BetType AND WorkShift = @WorkShift AND ModifiedDate = @ModifiedDate)
+		BEGIN 
+			INSERT INTO dbo.Benchmark_BetType_History(
+					LeagueId
+					,BetType
+					,Benchmark
+					,WorkShift					
+					,ModifiedDate
+					,ModifiedBy
+					)
+			VALUES (
+					@LeagueId
+					,@BetType
+					,@Benchmark
+					,@WorkShift
+					,@ModifiedDate
+					,@UserId
+					)
 
 			-- Check fail
 			IF @@ERROR > 0
 				BEGIN
 					SELECT 
-						@ErrCode = 408, 
-						@ErrMsg = 'Failed to insert benchmark by bet type hisory [Workshift = '+ CONVERT(VARCHAR(20),@Workshift) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +']'
+						@ErrCode = 409, 
+						@ErrMsg = 'Failed to update benchmark by bet type history [LeagueId = '+ CONVERT(VARCHAR(20),@LeagueId) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +', WorkShift = ' + CONVERT(VARCHAR(20),@WorkShift)+']'
 					RETURN
 				END
-				
+		END 
+		ELSE 
+		BEGIN 
+
+			UPDATE dbo.Benchmark_BetType_History WITH (ROWLOCK, UPDLOCK)
+			SET    LeagueId = @LeagueId				
+					,BetType = @BetType
+					,Benchmark = @Benchmark
+					,WorkShift = @WorkShift				
+					,ModifiedDate = @ModifiedDate
+					,ModifiedBy = @UserId	
+			WHERE  LeagueId = @LeagueId AND BetType = @BetType AND WorkShift = @WorkShift AND ModifiedDate = @ModifiedDate
+
+			-- Check fail
+			IF @@ERROR > 0
+				BEGIN
+					SELECT 
+						@ErrCode = 409, 
+						@ErrMsg = 'Failed to update benchmark by bet type history [LeagueId = '+ CONVERT(VARCHAR(20),@LeagueId) +', Bettype = ' + CONVERT(VARCHAR(20),@BetType) +', WorkShift = ' + CONVERT(VARCHAR(20),@WorkShift)+']'
+				END
+		 END
 
 
 			----4. Write log after update			
