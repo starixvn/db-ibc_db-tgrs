@@ -110,6 +110,8 @@ BEGIN
 				AND P.Bettype = @Bettype
 				AND P.LeagueId = @LeagueId		
 				AND ISNULL(B.Benchmark,0) <> 0
+				AND ISNULL(B.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(B.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
+				AND ISNULL(B.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(B.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
 			GROUP BY P.CustId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
 		) S
 	GROUP BY S.CustId
