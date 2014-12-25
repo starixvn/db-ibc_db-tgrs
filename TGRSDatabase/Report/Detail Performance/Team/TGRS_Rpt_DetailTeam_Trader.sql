@@ -23,7 +23,7 @@ AS
 BEGIN 
 	 SET NOCOUNT ON  
 
-	 DECLARE @Trader AS TABLE (CustId INT, WorkShift TINYINT, Username VARCHAR(30), Grade TINYINT, LeagueCount INT, MatchCount INT, 
+	 DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), Grade TINYINT, LeagueCount INT, MatchCount INT, 
 							   Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
 							   NoOfGradeChanged INT, Score MONEY)
 
@@ -39,8 +39,8 @@ BEGIN
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 	
 		 
-	 INSERT INTO @Trader (CustId, WorkShift, Username, Grade, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin)
-	 SELECT P.CustId, P.WorkShift, TR.Username,TR.Grade, 
+	 INSERT INTO @Trader (CustId, Username, Grade, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin)
+	 SELECT P.CustId, TR.Username,TR.Grade, 
 			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount,  
 			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
@@ -54,7 +54,7 @@ BEGIN
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.TeamId = @TeamId
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-	GROUP BY P.CustId, P.WorkShift, TR.Username, TR.Grade
+	GROUP BY P.CustId, TR.Username, TR.Grade
 	
 	---------------------------
  
