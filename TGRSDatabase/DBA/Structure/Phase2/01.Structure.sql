@@ -1,9 +1,18 @@
 USE [bodb_TGRS]
 GO
 
-/****** Object:  Table [dbo].[SummaryByBetType_Daily]    Script Date: 11/28/2014 10:55:35 AM ******/
-DROP TABLE [dbo].[SummaryByBetType_Daily]
-GO
+-------------------------------
+-- RENAME MANUALLY
+-----1. TABLE [dbo].[SummaryByBetType_Daily] TO SummaryByBetType_Daily_BK
+-----2. TABLE [dbo].[SummaryByBetType_Monthly] TO SummaryByBetType_Monthly_BK
+-----3. TABLE [dbo].[SummaryByLeague_Daily] TO SummaryByLeague_Daily_BK
+-----4. TABLE [dbo].[SummaryByLeague_Monthly] TO SummaryByLeague_Monthly_BK
+-----5. TABLE [dbo].[SummaryByTeam_Daily] TO SummaryByTeam_Daily_BK
+-----6. TABLE [dbo].[SummaryByTeam_Monthly] TO SummaryByTeam_Monthly_BK
+-----7. TABLE [dbo].[SummaryByTrader_Monthly] TO SummaryByTrader_Monthly_BK
+ 
+ 
+ --------------------------------
 
 /****** Object:  Table [dbo].[SummaryByBetType_Daily]    Script Date: 11/28/2014 10:55:35 AM ******/
 SET ANSI_NULLS ON
@@ -40,10 +49,6 @@ GO
 
 
 /****** Object:  Table [dbo].[SummaryByBetType_Monthly]    Script Date: 11/28/2014 10:56:35 AM ******/
-DROP TABLE [dbo].[SummaryByBetType_Monthly]
-GO
-
-/****** Object:  Table [dbo].[SummaryByBetType_Monthly]    Script Date: 11/28/2014 10:56:35 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -77,9 +82,6 @@ GO
 
 ----------------------------------
 
-/****** Object:  Table [dbo].[SummaryByLeague_Daily]    Script Date: 11/28/2014 10:57:39 AM ******/
-DROP TABLE [dbo].[SummaryByLeague_Daily]
-GO
 
 /****** Object:  Table [dbo].[SummaryByLeague_Daily]    Script Date: 11/28/2014 10:57:39 AM ******/
 SET ANSI_NULLS ON
@@ -115,9 +117,6 @@ GO
 
 ---------------
 
-/****** Object:  Table [dbo].[SummaryByLeague_Monthly]    Script Date: 11/28/2014 10:58:13 AM ******/
-DROP TABLE [dbo].[SummaryByLeague_Monthly]
-GO
 
 /****** Object:  Table [dbo].[SummaryByLeague_Monthly]    Script Date: 11/28/2014 10:58:13 AM ******/
 SET ANSI_NULLS ON
@@ -151,9 +150,6 @@ GO
 
 -------------------------
 
-/****** Object:  Table [dbo].[SummaryByTeam_Daily]    Script Date: 11/28/2014 10:59:42 AM ******/
-DROP TABLE [dbo].[SummaryByTeam_Daily]
-GO
 
 /****** Object:  Table [dbo].[SummaryByTeam_Daily]    Script Date: 11/28/2014 10:59:42 AM ******/
 SET ANSI_NULLS ON
@@ -188,9 +184,7 @@ GO
 
 
 -------------------------
-/****** Object:  Table [dbo].[SummaryByTeam_Monthly]    Script Date: 11/28/2014 11:00:19 AM ******/
-DROP TABLE [dbo].[SummaryByTeam_Monthly]
-GO
+
 
 /****** Object:  Table [dbo].[SummaryByTeam_Monthly]    Script Date: 11/28/2014 11:00:19 AM ******/
 SET ANSI_NULLS ON
@@ -227,9 +221,7 @@ GO
 
 --------------------------
 
-/****** Object:  Table [dbo].[SummaryByTrader_Monthly]    Script Date: 11/28/2014 11:00:48 AM ******/
-DROP TABLE [dbo].[SummaryByTrader_Monthly]
-GO
+
 
 /****** Object:  Table [dbo].[SummaryByTrader_Monthly]    Script Date: 11/28/2014 11:00:48 AM ******/
 SET ANSI_NULLS ON
@@ -319,14 +311,6 @@ CREATE TABLE [dbo].[SystemSettings](
 ----------------------------------
 
 
-
-/****** Object:  Index [CIX_LeagueId_BetType]    Script Date: 12/3/2014 4:20:24 PM ******/
-DROP INDEX [CIX_LeagueId_BetType] ON [dbo].[Benchmark_BetType] WITH ( ONLINE = OFF )
-GO
-
-
-
-
 ALTER TABLE [dbo].[Staging_TraderPerformance]
 ADD WorkShift TINYINT
 GO 
@@ -345,6 +329,11 @@ GO
 ALTER TABLE [dbo].[Benchmark_BetType]
 ADD WorkShift TINYINT
 GO 
+
+
+/****** Object:  Index [CIX_LeagueId_BetType]    Script Date: 12/3/2014 4:20:24 PM ******/
+DROP INDEX [CIX_LeagueId_BetType] ON [dbo].[Benchmark_BetType] WITH ( ONLINE = OFF )
+GO
 
 
 /****** Object:  Index [CIX_LeagueId_BetType]    Script Date: 12/3/2014 4:20:24 PM ******/
