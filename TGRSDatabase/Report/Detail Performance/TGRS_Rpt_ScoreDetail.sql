@@ -175,7 +175,7 @@ BEGIN
 			   
 	----------------------------------------------
 	SELECT	BetType, FromDate, ToDate,
-			ISNULL(SUM(Benchmark), 0) AS Benchmark,
+			ISNULL(SUM(Benchmark), 0)* 100 AS Benchmark,
 			(CASE WHEN ISNULL(SUM(Stake),0) <> 0 AND ISNULL(SUM(Benchmark), 0) <> 0 THEN ((ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) * 50 / ISNULL(SUM(Stake),0))/ ISNULL(SUM(Benchmark), 0) ELSE NULL END) AS Score			 
 	FROM	@Detail
 	GROUP BY BetType, FromDate, ToDate
