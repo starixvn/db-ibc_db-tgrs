@@ -91,7 +91,7 @@ BEGIN
 	
 	SELECT  @D2 = MIN (PointDate)
 	FROM	@Period
-	WHERE   PointDate >= @ToDate 
+	WHERE   PointDate > @ToDate 
 
 	DELETE @Period 
 	WHERE  PointDate NOT BETWEEN @D1 AND @D2
