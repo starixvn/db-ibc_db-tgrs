@@ -69,9 +69,12 @@ BEGIN
 						THEN NULL
 						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
 				END														AS Margin
-		FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
+		FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
+		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
+				ON	t.CustId = tp.CustId
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
+			AND	t.Username LIKE '%' + @Username + '%'
 		GROUP BY	tp.CustId
 	)
 	INSERT INTO @Trader
