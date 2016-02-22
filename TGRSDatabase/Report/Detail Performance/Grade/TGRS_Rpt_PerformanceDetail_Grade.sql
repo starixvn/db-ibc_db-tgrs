@@ -73,10 +73,10 @@ BEGIN
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
 		,	SUM(tp.Stake * s.Spread * tm.Rate)						AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-	LEFT JOIN	dbo.Spread AS s WITH (NOLOCK)
+	INNER JOIN	dbo.Spread AS s WITH (NOLOCK)
 			ON	s.LeagueId = tp.LeagueId
 			AND	s.BetType = tp.BetType
-	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+	INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
 			ON	tm.BetType = tp.BetType
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)

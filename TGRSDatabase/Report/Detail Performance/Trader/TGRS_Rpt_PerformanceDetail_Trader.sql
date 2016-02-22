@@ -39,6 +39,7 @@ BEGIN
 							,	MatchCount			INT
 							,	Turnover			MONEY
 							,	WinLost				MONEY
+							,	WinLostScore		MONEY
 							,	BetCount			INT
 							,	Margin				MONEY
 							,	SumCategory			MONEY
@@ -61,6 +62,7 @@ BEGIN
 				,	MatchCount
 				,	Turnover
 				,	WinLost
+				,	WinLostScore
 				,	BetCount
 				,	Margin
 				,	SumCategory
@@ -70,6 +72,9 @@ BEGIN
 		,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
 		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
+		,	ISNULL(SUM(tp.WinLost * CASE WHEN s.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END), 0)
+			-  ISNULL(SUM(tp.Comm * CASE WHEN s.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END), 0)
+																	AS WinLostScore
 		,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
 		,	CASE	WHEN SUM(tp.Stake) = 0
 					THEN NULL
@@ -100,7 +105,7 @@ BEGIN
 		,	td.WinLost
 		,	td.BetCount
 		,	td.Margin
-		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLost * 100 / td.SumCategory END AS Score
+		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLostScore * 100 / td.SumCategory END AS Score
 	FROM		#TraderDetail AS td
 	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 			ON	t.CustId = td.CustId
