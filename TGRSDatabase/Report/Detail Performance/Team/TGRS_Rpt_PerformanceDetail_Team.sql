@@ -30,15 +30,17 @@ BEGIN
 	 
 	SET NOCOUNT ON;  
 	 
+	CREATE TABLE #ScoreDetail (
+								CustID				INT
+							,	WinLost				MONEY
+							,	SumCategory			MONEY
+							);
+
 	DECLARE	@BettypeList	TABLE (
 								BetType			SMALLINT
 							);
 	DECLARE	@TeamList	TABLE (
 								TeamId			SMALLINT
-							);
-	DECLARE @AVGScore		TABLE (
-								TeamId			SMALLINT
-							,	Score			MONEY
 							);
 	DECLARE	@Team			TABLE (
 								TeamId			SMALLINT
@@ -75,6 +77,24 @@ BEGIN
 		 SELECT	t.TeamId
 		 FROM	dbo.Team AS t WITH (NOLOCK);
 
+	INSERT INTO	#ScoreDetail (
+					CustID
+				,	WinLost
+				,	SumCategory
+				)
+	SELECT	tp.CustId
+		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
+		,	SUM(tp.Stake * s.Spread * tm.Rate)						AS SumCategory
+	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
+	LEFT JOIN	dbo.Spread AS s WITH (NOLOCK)
+			ON	s.LeagueId = tp.LeagueId
+			AND	s.BetType = tp.BetType
+	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+			ON	tm.BetType = tp.BetType
+	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
+		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
+	GROUP BY	tp.CustId;
+
 	WITH TeamDetail AS (
 		SELECT	t.TeamId
 			,	COUNT(DISTINCT tp.CustId)								AS TraderCount
@@ -106,19 +126,19 @@ BEGIN
 		AND	(@MarginFrom IS NULL OR td.Margin >= @MarginFrom)
 		AND	(@MarginTo IS NULL OR td.Margin <= @MarginTo);
 
-	INSERT INTO @AVGScore
-		(	TeamId, Score)
-	SELECT	ftsc.TeamId, AVG(ftsc.Score)
-	FROM	dbo.f_TraderScoreCalculation(@Bettypes, @FromDate, @ToDate) AS ftsc
-	WHERE	ftsc.TeamId IN (SELECT tl.TeamId FROM @TeamList AS tl)
-	GROUP BY	ftsc.TeamId;
-
-	UPDATE	t 
+	WITH score AS (
+		SELECT	t.TeamId
+			,	AVG(CASE WHEN sd.SumCategory = 0 THEN NULL ELSE sd.WinLost * 100 / sd.SumCategory END) AS Score
+		FROM	#ScoreDetail AS sd WITH (NOLOCK)
+		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
+				ON	t.CustId = sd.CustID
+		GROUP BY t.TeamId
+	)
+	UPDATE  t
 	SET		t.Score = s.Score
 	FROM		@Team AS t
-	INNER JOIN	@AVGScore s
-			ON	s.TeamId = t.TeamId;
-
+	INNER JOIN	score AS s
+			ON	s.TeamId = t.TeamId
 
 	SELECT	t.TeamId
 		,	t.TeamName

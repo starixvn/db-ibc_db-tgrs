@@ -32,6 +32,12 @@ BEGIN
 	
 	SET NOCOUNT ON;  
 	 
+	CREATE TABLE #ScoreDetail (
+								CustID				INT
+							,	WinLost				MONEY
+							,	SumCategory			MONEY
+							);
+
 	DECLARE	@BettypeList	TABLE (
 								bettype			SMALLINT
 							);
@@ -46,21 +52,35 @@ BEGIN
 							,	Margin			MONEY
 							,	Score			MONEY
 							);
-	DECLARE @AVGScore		TABLE (
-								Grade			TINYINT
-							,	Score			MONEY
-							);
 
 	IF	@Bettypes <> '0'
-		 INSERT INTO @BettypeList
-		 	(	bettype)
-		 SELECT ssk.val
-		 FROM	dbo.strSplit_Key(@Bettypes, ',') ssk;
+		INSERT INTO @BettypeList
+			(	bettype)
+		SELECT ssk.val
+		FROM	dbo.strSplit_Key(@Bettypes, ',') ssk;
 	ELSE 
-		 INSERT INTO @BettypeList
-		 	(	bettype)
-		 SELECT bt.BetType 
-		 FROM	dbo.BetType AS bt WITH (NOLOCK);
+		INSERT INTO @BettypeList
+			(	bettype)
+		SELECT bt.BetType 
+		FROM	dbo.BetType AS bt WITH (NOLOCK);
+
+	INSERT INTO	#ScoreDetail (
+					CustID
+				,	WinLost
+				,	SumCategory
+				)
+	SELECT	tp.CustId
+		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
+		,	SUM(tp.Stake * s.Spread * tm.Rate)						AS SumCategory
+	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
+	LEFT JOIN	dbo.Spread AS s WITH (NOLOCK)
+			ON	s.LeagueId = tp.LeagueId
+			AND	s.BetType = tp.BetType
+	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+			ON	tm.BetType = tp.BetType
+	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
+		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
+	GROUP BY	tp.CustId;
 
 	WITH GradeDetail AS (
 		SELECT	t.Grade													AS Grade
@@ -90,17 +110,19 @@ BEGIN
 		AND	(@MarginFrom IS NULL OR gd.Margin >= @MarginFrom)
 		AND	(@MarginTo IS NULL OR gd.Margin <= @MarginTo);
 
-	INSERT INTO @AVGScore(Grade, Score)
-	SELECT	ftsc.Grade, AVG(ftsc.Score)
-	FROM	dbo.f_TraderScoreCalculation(@Bettypes, @FromDate, @ToDate) AS ftsc
-	GROUP BY	ftsc.Grade;
-	
+	WITH score AS (
+		SELECT	t.Grade
+			,	AVG(CASE WHEN sd.SumCategory = 0 THEN NULL ELSE sd.WinLost * 100 / sd.SumCategory END) AS Score
+		FROM	#ScoreDetail AS sd WITH (NOLOCK)
+		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
+				ON	t.CustId = sd.CustID
+		GROUP BY t.Grade
+	)
 	UPDATE  g
 	SET		g.Score = s.Score
 	FROM		@Grade AS g
-	INNER JOIN	@AVGScore AS s
+	INNER JOIN	score AS s
 			ON	s.Grade = g.Grade;
-
 
 	SELECT	Grade
 		,	TraderCount

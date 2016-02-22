@@ -32,19 +32,16 @@ BEGIN
 	DECLARE	@BettypeList	TABLE (
 								bettype				SMALLINT
 							);
-	DECLARE	@Trader			TABLE (
-								CustId				INT
-							,	Username			VARCHAR(30)
-							,	Grade				TINYINT
-							,	TeamId				SMALLINT
-							,	TeamName			NVARCHAR(50)
+
+	CREATE TABLE #TraderDetail (
+								CustID				INT
 							,	LeagueCount			INT
 							,	MatchCount			INT
 							,	Turnover			MONEY
 							,	WinLost				MONEY
 							,	BetCount			INT
 							,	Margin				MONEY
-							,	Score				MONEY 
+							,	SumCategory			MONEY
 							);
 
 	IF	@Bettypes <> '0'
@@ -58,55 +55,63 @@ BEGIN
 		 SELECT bt.BetType 
 		 FROM	dbo.BetType AS bt WITH (NOLOCK);
 	
-	WITH TraderDetail AS (
-		SELECT	tp.CustId
-			,	COUNT(DISTINCT tp.LeagueId)								AS LeagueCount
-			,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
-			,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
-			,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
-			,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
-			,	CASE	WHEN ISNULL(SUM(tp.Stake), 0) = 0
-						THEN NULL
-						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
-				END														AS Margin
-		FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
-				ON	t.CustId = tp.CustId
-		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
-			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
-			AND	t.Username LIKE '%' + @Username + '%'
-		GROUP BY	tp.CustId
-	)
-	INSERT INTO @Trader
-		(	CustId   , Username	 , Grade  , TeamId  , TeamName   , LeagueCount   , MatchCount   , Turnover   , WinLost   , BetCount   , Margin   , Score     )
-	SELECT	td.CustId, t.Username, t.Grade, t.TeamId, tm.TeamName, td.LeagueCount, td.MatchCount, td.Turnover, td.WinLost, td.BetCount, td.Margin, ftsc.Score
-	FROM		TraderDetail td
+	INSERT INTO	#TraderDetail (
+					CustID
+				,	LeagueCount
+				,	MatchCount
+				,	Turnover
+				,	WinLost
+				,	BetCount
+				,	Margin
+				,	SumCategory
+				)
+	SELECT	tp.CustId
+		,	COUNT(DISTINCT tp.LeagueId)								AS LeagueCount
+		,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
+		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
+		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
+		,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
+		,	CASE	WHEN SUM(tp.Stake) = 0
+					THEN NULL
+					ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake)
+			END														AS Margin
+		,	SUM(tp.Stake * s.Spread * tm.Rate)						AS SumCategory
+	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
+	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
+			ON	t.CustId = tp.CustId
+	LEFT JOIN	dbo.Spread AS s WITH (NOLOCK)
+			ON	s.LeagueId = tp.LeagueId
+			AND	s.BetType = tp.BetType
+	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+			ON	tm.BetType = tp.BetType
+	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
+		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
+		AND	t.Username LIKE '%' + @Username + '%'
+	GROUP BY	tp.CustId
+
+	SELECT	td.CustId
+		,	t.Username
+		,	t.Grade
+		,	t.TeamId
+		,	tm.TeamName
+		,	td.LeagueCount
+		,	td.MatchCount
+		,	td.Turnover
+		,	td.WinLost
+		,	td.BetCount
+		,	td.Margin
+		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLost * 100 / td.SumCategory END AS Score
+	FROM		#TraderDetail AS td
 	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 			ON	t.CustId = td.CustId
 	INNER JOIN	dbo.Team AS tm WITH (NOLOCK) 
 			ON	t.TeamId = tm.TeamId
-	INNER JOIN	dbo.f_TraderScoreCalculation(@BetTypes, @FromDate, @ToDate) AS ftsc
-			ON	ftsc.CustId = t.CustId
 	WHERE	(@Turnover IS NULL OR td.Turnover >= @Turnover)
 		AND	(@WinLost IS NULL OR td.WinLost >= @WinLost)
 		AND	(@MarginFrom IS NULL OR td.Margin >= @MarginFrom)
-		AND	(@MarginTo IS NULL OR td.Margin <= @MarginTo);
-
-	SELECT	CustId
-		,	Username
-		,	Grade
-		,	TeamId
-		,	TeamName
-		,	LeagueCount
-		,	MatchCount
-		,	Turnover
-		,	WinLost
-		,	BetCount
-		,	Margin
-		,	Score 
-	FROM	@Trader 
-	ORDER BY Margin DESC, Username ASC
-
+		AND	(@MarginTo IS NULL OR td.Margin <= @MarginTo)
+	ORDER BY	td.Margin DESC
+			,	t.Username ASC
 END 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Trader] TO [bodbTGRSNet]
