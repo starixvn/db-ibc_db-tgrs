@@ -112,7 +112,7 @@ BEGIN
 				ON	t.CustId = tp.CustId
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.BetType FROM @BettypeList AS bl)
-			AND tp.TeamId IN (SELECT tl.TeamId FROM @TeamList AS tl)
+			AND	t.TeamId IN (SELECT tl.TeamId FROM @TeamList AS tl)
 		GROUP BY	t.TeamId
 	)
 	INSERT INTO @Team
