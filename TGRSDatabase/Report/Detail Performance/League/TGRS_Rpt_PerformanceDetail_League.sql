@@ -1,7 +1,4 @@
-﻿USE [bodb_TGRS]
-GO
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_PerformanceDetail_League]    Script Date: 02/23/2016 15:38:17 ******/
-SET ANSI_NULLS ON
+﻿SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
@@ -89,10 +86,7 @@ BEGIN
 			ORDER BY Margin DESC, P.LeagueName ASC
 		END
 END 
-/*
 GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_League] TO [bodbTGRSNet ]
+GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_League] TO [bodbTGRSNet]
 GO
-GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_League] TO [bodbTGRSNet ]
-GO
-*/
+
