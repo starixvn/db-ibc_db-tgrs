@@ -15,6 +15,7 @@ AS
 	Original:  
 	 
 	Revisions:
+		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
 
 	Param's Explanation:  	
 	

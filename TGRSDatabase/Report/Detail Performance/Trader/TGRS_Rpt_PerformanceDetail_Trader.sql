@@ -15,6 +15,7 @@ AS
 	Original:  
 	 
 	Revisions:
+		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
 
 	Param's Explanation:  	
 	
@@ -72,21 +73,18 @@ BEGIN
 		,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
 		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
-		,	ISNULL(SUM(tp.WinLost * CASE WHEN s.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END), 0)
-			-  ISNULL(SUM(tp.Comm * CASE WHEN s.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END), 0)
+		,	ISNULL(SUM(tp.WinLost * CASE WHEN tp.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END), 0)
+			-  ISNULL(SUM(tp.Comm * CASE WHEN tp.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END), 0)
 																	AS WinLostScore
 		,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
 		,	CASE	WHEN SUM(tp.Stake) = 0
 					THEN NULL
 					ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake)
 			END														AS Margin
-		,	SUM(tp.Stake * s.Spread * tm.Rate)						AS SumCategory
+		,	SUM(tp.Stake * tp.Spread * tm.Rate)						AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
 	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 			ON	t.CustId = tp.CustId
-	LEFT JOIN	dbo.Spread AS s WITH (NOLOCK)
-			ON	s.LeagueId = tp.LeagueId
-			AND	s.BetType = tp.BetType
 	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
 			ON	tm.BetType = tp.BetType
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
@@ -105,26 +103,12 @@ BEGIN
 		,	td.WinLost
 		,	td.BetCount
 		,	td.Margin
-		,	th.NoOfTeamChanged
-		,	gh.NoOfGradeChanged
 		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLostScore * 100 / td.SumCategory END AS Score
 	FROM		#TraderDetail AS td
 	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 			ON	t.CustId = td.CustId
 	INNER JOIN	dbo.Team AS tm WITH (NOLOCK) 
 			ON	t.TeamId = tm.TeamId
-	OUTER APPLY (
-		SELECT	COUNT(DISTINCT tgh.Grade) NoOfGradeChanged
-		FROM	dbo.TraderGrade_History AS tgh WITH (NOLOCK)
-		WHERE	tgh.CustId = td.CustId
-		GROUP BY	tgh.CustId
-	) gh
-	OUTER APPLY (
-		SELECT	COUNT(DISTINCT tth.TeamId) NoOfTeamChanged
-		FROM	dbo.TraderTeam_History AS tth WITH (NOLOCK)
-		WHERE	tth.CustId = t.CustId
-		GROUP BY	tth.CustId
-	) th
 	WHERE	(@Turnover IS NULL OR td.Turnover >= @Turnover)
 		AND	(@WinLost IS NULL OR td.WinLost >= @WinLost)
 		AND	(@MarginFrom IS NULL OR td.Margin >= @MarginFrom)
