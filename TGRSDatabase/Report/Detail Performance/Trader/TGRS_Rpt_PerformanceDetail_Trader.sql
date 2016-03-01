@@ -87,6 +87,7 @@ BEGIN
 			ON	t.CustId = tp.CustId
 	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
 			ON	tm.BetType = tp.BetType
+			AND	tm.WorkShift = tp.WorkShift
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND	t.Username LIKE '%' + @Username + '%'
