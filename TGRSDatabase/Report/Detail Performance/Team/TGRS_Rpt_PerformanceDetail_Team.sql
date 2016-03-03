@@ -137,7 +137,7 @@ BEGIN
 	SET		t.Score = s.Score
 	FROM		@Team AS t
 	INNER JOIN	score AS s
-			ON	s.TeamId = t.TeamId
+			ON	s.TeamId = t.TeamId;
 
 	SELECT	t.TeamId
 		,	t.TeamName
@@ -153,6 +153,8 @@ BEGIN
 	ORDER BY	Margin DESC
 			,	TeamName ASC;
 	
+	DROP TABLE #ScoreDetail;
+
 END; 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Team] TO [bodbTGRSNet];

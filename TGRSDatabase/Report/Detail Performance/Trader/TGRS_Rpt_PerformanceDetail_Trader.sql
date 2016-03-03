@@ -91,7 +91,7 @@ BEGIN
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND	t.Username LIKE '%' + @Username + '%'
-	GROUP BY	tp.CustId
+	GROUP BY	tp.CustId;
 
 	SELECT	td.CustId
 		,	t.Username
@@ -115,9 +115,11 @@ BEGIN
 		AND	(@MarginFrom IS NULL OR td.Margin >= @MarginFrom)
 		AND	(@MarginTo IS NULL OR td.Margin <= @MarginTo)
 	ORDER BY	td.Margin DESC
-			,	t.Username ASC
-END 
+			,	t.Username ASC;
+
+	DROP TABLE #TraderDetail;
+END; 
 GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Trader] TO [bodbTGRSNet]
+GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Trader] TO [bodbTGRSNet];
 GO
 

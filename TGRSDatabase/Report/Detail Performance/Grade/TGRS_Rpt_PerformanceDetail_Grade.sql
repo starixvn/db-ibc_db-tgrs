@@ -135,7 +135,8 @@ BEGIN
 	FROM	@Grade
 	ORDER BY	Margin	DESC
 			,	Grade	ASC;
-
+	
+	DROP TABLE #ScoreDetail;
 END; 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade] TO [bodbTGRSNet];
