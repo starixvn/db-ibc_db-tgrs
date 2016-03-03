@@ -1,0 +1,77 @@
+USE [bodb_TGRS]
+GO
+
+/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_PerformanceDetail_League_Trader_Match]    Script Date: 03/03/2016 09:25:53 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League_Trader_Match]  	
+	@FromDate		DATE,
+	@ToDate		DATE,
+	@LeagueId		INT,
+	@CustId		INT,
+	@Bettypes		VARCHAR(200) =  '0'
+AS    
+/*  
+ Created:	20160229@Aaron
+ Task :	Detail report League Performance - Detail Match
+ DB:		DBTGRS.bodb_TGRS
+ Original:      
+   			
+ Param's Explanation:  	
+
+ Exam: 
+		EXEC [TGRS_Rpt_PerformanceDetail_League_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @LeagueId = 6394, @Bettypes = '0', @CustID = 1530768
+  
+*/  
+ 
+BEGIN 
+    SET NOCOUNT ON;
+
+    DECLARE @BettypeList TABLE (BetType SMALLINT)
+				
+    IF @Bettypes <> '0'
+	   INSERT INTO @BettypeList (BetType)
+	   SELECT ssk.val
+	   FROM	dbo.strSplit_Key(@Bettypes, ',') ssk
+    ELSE 
+	    INSERT INTO @BettypeList (BetType)
+	    SELECT bt.BetType 
+    FROM	dbo.BetType AS bt WITH (NOLOCK)
+	   
+    SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
+			ISNULL(SUM(P.Stake),0) AS Turnover, 
+			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLoss, 
+			ISNULL(SUM(BetCount),0) as BetCount,
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
+	 FROM	dbo.TraderPerformance P WITH (NOLOCK)		 
+	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
+			AND P.LeagueId = @LeagueId
+			AND P.CustId = @CustId
+			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
+	ORDER BY Margin DESC, P.EventDate ASC
+END
+
+
+/*
+GO
+GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_League_Trader_Match] TO [bodbTGRSNet]
+GO
+GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_League_Trader_Match] TO [bodbTGRSNet]
+GO
+*/
+
+
+GO
+
+GO
+GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_League_Trader_Match] TO [bodbTGRSNet]
+GO
+GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_League_Trader_Match] TO [bodbTGRSNet]
+GO
+
