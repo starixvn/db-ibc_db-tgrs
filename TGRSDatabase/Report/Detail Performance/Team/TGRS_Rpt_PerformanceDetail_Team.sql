@@ -15,6 +15,7 @@ AS
 	Original:  
 	 
 	Revisions:
+		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
 
 	Param's Explanation:  	
 	
@@ -84,13 +85,11 @@ BEGIN
 				)
 	SELECT	tp.CustId
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLost
-		,	SUM(tp.Stake * s.Spread * tm.Rate)						AS SumCategory
+		,	SUM(tp.Stake * tp.Spread * tm.Rate)						AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN	dbo.Spread AS s WITH (NOLOCK)
-			ON	s.LeagueId = tp.LeagueId
-			AND	s.BetType = tp.BetType
 	INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
 			ON	tm.BetType = tp.BetType
+			AND	tm.WorkShift = tp.WorkShift
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 	GROUP BY	tp.CustId;
@@ -138,7 +137,7 @@ BEGIN
 	SET		t.Score = s.Score
 	FROM		@Team AS t
 	INNER JOIN	score AS s
-			ON	s.TeamId = t.TeamId
+			ON	s.TeamId = t.TeamId;
 
 	SELECT	t.TeamId
 		,	t.TeamName
@@ -154,6 +153,8 @@ BEGIN
 	ORDER BY	Margin DESC
 			,	TeamName ASC;
 	
+	DROP TABLE #ScoreDetail;
+
 END; 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Team] TO [bodbTGRSNet];
