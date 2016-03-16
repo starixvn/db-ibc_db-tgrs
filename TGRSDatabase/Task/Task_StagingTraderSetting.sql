@@ -27,7 +27,20 @@ AS
 */ 
 SET NOCOUNT ON 
 
+--Update Username when they were changed from the original data
+IF EXISTS (	SELECT TOP 1 1 
+			FROM Trader T WITH (NOLOCK)
+			INNER JOIN bodb02.dbo.Customer ci WITH(NOLOCK) ON ci.custid = T.CustId 
+			WHERE ci.username <> T.Username AND ci.RoleID > 4)
+BEGIN 
+	UPDATE T
+	SET T.Username = ci.username, T.ModifiedDate = GETDATE(), T.ModifiedBy = 8
+	FROM Trader T WITH(ROWLOCK, UPDLOCK)
+	INNER JOIN bodb02.dbo.Customer ci WITH(NOLOCK) ON ci.custid = T.CustId 
+	WHERE ci.username <> T.Username AND ci.RoleID > 4;
+END
 
+--Insert new trader
 IF OBJECT_ID('tempdb..#Trader') IS NOT NULL    DROP TABLE #Trader
 
 SELECT DISTINCT td.OperatorID custid
@@ -108,19 +121,6 @@ INSERT INTO [bodb_TGRS].[dbo].[TraderTeam_History]
 	  FROM #Trader td
 	  LEFT JOIN  [bodb_TGRS].dbo.[TraderTeam_History] trt_h WITH (NOLOCK) 		ON trt_h.CustId = td.custid
 	  WHERE trt_h.CustId IS NULL 
-
---Update Username when they were changed from the original data
-IF EXISTS (	SELECT TOP 1 1 
-			FROM Trader T WITH (NOLOCK)
-			INNER JOIN bodb02.dbo.Customer ci WITH(NOLOCK) ON ci.custid = T.CustId 
-			WHERE ci.username <> T.Username AND ci.RoleID > 4)
-BEGIN 
-	UPDATE T
-	SET T.Username = ci.username, T.ModifiedDate = GETDATE(), T.ModifiedBy = 8
-	FROM Trader T WITH(ROWLOCK, UPDLOCK)
-	INNER JOIN bodb02.dbo.Customer ci WITH(NOLOCK) ON ci.custid = T.CustId 
-	WHERE ci.username <> T.Username AND ci.RoleID > 4;
-END
  
 IF OBJECT_ID('tempdb..#Trader') IS NOT NULL    DROP TABLE #Trader
 
