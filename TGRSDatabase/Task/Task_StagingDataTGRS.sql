@@ -372,9 +372,10 @@ BEGIN
 				,MAX(CAST(mm.Spread * 100 AS SMALLINT)) AS Spread
 		FROM	bodb02.dbo.bettrans b WITH (NOLOCK) 		
 			INNER JOIN	#tmpTrader t 
-				ON	b.matchid = t.matchid 
-					AND (b.BetType = t.BetType OR b.bettype IN (124,125))
-					AND b.LiveIndicator = 1
+				ON	b.winlostdate = t.EventDate 
+					AND b.matchid = t.matchid 
+					AND	b.LiveIndicator = 1
+					AND (b.BetType = t.BetType OR (b.bettype = 124 AND t.BetType = 5) OR (b.bettype = 125 AND t.BetType = 15))
 			LEFT JOIN dbo.[TraderGrade_History] td_G WITH(NOLOCK)
 				ON td_G.CustID = t.custid 
 					AND (t.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate,GETDATE()+10))
