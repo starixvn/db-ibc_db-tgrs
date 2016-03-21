@@ -11,7 +11,8 @@ AS
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
- Revisions:         				
+ Revisions:      
+			20162103@Simon: restore orgirinal temp table code
  Param's Explanation:  	
 	
  Exam: 
