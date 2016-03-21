@@ -18,6 +18,7 @@ AS
 	Param's Explanation:	 
 		- 20141203@Tom.Vo:	Staging data with new requirement
 		- 20160307@Billy:	Add new field Spread for staging data - [Redmine: #53240]
+		- 20160318@Aaron:	Bug fixes on generating (1 st) 1x2 data from bettrans 
 	Exam: 
 
 	 
