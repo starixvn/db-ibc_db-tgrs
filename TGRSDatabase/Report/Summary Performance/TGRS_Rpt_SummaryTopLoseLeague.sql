@@ -9,7 +9,8 @@ AS
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
- Revisions:      
+ Revisions:     
+			20160322@Aaron: changed WinLost to WinLoss 
    			
  Param's Explanation:  
 	@ReportType = 1: by Date
