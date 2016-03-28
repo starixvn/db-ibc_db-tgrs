@@ -1,10 +1,14 @@
 USE [bodb_TGRS]
-GO 
+GO
+
+/****** Object:  StoredProcedure [dbo].[Task_StagingTraderSetting]    Script Date: 03/14/2016 15:42:22 ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER PROCEDURE [dbo].Task_StagingTraderSetting
+
+ALTER PROCEDURE [dbo].[Task_StagingTraderSetting]
 AS 
 /*  
  Created:	20140703@Tom.Vo
@@ -14,6 +18,7 @@ AS
   
  Revisions:      
    		20140715@Tom.Vo: Filter Sport Type 1
+   		20160314@Aaron.Cao: Added UPDATE Username
  Param's Explanation:  
 	 
  Exam: 
@@ -22,7 +27,20 @@ AS
 */ 
 SET NOCOUNT ON 
 
+--Update Username when they were changed from the original data
+IF EXISTS (	SELECT TOP 1 1 
+			FROM Trader T WITH (NOLOCK)
+			INNER JOIN bodb02.dbo.Customer ci WITH(NOLOCK) ON ci.custid = T.CustId 
+			WHERE ci.username <> T.Username AND ci.RoleID > 4)
+BEGIN 
+	UPDATE T
+	SET T.Username = ci.username, T.ModifiedDate = GETDATE(), T.ModifiedBy = 8
+	FROM Trader T WITH(ROWLOCK, UPDLOCK)
+	INNER JOIN bodb02.dbo.Customer ci WITH(NOLOCK) ON ci.custid = T.CustId 
+	WHERE ci.username <> T.Username AND ci.RoleID > 4;
+END
 
+--Insert new trader
 IF OBJECT_ID('tempdb..#Trader') IS NOT NULL    DROP TABLE #Trader
 
 SELECT DISTINCT td.OperatorID custid

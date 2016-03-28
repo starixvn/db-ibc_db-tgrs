@@ -18,6 +18,7 @@ AS
 	Param's Explanation:	 
 		- 20141203@Tom.Vo:	Staging data with new requirement
 		- 20160307@Billy:	Add new field Spread for staging data - [Redmine: #53240]
+		- 20160318@Aaron:	Bug fixes on generating (1 st) 1x2 data from bettrans 
 	Exam: 
 
 	 
@@ -54,14 +55,13 @@ BEGIN
 		,AwayId				INT
 		,BetType			SMALLINT
 		,SpecialType		TINYINT
-		,Spread				SMALLINT
 		);
 
 	TRUNCATE TABLE dbo.[Staging_TraderPerformance];
 
 	IF @BeforeMoveBetsDay = 1
 	BEGIN
-		INSERT INTO #tmpTrader(CustId,LeagueId,WorkShift,MatchId,SportType,EventDate,HomeId,AwayId,BetType,SpecialType,Matchcode,Spread)
+		INSERT INTO #tmpTrader(CustId,LeagueId,WorkShift,MatchId,SportType,EventDate,HomeId,AwayId,BetType,SpecialType,Matchcode)
 		SELECT DISTINCT  
 			a.OperatorID AS CustId
 		,	m.LeagueId
@@ -100,13 +100,10 @@ BEGIN
 				ELSE 0  
 			END  SpecialType
 		,	m.Matchcode
-		,	CAST(mm.Spread * 100 AS SMALLINT) Spread
 		FROM [bodb_archive].[dbo].[Dot_Admin_Assignment_Operator_bk] a WITH (NOLOCK)
 			INNER JOIN bodb02.dbo.Match14 m WITH (NOLOCK) ON a.matchid=m.matchid
 			LEFT JOIN bodb02.dbo.Team t WITH (NOLOCK) ON m.homeid=t.teamid
 			LEFT JOIN bodb02.dbo.League l WITH (NOLOCK) ON m.leagueid=l.leagueid
-			LEFT JOIN	bodb02.dbo.MatchMaxbet14 AS mm WITH (NOLOCK)
-					ON	mm.MatchId = m.matchid
 		WHERE	m.EventDate BETWEEN @BalanceUpDay AND @MoveBetsDay
 				--AND m.EventStatus='completed'
 				AND m.SportType= 1
@@ -186,7 +183,7 @@ BEGIN
 					,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost		--Winlost
 					,SUM (scomm * b.virtualrate) AS Comm --Commission
 					,SUM (1) AS BetCount		--Live BetCount
-					,t.Spread
+					,MAX(CAST(mm.Spread * 100 AS SMALLINT)) AS Spread
 			FROM	bodb02.dbo.bettrans14 b WITH (NOLOCK)
 				INNER JOIN	#tmpTrader t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate 
@@ -197,6 +194,9 @@ BEGIN
 					ON td_G.CustID = t.custid AND t.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate,GETDATE()+10)
 				LEFT JOIN dbo.[TraderTeam_History] td_T WITH(NOLOCK)
 					ON td_T.CustID = t.custid AND t.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate,GETDATE()+10)
+			LEFT JOIN	bodb02.dbo.MatchMaxbet14 AS mm WITH (NOLOCK)
+					ON	mm.MatchId = b.matchid
+					AND	(mm.BetType = b.bettype OR (b.bettype = 124 AND mm.BetType = 5) OR (b.bettype = 125 AND mm.BetType = 15))
 			WHERE	b.statusID IN (112,113) 			
 					AND b.Currency NOT IN (20,27,28)
 			GROUP BY t.Custid
@@ -251,7 +251,7 @@ BEGIN
 
 	TRUNCATE TABLE #tmpTrader;
 
-	INSERT INTO #tmpTrader(CustId,LeagueId,MatchId,[WorkShift],SportType,EventDate,HomeId,AwayId,BetType,SpecialType,Matchcode,Spread)
+	INSERT INTO #tmpTrader(CustId,LeagueId,MatchId,[WorkShift],SportType,EventDate,HomeId,AwayId,BetType,SpecialType,Matchcode)
 	SELECT  DISTINCT  a.OperatorID AS CustId
 			,m.LeagueId
 			,m.MatchId
@@ -287,13 +287,10 @@ BEGIN
 				   ELSE 0  
 				END  SpecialType,	
 			m.Matchcode
-			, CAST(mm.Spread * 100 AS SMALLINT) Spread
 	FROM bodb02.dbo.Dot_admin_Assignment_Operator a WITH (NOLOCK)
 		INNER JOIN bodb02.dbo.Match m WITH (NOLOCK) ON a.matchid=m.matchid
 		LEFT JOIN bodb02.dbo.Team t WITH (NOLOCK) ON m.homeid=t.teamid
 		LEFT JOIN bodb02.dbo.League l WITH (NOLOCK) ON m.leagueid=l.leagueid
-		LEFT JOIN	bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK)
-				ON	mm.MatchId = m.matchid
 	WHERE	m.EventDate BETWEEN @MoveBetsDay+1 AND @YESTERDAY
 			AND m.EventStatus='completed'
 			AND m.SportType= 1
@@ -373,18 +370,22 @@ BEGIN
 				,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost	--Winlost
 				,SUM (scomm * b.virtualrate) AS Comm--Commission
 				,SUM (1) AS BetCount			--Live BetCount	
-				,t.Spread
+				,MAX(CAST(mm.Spread * 100 AS SMALLINT)) AS Spread
 		FROM	bodb02.dbo.bettrans b WITH (NOLOCK) 		
 			INNER JOIN	#tmpTrader t 
-				ON	b.matchid = t.matchid 
-					AND (b.BetType = t.BetType OR b.bettype IN (124,125))
-					AND b.LiveIndicator = 1
+				ON	b.winlostdate = t.EventDate 
+					AND b.matchid = t.matchid 
+					AND	b.LiveIndicator = 1
+					AND (b.BetType = t.BetType OR (b.bettype = 124 AND t.BetType = 5) OR (b.bettype = 125 AND t.BetType = 15))
 			LEFT JOIN dbo.[TraderGrade_History] td_G WITH(NOLOCK)
 				ON td_G.CustID = t.custid 
 					AND (t.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate,GETDATE()+10))
 			LEFT JOIN dbo.[TraderTeam_History] td_T WITH(NOLOCK)
 				ON td_T.CustID = t.custid 
 				AND (t.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate,GETDATE()+10))
+			LEFT JOIN	bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK)
+					ON	mm.MatchId = b.matchid
+					AND	(mm.BetType = b.bettype OR (b.bettype = 124 AND mm.BetType = 5) OR (b.bettype = 125 AND mm.BetType = 15))
 		WHERE	b.statusID IN (112,113) 
 				AND b.ruben = 1
 				AND b.Currency NOT IN (20,27,28)

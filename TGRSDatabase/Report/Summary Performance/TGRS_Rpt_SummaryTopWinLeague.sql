@@ -9,7 +9,8 @@ AS
  DB:		DBTGRS.bodb_TGRS
  Original:  
   
- Revisions:      
+ Revisions:
+			20160322@Aaron: changed WinLost to WinLoss      
    			
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -27,27 +28,27 @@ BEGIN
 	BEGIN 	
 		SELECT  TOP 5 L.LeagueId, L.LeagueName, 
 				ISNULL(SUM(Stake),0) AS Turnover,  
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
+				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLoss, 
 				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))*100 /ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
 		FROM	dbo.SummaryByLeague_Daily S WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.League L WITH (NOLOCK) 
 					ON	S.LeagueId = L.LeagueId
 		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate				  
 		GROUP BY L.LeagueId, L.LeagueName
-		ORDER BY Margin DESC, WinLost DESC, Turnover DESC
+		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 	END
 	ELSE
 	BEGIN 
 		SELECT  TOP 5 L.LeagueId, L.LeagueName, 
 				ISNULL(SUM(Stake),0) AS Turnover,  
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
+				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLoss, 
 				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))*100 /ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
 		FROM	dbo.SummaryByLeague_Monthly S WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.League L WITH (NOLOCK) 
 					ON	S.LeagueId = L.LeagueId
 		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY L.LeagueId, L.LeagueName
-		ORDER BY Margin DESC, WinLost DESC, Turnover DESC
+		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 
 	END
 
