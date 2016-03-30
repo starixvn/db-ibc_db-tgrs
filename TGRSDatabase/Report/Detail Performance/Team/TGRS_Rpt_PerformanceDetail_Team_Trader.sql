@@ -98,7 +98,7 @@ BEGIN
     WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
           AND tp.BetType IN (SELECT bl.bettype
                              FROM @BettypeList AS bl)
-          AND tp.TeamId = @TeamId
+          AND t.TeamId = @TeamId
     GROUP BY tp.CustId;
 
   SELECT

@@ -35,15 +35,16 @@ BEGIN
     ELSE NULL END                                      AS Margin
   FROM dbo.TraderPerformance P WITH ( NOLOCK )
     INNER JOIN bodb02.dbo.League L WITH ( NOLOCK ) ON P.LeagueId = L.LeagueId
+    INNER JOIN Trader T WITH ( NOLOCK ) ON T.CustId = P.CustId
   WHERE (@Bettypes = '0' OR P.BetType IN (SELECT val
                                           FROM strSplit_Key(@Bettypes, ',')))
         AND P.EventDate BETWEEN @FromDate AND @ToDate
-        AND P.TeamId = @TeamId
+        AND T.TeamId = @TeamId
   GROUP BY P.LeagueId, L.LeagueName
   ORDER BY Margin DESC, LeagueName ASC
 
 END
 
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet]
-GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet ]
-GO
+-- GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet]
+-- GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet ]
+-- GO
