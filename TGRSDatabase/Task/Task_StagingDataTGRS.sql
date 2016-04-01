@@ -19,6 +19,8 @@ AS
 		- 20141203@Tom.Vo:	Staging data with new requirement
 		- 20160307@Billy:	Add new field Spread for staging data - [Redmine: #53240]
 		- 20160318@Aaron:	Bug fixes on generating (1 st) 1x2 data from bettrans 
+		- 20160329@Sophia: 	Change datatype of Spread Column [Redmine: #54943]
+		
 	Exam: 
 
 	 
@@ -183,7 +185,7 @@ BEGIN
 					,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost		--Winlost
 					,SUM (scomm * b.virtualrate) AS Comm --Commission
 					,SUM (1) AS BetCount		--Live BetCount
-					,MAX(CAST(mm.Spread * 100 AS SMALLINT)) AS Spread
+					,MAX(mm.Spread) AS Spread
 			FROM	bodb02.dbo.bettrans14 b WITH (NOLOCK)
 				INNER JOIN	#tmpTrader t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate 
@@ -370,7 +372,7 @@ BEGIN
 				,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost	--Winlost
 				,SUM (scomm * b.virtualrate) AS Comm--Commission
 				,SUM (1) AS BetCount			--Live BetCount	
-				,MAX(CAST(mm.Spread * 100 AS SMALLINT)) AS Spread
+				,MAX(mm.Spread) AS Spread
 		FROM	bodb02.dbo.bettrans b WITH (NOLOCK) 		
 			INNER JOIN	#tmpTrader t 
 				ON	b.winlostdate = t.EventDate 
