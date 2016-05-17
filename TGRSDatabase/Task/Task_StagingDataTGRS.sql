@@ -1,49 +1,56 @@
-SET ANSI_NULLS ON;
-GO
-SET QUOTED_IDENTIFIER ON;
+USE [bodb_TGRS]
 GO
 
 ALTER PROCEDURE	[dbo].[Task_StagingDataTGRS]
-					@Debug				BIT		= 0
-				,	@BeforeMoveBetsDay	BIT		= 1
+	@Debug				BIT	= 0,
+	@BeforeMoveBetsDay	BIT	= 1
 AS    
 /*  
 	Created:	20140603@Tom.Vo
 	Task :		Staging Data on TGRS DB
 	DB:			DBTGRS.bodb_TGRS
-	Original:  
+	Original:
   
-	Revisions:      
-   			
-	Param's Explanation:	 
+	Revisions:
 		- 20141203@Tom.Vo:	Staging data with new requirement
 		- 20160307@Billy:	Add new field Spread for staging data - [Redmine: #53240]
 		- 20160318@Aaron:	Bug fixes on generating (1 st) 1x2 data from bettrans 
 		- 20160329@Sophia: 	Change datatype of Spread Column [Redmine: #54943]
+		- 20160517@Percy: Recalculate Spread for group bettype 1x2 [RedmineID: #56999]    
+   		
+	Param's Explanation:
 		
-	Exam: 
-
+	Exam:
 	 
 */  
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @Begin		DATETIME= GETDATE(),@RowCount INT;
+	DECLARE @Begin DATETIME = GETDATE(), @RowCount INT;
 
-	DECLARE @BalanceUpDay SMALLDATETIME, @MoveBetsDay SMALLDATETIME,@YESTERDAY SMALLDATETIME;
+	DECLARE @BalanceUpDay SMALLDATETIME, @MoveBetsDay SMALLDATETIME, @Yesterday SMALLDATETIME;
 
-	 SELECT @BalanceUpDay = MIN(winlostdate),
-			@MoveBetsDay = MAX(winlostdate),
-			@YESTERDAY = CONVERT(VARCHAR(10),GETDATE()-1,20)
-	 FROM   bodb02.dbo.bettrans14 WITH(NOLOCK); 
+	DECLARE @Spread1x2 TABLE (Margin MONEY, Spread MONEY)
+	INSERT INTO @Spread1x2 (Margin, Spread)
+	VALUES
+	(1.05, 0.2),
+	(1.08, 0.3),
+	(1.10, 0.36),
+	(1.12, 0.44),
+	(1.15, 0.52)
+
+	SELECT	@BalanceUpDay = MIN(winlostdate),
+			@MoveBetsDay  = MAX(winlostdate),
+			@Yesterday    = CONVERT(DATE,GETDATE()-1)
+	FROM	bodb02.dbo.bettrans14 WITH(NOLOCK);
 
 	IF @BeforeMoveBetsDay <> 1	
 		SELECT @BalanceUpDay = @MoveBetsDay+1;
 
 	IF @Debug = 1
-		SELECT @BalanceUpDay AS BalanceUpDay, @MoveBetsDay AS MoveBetsDay,@YESTERDAY YESTERDAY;
+		SELECT @BalanceUpDay AS BalanceUpDay, @MoveBetsDay AS MoveBetsDay, @Yesterday AS Yesterday;
 
-	IF OBJECT_ID('tempdb..#tmpTrader') IS NOT NULL    DROP TABLE #tmpTrader;
+	IF OBJECT_ID('tempdb..#tmpTrader') IS NOT NULL DROP TABLE #tmpTrader;
 
 	CREATE TABLE #tmpTrader (
 		CustId				INT 
@@ -185,7 +192,7 @@ BEGIN
 					,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost		--Winlost
 					,SUM (scomm * b.virtualrate) AS Comm --Commission
 					,SUM (1) AS BetCount		--Live BetCount
-					,MAX(mm.Spread) AS Spread
+					,MAX(CASE WHEN mm.BetType IN (5,15) THEN ISNULL(s.Spread, 400/s.Margin - 4) ELSE mm.Spread END) AS Spread
 			FROM	bodb02.dbo.bettrans14 b WITH (NOLOCK)
 				INNER JOIN	#tmpTrader t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate 
@@ -196,9 +203,11 @@ BEGIN
 					ON td_G.CustID = t.custid AND t.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate,GETDATE()+10)
 				LEFT JOIN dbo.[TraderTeam_History] td_T WITH(NOLOCK)
 					ON td_T.CustID = t.custid AND t.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate,GETDATE()+10)
-			LEFT JOIN	bodb02.dbo.MatchMaxbet14 AS mm WITH (NOLOCK)
+				LEFT JOIN bodb02.dbo.MatchMaxbet14 AS mm WITH (NOLOCK)
 					ON	mm.MatchId = b.matchid
 					AND	(mm.BetType = b.bettype OR (b.bettype = 124 AND mm.BetType = 5) OR (b.bettype = 125 AND mm.BetType = 15))
+				LEFT JOIN @Spread1x2 s
+					ON mm.Spread = s.Margin
 			WHERE	b.statusID IN (112,113) 			
 					AND b.Currency NOT IN (20,27,28)
 			GROUP BY t.Custid
@@ -293,7 +302,7 @@ BEGIN
 		INNER JOIN bodb02.dbo.Match m WITH (NOLOCK) ON a.matchid=m.matchid
 		LEFT JOIN bodb02.dbo.Team t WITH (NOLOCK) ON m.homeid=t.teamid
 		LEFT JOIN bodb02.dbo.League l WITH (NOLOCK) ON m.leagueid=l.leagueid
-	WHERE	m.EventDate BETWEEN @MoveBetsDay+1 AND @YESTERDAY
+	WHERE	m.EventDate BETWEEN @MoveBetsDay+1 AND @Yesterday
 			AND m.EventStatus='completed'
 			AND m.SportType= 1
 			AND a.OperatorType < 3
@@ -372,7 +381,7 @@ BEGIN
 				,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost	--Winlost
 				,SUM (scomm * b.virtualrate) AS Comm--Commission
 				,SUM (1) AS BetCount			--Live BetCount	
-				,MAX(mm.Spread) AS Spread
+				,MAX(CASE WHEN mm.BetType IN (5,15) THEN ISNULL(s.Spread, 400/s.Margin - 4) ELSE mm.Spread END) AS Spread
 		FROM	bodb02.dbo.bettrans b WITH (NOLOCK) 		
 			INNER JOIN	#tmpTrader t 
 				ON	b.winlostdate = t.EventDate 
@@ -388,6 +397,8 @@ BEGIN
 			LEFT JOIN	bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK)
 					ON	mm.MatchId = b.matchid
 					AND	(mm.BetType = b.bettype OR (b.bettype = 124 AND mm.BetType = 5) OR (b.bettype = 125 AND mm.BetType = 15))
+			LEFT JOIN @Spread1x2 s
+					ON mm.Spread = s.Margin
 		WHERE	b.statusID IN (112,113) 
 				AND b.ruben = 1
 				AND b.Currency NOT IN (20,27,28)
@@ -492,7 +503,7 @@ BEGIN
 			,FLOOR(SUM([Comm])) [Comm]
 			,FLOOR(SUM([BetCount])) [BetCount]
 	FROM  [dbo].TraderPerformance  WITH(NOLOCK)
-	WHERE [EventDate] BETWEEN @BalanceUpDay AND @YESTERDAY
+	WHERE [EventDate] BETWEEN @BalanceUpDay AND @Yesterday
 	GROUP BY [CustId]     
 			,[EventDate]
 			,[SportType]           
