@@ -41,6 +41,7 @@ SET NOCOUNT ON
 		END
 
 		SELECT
+			d.WLDate,
 			ISNULL(SUM(Stake), 0) AS Turnover,
 			ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
 		FROM
@@ -61,6 +62,7 @@ SET NOCOUNT ON
 			SELECT @FDate = DATEADD(MONTH, 1, @FDate)
 		END
 		SELECT
+			d.WLDate,
 			ISNULL(SUM(Stake), 0) AS Turnover,
 			ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
 		FROM
