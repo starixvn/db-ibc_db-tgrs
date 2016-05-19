@@ -26,7 +26,7 @@ BEGIN
 SET NOCOUNT ON
 
 	DECLARE @Date TABLE (WLDate DATETIME)
-	DECLARE @FDate DATETIME
+	DECLARE @FDate DATETIME, @TDate DATETIME
 
 	IF @ReportType = 1 -- by date
 	BEGIN
@@ -46,30 +46,75 @@ SET NOCOUNT ON
 			ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
 		FROM
 			dbo.TraderPerformance t (NOLOCK)
-			RIGHT JOIN @Date d ON t.EventDate = d.WLDate
-		WHERE CustId = @TraderId
+			RIGHT JOIN @Date d ON t.EventDate = d.WLDate AND CustId = @TraderId
 		GROUP BY d.WLDate
 	END
 	ELSE -- by month
 	BEGIN
-		SELECT @FDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @FromDate), 0)
+		DECLARE @Result TABLE (WLDate DATETIME, Turnover MONEY, WinLost MONEY)
+		DECLARE @SDate DATETIME, @EDate DATETIME
+		SELECT  @SDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @FromDate), 0)
+		SELECT  @EDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @ToDate), 0)
 
-		WHILE @FDate <= @ToDate
+		IF @SDate = @EDate
+		BEGIN
+			SELECT
+				@SDate AS WLDate,
+				ISNULL(SUM(Stake), 0) AS Turnover,
+				ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
+			FROM dbo.TraderPerformance (NOLOCK)
+			WHERE CustId = @TraderId AND EventDate BETWEEN @FromDate AND @ToDate
+
+			RETURN
+		END
+		
+		SELECT @FDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @FromDate), 0)
+		SELECT @TDate = DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, @FromDate) + 1, 0))
+		IF @FDate <> @FromDate
+		BEGIN
+			SELECT @SDate = DATEADD(MONTH, 1, @SDate)
+			INSERT INTO @Result (WLDate, Turnover, WinLost)
+			SELECT
+				@FDate AS WLDate,
+				ISNULL(SUM(Stake), 0) AS Turnover,
+				ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
+			FROM dbo.TraderPerformance (NOLOCK)
+			WHERE CustId = @TraderId AND EventDate BETWEEN @FromDate AND @TDate
+		END
+
+		SELECT @FDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @ToDate), 0)
+		SELECT @TDate = DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, @ToDate) + 1, 0))
+		IF @TDate <> @ToDate
+		BEGIN
+			SELECT @EDate = DATEADD(MONTH, -1, @EDate)
+			INSERT INTO @Result (WLDate, Turnover, WinLost)
+			SELECT
+				@FDate AS WLDate,
+				ISNULL(SUM(Stake), 0) AS Turnover,
+				ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
+			FROM dbo.TraderPerformance (NOLOCK)
+			WHERE CustId = @TraderId AND EventDate BETWEEN @FDate AND @ToDate
+		END
+
+		WHILE @SDate <= @EDate
 		BEGIN
 			INSERT INTO @Date (WLDate)
-			VALUES (@FDate)
+			VALUES (@SDate)
 			
-			SELECT @FDate = DATEADD(MONTH, 1, @FDate)
+			SELECT @SDate = DATEADD(MONTH, 1, @SDate)
 		END
+		INSERT INTO @Result (WLDate, Turnover, WinLost)
 		SELECT
 			d.WLDate,
 			ISNULL(SUM(Stake), 0) AS Turnover,
 			ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
 		FROM
 			dbo.SummaryByTrader_Monthly s (NOLOCK)
-			RIGHT JOIN @Date d ON s.EventDate = d.WLDate
-		WHERE CustId = @TraderId
+			RIGHT JOIN @Date d ON s.Eventdate = d.WLDate AND CustId = @TraderId
 		GROUP BY d.WLDate
+
+		SELECT * FROM @Result
+		ORDER BY WLDate
 	END
 END
 GO
