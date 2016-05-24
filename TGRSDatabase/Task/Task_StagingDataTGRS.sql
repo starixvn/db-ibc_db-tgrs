@@ -192,7 +192,7 @@ BEGIN
 					,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost		--Winlost
 					,SUM (scomm * b.virtualrate) AS Comm --Commission
 					,SUM (1) AS BetCount		--Live BetCount
-					,MAX(CASE WHEN mm.BetType IN (5,15) THEN ISNULL(s.Spread, 400/mm.Spread - 4) ELSE mm.Spread END) AS Spread
+					,MAX(CASE WHEN mm.BetType IN (5,15) THEN ISNULL(s.Spread, -(4/mm.Spread - 4)) ELSE mm.Spread END) AS Spread
 			FROM	bodb02.dbo.bettrans14 b WITH (NOLOCK)
 				INNER JOIN	#tmpTrader t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate 
@@ -381,7 +381,7 @@ BEGIN
 				,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLost	--Winlost
 				,SUM (scomm * b.virtualrate) AS Comm--Commission
 				,SUM (1) AS BetCount			--Live BetCount	
-				,MAX(CASE WHEN mm.BetType IN (5,15) THEN ISNULL(s.Spread, 400/mm.Spread - 4) ELSE mm.Spread END) AS Spread
+				,MAX(CASE WHEN mm.BetType IN (5,15) THEN ISNULL(s.Spread, -(4/mm.Spread - 4)) ELSE mm.Spread END) AS Spread
 		FROM	bodb02.dbo.bettrans b WITH (NOLOCK) 		
 			INNER JOIN	#tmpTrader t 
 				ON	b.winlostdate = t.EventDate 
