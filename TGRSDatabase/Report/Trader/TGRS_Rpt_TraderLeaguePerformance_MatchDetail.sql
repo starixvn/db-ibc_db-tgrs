@@ -31,17 +31,19 @@ BEGIN
 	;WITH CTE AS
 	(
 		SELECT
-			Bettype,
+			b.Bettype, b.TypeName,
 			ISNULL(SUM(Stake),0) AS Turnover, 
 			ISNULL(SUM(WinLost),0) -  ISNULL(SUM(Comm),0) AS WinLost,
 			ISNULL(SUM(BetCount),0) AS BetCount,
 			CASE WHEN ISNULL(SUM(Stake), 0) <> 0 THEN (ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm),0)) * 100/SUM(Stake) ELSE NULL END AS Margin 
-		FROM dbo.TraderPerformance (NOLOCK)
+		FROM
+			dbo.TraderPerformance t (NOLOCK)
+			INNER JOIN dbo.BetType b (NOLOCK) ON t.BetType = b.BetType
 		WHERE
 			CustId = @TraderId
 			AND MatchId = @MatchId
 			AND EventDate = @EventDate
-		GROUP BY Bettype
+		GROUP BY b.Bettype, b.TypeName
 	)
 	SELECT
 		*
