@@ -1,0 +1,34 @@
+USE [bodb_TGRS]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[OSRegion](
+	[RegionId] [smallint] IDENTITY(1,1) NOT NULL,
+	[RegionName] [nvarchar](50) NOT NULL,
+	[CreatedDate] [datetime] NOT NULL,
+	[CreatedBy] [int] NOT NULL,
+	[ModifiedDate] [datetime] NULL,
+	[ModifiedBy] [int] NULL,
+ CONSTRAINT [PK_OSRegion_1] PRIMARY KEY CLUSTERED 
+(
+	[RegionId] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+CREATE TABLE [dbo].[OSLeagueRegion](
+	[LeagueId] [int] NOT NULL,
+	[RegionId] [smallint] NULL,
+ CONSTRAINT [PK_OSLeagueRegion] PRIMARY KEY CLUSTERED 
+(
+	[LeagueId] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
