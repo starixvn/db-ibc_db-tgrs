@@ -1,15 +1,9 @@
-
-SET QUOTED_IDENTIFIER ON 
+USE [bodb_TGRS]
 GO
-SET ANSI_NULLS ON 
-GO
-
-/****** Object:  Stored Procedure dbo.Task_StagingOSDataTGRS    Script Date: 3/7/2017 3:10:47 PM ******/
-
-CREATE PROCEDURE	[dbo].[Task_StagingOSDataTGRS]
-	@Debug				BIT	= 0,
-	@BeforeMoveBetsDay	BIT	= 1
-AS    
+ALTER PROCEDURE	[dbo].[Task_StagingOSDataTGRS]
+					@Debug				BIT = 0
+				,	@BeforeMoveBetsDay	BIT = 1
+AS
 /*  
 	Created:	20160810@Long.Luu
 	Task :		Staging Data for Other Sports on TGRS DB
@@ -17,375 +11,531 @@ AS
 	Original:
   
 	Revisions:  
-				- 20170227@Aaron: Added MatchCount
-				- 20170306@John: Change table OSDataTGRS
-   		
+		- 20170227@Aaron:	Added MatchCount
+		- 20170306@John:	Change table OSDataTGRS
+		- 20170330@Long:	Apply ExtraPT
+   		- 20170711@Billy:	Remove delete OSStagingDataTGRS part to update Juice for next step - [Redmine: #79615]
 	Param's Explanation:
 		
 	Exam:
 	 
-*/  
+*/
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @Begin DATETIME = GETDATE(), @RowCount INT;
+	DECLARE	@Begin			DATETIME = GETDATE()
+		,	@RowCount		INT
+		;
 
-	DECLARE @BalanceUpDay SMALLDATETIME, @MoveBetsDay SMALLDATETIME, @Yesterday SMALLDATETIME;
+	DECLARE	@BalanceUpDay	SMALLDATETIME
+		,	@MoveBetsDay	SMALLDATETIME
+		,	@Yesterday		SMALLDATETIME
+		;
 
-	SELECT	@BalanceUpDay = MIN(winlostdate),
-			@MoveBetsDay  = MAX(winlostdate),
-			@Yesterday    = CONVERT(DATE,GETDATE()-1)
-	FROM	bodb02.dbo.bettrans14 WITH(NOLOCK);
+	SELECT	@BalanceUpDay	= MIN(winlostdate)
+		,	@MoveBetsDay	= MAX(winlostdate)
+		,	@Yesterday		= CONVERT(DATE, GETDATE() - 1)
+	FROM	bodb02.dbo.bettrans14 WITH (NOLOCK);
 
-	IF @BeforeMoveBetsDay <> 1	
-		SELECT @BalanceUpDay = @MoveBetsDay+1;
+	IF	@BeforeMoveBetsDay <> 1
+		SELECT	@BalanceUpDay = @MoveBetsDay + 1;
 
-	IF @Debug = 1
-		SELECT @BalanceUpDay AS BalanceUpDay, @MoveBetsDay AS MoveBetsDay, @Yesterday AS Yesterday;
+	IF	@Debug = 1
+		SELECT	'BalanceUpDay'	= @BalanceUpDay
+			,	'MoveBetsDay'	= @MoveBetsDay
+			,	'Yesterday'		= @Yesterday
+			;
 
-	IF OBJECT_ID('tempdb..#tmpOSTrader') IS NOT NULL DROP TABLE #tmpOSTrader;
+	IF	OBJECT_ID('tempdb..#tmpFilteredBettrans14') IS NOT NULL
+		DROP TABLE	#tmpFilteredBettrans14;
 
-	CREATE TABLE #tmpOSTrader (
-		CustId				INT 
-		,matchid			INT
-		,SportType			INT
-		,EventDate			DATETIME
-		,BetType			SMALLINT
-		,OSTarget			DECIMAL(18,2)
-		);
+	CREATE TABLE	#tmpFilteredBettrans14 (
+						transid				BIGINT
+					,	matchid				INT
+					,	winlostdate			SMALLDATETIME
+					,	bettype				SMALLINT
+					,	modds				SMALLMONEY
+					,	stake				MONEY
+					,	actual_stake		MONEY
+					,	virtualrate			FLOAT
+					,	winlost				MONEY
+					,	awinlost			MONEY
+					,	mwinlost			MONEY
+					,	swinlost			MONEY
+					,	tpositiontaking		SMALLMONEY
+					,	srecommend			INT
+					,	scomm				MONEY
+					);
 
-	TRUNCATE TABLE dbo.OSStagingDataTGRS;
+	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettrans14Idx ON #tmpFilteredBettrans14 (
+								winlostdate	ASC
+							,	matchid		ASC
+							,	bettype		ASC
+							);
 
-	IF @BeforeMoveBetsDay = 1
+	IF	OBJECT_ID('tempdb..#tmpFilteredBettrans14ByBatch') IS NOT NULL
+		DROP TABLE	#tmpFilteredBettrans14ByBatch;
+
+	CREATE TABLE	#tmpFilteredBettrans14ByBatch (
+						transid				BIGINT
+					,	matchid				INT
+					,	winlostdate			SMALLDATETIME
+					,	bettype				SMALLINT
+					,	modds				SMALLMONEY
+					,	stake				MONEY
+					,	actual_stake		MONEY
+					,	virtualrate			FLOAT
+					,	winlost				MONEY
+					,	awinlost			MONEY
+					,	mwinlost			MONEY
+					,	swinlost			MONEY
+					,	tpositiontaking		SMALLMONEY
+					,	srecommend			INT
+					,	scomm				MONEY
+					);
+
+	IF	OBJECT_ID('tempdb..#tmpStagingOSTraderPerformance') IS NOT NULL
+		DROP TABLE	#tmpStagingOSTraderPerformance;
+
+	CREATE TABLE	#tmpStagingOSTraderPerformance (
+						CustId				INT
+					,	EventDate			DATE
+					,	MatchId				INT
+					,	BetType				SMALLINT
+					,	Stake				MONEY
+					,	WinLost				MONEY
+					,	SMAWinLost			MONEY
+					,	Comm				MONEY
+					,	ExtraPT				DECIMAL(9, 8)
+					,	TPositionTaking		SMALLMONEY
+					,	VirtualRate			FLOAT
+					);
+
+	IF	OBJECT_ID('tempdb..#tmpOSTrader') IS NOT NULL
+		DROP TABLE	#tmpOSTrader;
+
+	CREATE TABLE	#tmpOSTrader (
+						CustId				INT
+					,	matchid				INT
+					,	SportType			INT
+					,	EventDate			DATETIME
+					,	BetType				SMALLINT
+					,	OSTarget			DECIMAL(18, 2)
+					);
+
+	IF	OBJECT_ID('tempdb..#tmpBettrans14Date') IS NOT NULL
+		DROP TABLE	#tmpBettrans14Date;
+
+	CREATE TABLE	#tmpBettrans14Date (
+						EventDate DATE
+					);
+
+	TRUNCATE TABLE	dbo.OSStagingDataTGRS;
+
+	IF	@BeforeMoveBetsDay = 1
 	BEGIN
-		INSERT INTO #tmpOSTrader(CustId,matchid,SportType,EventDate,BetType,OSTarget)
-		SELECT DISTINCT  
-			a.OperatorID AS CustId
-			,m.matchid
-			,m.sporttype AS SportType
-			,m.EventDate
-			,a.BetType AS BetType
-			,dbo.f_GetOSTargetBySportLeagueBettype(m.sporttype, m.leagueid, a.bettype, m.eventdate) AS OSTarget
-		FROM [bodb_archive].[dbo].[Dot_Admin_Assignment_Operator_bk] a WITH (NOLOCK)
-			INNER JOIN bodb02.dbo.Match14 m WITH (NOLOCK) ON a.matchid=m.matchid
-		WHERE	m.EventDate BETWEEN @BalanceUpDay AND @MoveBetsDay				
-			AND a.OperatorType < 3
-			AND m.MatchCode not like '%hedge%'
-			AND m.sporttype <> 1
-			AND (a.bettype < 31
-				OR a.bettype BETWEEN 121 AND 999
-				OR a.bettype BETWEEN 1301 and 1399)
-			AND a.bettype NOT BETWEEN 801 AND 806 -- metric gaming
-			AND a.bettype NOT IN (901, 902, 903) -- bettrade
+		INSERT INTO	#tmpOSTrader (CustId, matchid, SportType, EventDate, BetType, OSTarget)
+		SELECT	DISTINCT
+				'CustId'	= a.OperatorID
+			,	'matchid'	= m.matchid
+			,	'SportType'	= m.sporttype
+			,	'EventDate'	= m.EventDate
+			,	'BetType'	= CASE	WHEN (a.bettype = 1 OR a.bettype = 5) AND a.operatortype = 1 THEN 1
+									WHEN (a.bettype = 1 AND a.operatortype = 2) THEN 7
+									WHEN (a.bettype = 2 AND a.operatortype = 1) THEN 3
+									WHEN (a.bettype = 2 AND a.operatortype = 2) THEN 8
+									WHEN (a.bettype = 3 AND a.operatortype = 1) THEN 5
+									WHEN (a.bettype = 3 AND a.operatortype = 2) THEN 15
+									WHEN (a.bettype = 4 AND a.operatortype = 1) THEN 2
+									WHEN (a.bettype = 4 AND a.operatortype = 2) THEN 12
+									ELSE 0
+							  END
+			,	'OSTarget'	= dbo.f_GetOSTargetBySportLeagueBettype(m.sporttype, m.leagueid, a.bettype, m.eventdate)
+		FROM		bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
+		INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK)
+				ON	a.matchid = m.matchid
+		WHERE	m.EventDate BETWEEN @BalanceUpDay AND @MoveBetsDay
+			AND	a.OperatorType < 3
+			AND	m.MatchCode NOT LIKE '%hedge%'
+			AND	m.sporttype <> 1
+			AND	(a.bettype < 31 OR a.bettype BETWEEN 121 AND 999 OR a.bettype BETWEEN 1301 AND 1399)
+			AND	a.bettype NOT BETWEEN 801 AND 806 -- metric gaming
+			AND	a.bettype NOT IN (901, 902, 903) -- bettrade
+		;
 
-		IF @Debug = 1
-			SELECT 'Insert #[Dot_Admin_Assignment_Operator_bk]' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration;
-		 
-		INSERT INTO [dbo].[OSStagingDataTGRS]
-				   ([TraderId]
-				   ,[MatchId]
-				   ,[MatchCode]
-				   ,[EventDate]
-				   ,[SportId]           
-				   ,[LeagueId]
-				   ,[BettypeId]
-				   ,[Turnover]
-				   ,[WinLoss]
-				   ,[Comm]
-				   ,[BetCount]
-				   ,[Target]
-				   )
+		IF	@Debug = 1
+			SELECT	'Step'		= 'Insert #[Dot_Admin_Assignment_Operator_bk]'
+				,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+				;
 
-			SELECT	t.Custid
-					,m.matchid
-					,m.matchcode
-					,t.EventDate 
-					,t.SportType 
-					,m.LeagueId 
-					,b.BetType AS BetType				
-					,SUM ((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake)/2 ELSE ABS(b.stake) END)*(1-b.tpositiontaking)*b.virtualrate) AS Turnover	--turn over
-					,-SUM ((winlost - actual_stake + awinlost + mwinlost + swinlost) * b.virtualrate) AS WinLoss
-					,SUM (scomm * b.virtualrate) AS Comm --Commission
-					,SUM (1) AS BetCount		--Live BetCount				
-					,t.OSTarget AS Target
-			FROM	bodb02.dbo.bettrans14 b WITH (NOLOCK)
-				INNER JOIN bodb02.dbo.match14 m WITH (NOLOCK)
-					ON b.matchid = m.matchid
-				INNER JOIN	#tmpOSTrader t --WITH (NOLOCK)
-					ON m.matchid = t.matchid 
-						AND	b.LiveIndicator = 1
-			WHERE	b.statusID IN (112,113) 			
-					AND b.Currency NOT IN (20,27,28)
-			GROUP BY t.Custid
-					,m.matchid
-					,m.matchcode
-					,t.EventDate 
-					,t.SportType 
-					,m.LeagueId
-					,b.BetType
-					,t.OSTarget;
+		INSERT INTO #tmpFilteredBettrans14
+			(	  transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
+		SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
+		FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
+		WHERE	b.winlostdate BETWEEN @BalanceUpDay AND @MoveBetsDay
+			AND	b.statusID IN (112, 113)
+			AND	b.Currency NOT IN (20, 27, 28)
+			AND	b.LiveIndicator = 1
+		;
+	
+		INSERT INTO	#tmpBettrans14Date (EventDate)
+		SELECT	DISTINCT
+				b.winlostdate
+		FROM	#tmpFilteredBettrans14 AS b;
 
-		IF @Debug = 1
-			SELECT 'Insert #bettrans14' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration;
+		DECLARE	@DateToDivideBatch	DATE = '';
+
+		WHILE	(SELECT COUNT(1) FROM #tmpBettrans14Date) > 0
+		BEGIN
+			SELECT	TOP(1)
+					@DateToDivideBatch = d.EventDate
+			FROM	#tmpBettrans14Date AS d
+			ORDER BY d.EventDate DESC;
+
+			INSERT INTO #tmpFilteredBettrans14ByBatch 
+				(	  transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
+			SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
+			FROM	#tmpFilteredBettrans14 AS b
+			WHERE	b.winlostdate = @DateToDivideBatch;
+
+			INSERT INTO #tmpStagingOSTraderPerformance (CustId, EventDate, MatchId, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate)
+			SELECT	'CustId'			= t.CustId
+				,	'EventDate'			= t.EventDate
+				,	'MatchId'			= t.matchid
+				,	'BetType'			= b.bettype
+				,	'Stake'				= ((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END) * b.virtualrate) --turn over
+				,	'WinLost'			= (b.winlost - b.actual_stake)  --Winlost
+				,	'SMAWinLost'		= (b.awinlost + b.mwinlost + b.swinlost)  --SMAWinlost
+				,	'Comm'				= b.scomm  --Commission
+				,	'ExtraPT'			= SUM(ISNULL(es.ExtraPT, 0))
+				,	'TPositionTaking'	= b.tpositiontaking
+				,	'VirtualRate'		= b.virtualrate
+			FROM		#tmpFilteredBettrans14ByBatch AS b
+			INNER JOIN	#tmpOSTrader AS t WITH (NOLOCK)
+					ON	b.winlostdate = t.EventDate
+					AND	b.matchid = t.matchid
+					AND	b.bettype = t.BetType
+			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+					ON	es.SuperId = b.srecommend
+					AND	es.ProductId = 1
+					AND	es.SportType = 0
+					AND	es.SubProduct = ''
+					AND	t.EventDate BETWEEN es.FromDate AND es.ToDate
+			GROUP BY	t.CustId, t.EventDate, t.matchid, b.bettype
+					,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END) * b.virtualrate)
+					,	(b.winlost - b.actual_stake), (b.awinlost + b.mwinlost + b.swinlost)
+					,	b.scomm, b.tpositiontaking, b.virtualrate, b.transid
+			OPTION (MAXDOP 2);
+
+			INSERT INTO	dbo.OSStagingDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
+			SELECT	'TraderId'		= t.CustId
+				,	'MatchId'		= m.MatchId
+				,	'MatchCode'		= m.matchcode
+				,	'EventDate'		= t.EventDate
+				,	'SportId'		= t.SportType
+				,	'LeagueId'		= m.LeagueId
+				,	'BettypeId'		= b.BetType
+				,	'Turnover'		= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT))
+				,	'WinLoss'		= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.VirtualRate)
+				,	'Comm'			= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT / (1 - b.TPositionTaking)) END)) * b.VirtualRate)
+				,	'BetCount'		= SUM(1)  --Live BetCount				
+				,	'Target'		= t.OSTarget
+			FROM		#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
+			INNER JOIN	bodb02.dbo.match14 AS m WITH (NOLOCK)
+					ON	b.MatchId = m.MatchId
+			INNER JOIN	#tmpOSTrader AS t WITH (NOLOCK)
+					ON	m.MatchId = t.matchid
+					AND	t.CustId = b.CustId
+					AND	b.BetType = t.BetType
+			GROUP BY t.CustId, m.MatchId, m.matchcode, t.EventDate, t.SportType, m.LeagueId, b.BetType, t.OSTarget;
+
+			-- Remove batched-data (bettrans & date) from source
+			DELETE
+			FROM	#tmpFilteredBettrans14
+			WHERE	winlostdate = @DateToDivideBatch;
+
+			DELETE
+			FROM	#tmpBettrans14Date
+			WHERE	EventDate = @DateToDivideBatch;
+
+			TRUNCATE TABLE	#tmpStagingOSTraderPerformance;
+
+			TRUNCATE TABLE	#tmpFilteredBettrans14ByBatch;
+		END;
+
+		IF	@Debug = 1
+			SELECT	'Step'		= 'Insert #bettrans14'
+				,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+				;
 	END;
 
-	TRUNCATE TABLE #tmpOSTrader;
+	TRUNCATE TABLE	#tmpOSTrader;
 
-	INSERT INTO #tmpOSTrader(CustId,matchid,SportType,EventDate,BetType,OSTarget)
-	SELECT  DISTINCT  a.OperatorID AS CustId
-			,m.matchid
-			,m.sporttype as SportType
-			,m.EventDate
-			,a.BetType AS BetType
-			,dbo.f_GetOSTargetBySportLeagueBettype(m.sporttype, m.leagueid, a.bettype, m.eventdate) AS OSTarget
-	FROM bodb02.dbo.Dot_admin_Assignment_Operator a WITH (NOLOCK)
-		INNER JOIN bodb02.dbo.Match m WITH (NOLOCK) ON a.matchid=m.matchid
-	WHERE	m.EventDate BETWEEN @MoveBetsDay+1 AND @Yesterday
-			AND m.EventStatus='completed'
-			AND a.OperatorType < 3
-			AND m.MatchCode not like '%hedge%'
-			AND m.sporttype <> 1
-			AND (a.bettype < 31
-				OR a.bettype BETWEEN 121 AND 999
-				OR a.bettype BETWEEN 1301 and 1399)
-			AND a.bettype NOT BETWEEN 801 AND 806 -- metric gaming
-			AND a.bettype NOT IN (901, 902, 903) -- bettrade
+	TRUNCATE TABLE	#tmpStagingOSTraderPerformance;
 
-	IF @Debug = 1
-		SELECT 'Insert #Dot_admin_Assignment_Operator' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration;
- 
-	INSERT INTO [dbo].[OSStagingDataTGRS]
-			   ([TraderId]
-			   ,[MatchId]
-			   ,[MatchCode]
-			   ,[EventDate]
-			   ,[SportId]           
-			   ,[LeagueId]
-			   ,[BettypeId]
-			   ,[Turnover]
-			   ,[WinLoss]
-			   ,[Comm]
-			   ,[BetCount]
-			   ,[Target]
-			   )
+	TRUNCATE TABLE	#tmpFilteredBettrans14;
 
-		SELECT	t.Custid
-				,m.matchid
-				,m.matchcode
-				,t.EventDate 
-				,t.SportType 
-				,m.LeagueId
-				,b.BetType			
-				,SUM ((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake)/2 ELSE ABS(b.stake) END)*(1-b.tpositiontaking)*b.virtualrate) AS Turnover	--turn over
-				,-SUM ((winlost - actual_stake + awinlost + mwinlost+ swinlost) * b.virtualrate) AS WinLoss	--Winloss
-				,SUM (scomm * b.virtualrate) AS Comm --Commission
-				,SUM (1) AS BetCount			--Live BetCount	
-				,t.OSTarget AS Target
-		FROM	bodb02.dbo.bettrans b WITH (NOLOCK)
-			INNER JOIN bodb02.dbo.match m WITH (NOLOCK)
-					ON b.matchid = m.matchid 		
-			INNER JOIN	#tmpOSTrader t 
-				ON m.matchid = t.matchid 
-					AND	b.LiveIndicator = 1
-		WHERE	b.statusID IN (112,113) 
-				AND b.ruben = 1
-				AND b.Currency NOT IN (20,27,28)
-		GROUP BY t.Custid
-				,m.matchid
-				,m.matchcode
-				,t.EventDate
-				,t.SportType
-				,m.LeagueId
-				,b.BetType
-				,t.OSTarget;
+	TRUNCATE TABLE	#tmpFilteredBettrans14ByBatch;
 
-	IF @Debug = 1
-		SELECT 'Insert #bettrans' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration;
+	INSERT INTO	#tmpOSTrader (CustId, matchid, SportType, EventDate, BetType, OSTarget)
+	SELECT	DISTINCT
+			'CustId'		= a.OperatorID
+		,	'matchid'		= m.matchid
+		,	'SportType'		= m.sporttype
+		,	'EventDate'		= m.EventDate
+		,	'BetType'		= CASE	WHEN (a.bettype = 1 OR a.bettype = 5) AND a.operatortype = 1 THEN 1
+									WHEN (a.bettype = 1 AND a.operatortype = 2) THEN 7
+									WHEN (a.bettype = 2 AND a.operatortype = 1) THEN 3
+									WHEN (a.bettype = 2 AND a.operatortype = 2) THEN 8
+									WHEN (a.bettype = 3 AND a.operatortype = 1) THEN 5
+									WHEN (a.bettype = 3 AND a.operatortype = 2) THEN 15
+									WHEN (a.bettype = 4 AND a.operatortype = 1) THEN 2
+									WHEN (a.bettype = 4 AND a.operatortype = 2) THEN 12
+									ELSE 0
+							  END
+		,	'OSTarget'		= dbo.f_GetOSTargetBySportLeagueBettype(m.sporttype, m.leagueid, a.bettype, m.eventdate)
+	FROM		bodb02.dbo.Dot_admin_Assignment_Operator AS a WITH (NOLOCK)
+	INNER JOIN	bodb02.dbo.Match AS m WITH (NOLOCK)
+			ON	a.matchid = m.matchid
+	WHERE	m.EventDate BETWEEN @MoveBetsDay + 1
+		AND	@Yesterday
+		AND	m.EventStatus = 'completed'
+		AND	a.OperatorType < 3
+		AND	m.MatchCode NOT LIKE '%hedge%'
+		AND	m.sporttype <> 1
+		AND	(a.bettype < 31 OR a.bettype BETWEEN 121 AND 999 OR a.bettype BETWEEN 1301 AND 1399)
+		AND	a.bettype NOT BETWEEN 801
+		AND	806 -- metric gaming
+		AND	a.bettype NOT IN (901, 902, 903) -- bettrade
+	;
 
-	IF OBJECT_ID('tempdb..#tmpOSTrader') IS NOT NULL DROP TABLE #tmpOSTrader;
+	IF	@Debug = 1
+		SELECT	'Step'		= 'Insert #Dot_admin_Assignment_Operator' 
+			,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+			;
 
-	IF OBJECT_ID('tempdb..#tmpOSDataTGRS') IS NOT NULL DROP TABLE tmpOSDataTGRS;
+	INSERT INTO	#tmpStagingOSTraderPerformance (CustId, EventDate, MatchId, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate)
+	SELECT	'CustId'			= t.CustId
+		,	'EventDate'			= t.EventDate
+		,	'MatchId'			= t.matchid
+		,	'BetType'			= b.BetType
+		,	'Stake'				= ((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END) * b.virtualrate)  --turn over
+		,	'WinLost'			= (b.winlost - b.actual_stake)  --Winlost
+		,	'SMAWinLost'		= (b.awinlost + b.mwinlost + b.swinlost)  --SMAWinlost
+		,	'Comm'				= scomm  --Commission
+		,	'ExtraPT'			= SUM(ISNULL(es.ExtraPT, 0))
+		,	'TPositionTaking'	= b.tpositiontaking
+		,	'VirtualRate'		= b.virtualrate
+	FROM		bodb02.dbo.bettrans AS b WITH (NOLOCK)
+	INNER JOIN	#tmpOSTrader AS t WITH (NOLOCK)
+			ON	b.winlostdate = t.EventDate
+			AND	b.matchid = t.matchid
+			AND	b.BetType = t.BetType
+	LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			ON	es.SuperId = b.srecommend
+			AND	es.ProductId = 1
+			AND	es.SportType = 0
+			AND	es.SubProduct = ''
+			AND	t.EventDate BETWEEN es.FromDate
+			AND	es.ToDate
+	WHERE	b.statusID IN (112, 113)
+		AND	b.ruben = 1
+		AND	b.Currency NOT IN (20, 27, 28)
+		AND	b.LiveIndicator = 1
+	GROUP BY	t.CustId, t.EventDate, t.matchid, b.BetType
+			,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END) * b.virtualrate)
+			,	(WinLost - actual_stake), (awinlost + mwinlost + swinlost)
+			,	b.scomm, b.tpositiontaking, b.virtualrate, b.transid
+	OPTION (MAXDOP 2);
 
-	CREATE TABLE #tmpOSDataTGRS(
-		[TraderId] [int] NULL,
-		[MatchId] [int] NOT NULL,
-		[MatchCode] NCHAR(100) NULL,
-		[EventDate] [date] NULL,
-		[SportId] [tinyint] NULL,
-		[BettypeId] [smallint] NULL,
-		[LeagueId] [int] NULL,
-		[Stake] [money] NULL,
-		[WinLost] [money] NULL,
-		[Comm] [money] NULL,
-		[BetCount] [int] NULL,
-		[Target] [decimal] (18,2) NULL
-	);  
+	INSERT INTO dbo.OSStagingDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
+	SELECT	'TraderId'		= t.CustId
+		,	'MatchId'		= m.MatchId
+		,	'MatchCode'		= m.matchcode
+		,	'EventDate'		= t.EventDate
+		,	'SportId'		= t.SportType
+		,	'LeagueId'		= m.LeagueId
+		,	'BettypeId'		= b.BetType
+		,	'Turnover'		= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT))
+		,	'WinLoss'		= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.VirtualRate)
+		,	'Comm'			= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT / (1 - b.TPositionTaking)) END)) * b.VirtualRate)
+		,	'BetCount'		= SUM(1) --Live BetCount	
+		,	'Target'		= t.OSTarget
+	FROM		#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
+	INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK)
+			ON	b.MatchId = m.MatchId
+	INNER JOIN	#tmpOSTrader AS t
+			ON	m.MatchId = t.matchid
+			AND	t.CustId = b.CustId
+			AND	b.BetType = t.BetType
+	GROUP BY t.CustId, m.MatchId, m.matchcode, t.EventDate, t.SportType, m.LeagueId, b.BetType, t.OSTarget;
 
-	INSERT INTO #tmpOSDataTGRS(
-			[TraderId]
-			,[MatchId]
-			,[MatchCode]
-			,[EventDate]
-			,[SportId]
-			,[LeagueId]
-			,[BettypeId]		
-			,[Stake]
-			,[WinLost]
-			,[Comm]
-			,[BetCount]
-			,[Target]
-			)
+	IF	@Debug = 1
+		SELECT	'Step'		= 'Insert #bettrans'
+			,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+			;
 
-	SELECT  [TraderId]
-			,[MatchId]
-			,[MatchCode]
-			,[EventDate]
-			,[SportId]
-			,[LeagueId]
-			,[BettypeId]
-			,FLOOR(SUM([Turnover])) [Stake]
-			,FLOOR(SUM([WinLoss])) [WinLoss]
-			,FLOOR(SUM([Comm])) [Comm]
-			,FLOOR(SUM([BetCount])) [BetCount]
-			,[Target]
-	FROM  [dbo].OSDataTGRS  WITH(NOLOCK)
-	WHERE [EventDate] BETWEEN @BalanceUpDay AND @Yesterday
-	GROUP BY [TraderId]   
-			,[MatchId]
-			,[MatchCode]
-			,[EventDate]
-			,[SportId]     
-			,[LeagueId]
-			,[BettypeId]
-			,[Target]
+	IF	OBJECT_ID('tempdb..#tmpOSTrader') IS NOT NULL
+		DROP TABLE	#tmpOSTrader;
 
-	SET @RowCount = @@ROWCOUNT;
+	IF	OBJECT_ID('tempdb..#tmpOSDataTGRS') IS NOT NULL
+		DROP TABLE	#tmpOSDataTGRS;
 
-	IF @Debug = 1
-		SELECT 'Insert #OSDataTGRS' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration,@RowCount  [RowCount];
+	CREATE TABLE	#tmpOSDataTGRS (
+						TraderId		INT				NULL
+					,	MatchId			INT				NOT NULL
+					,	MatchCode		NCHAR(100)		NULL
+					,	EventDate		DATE			NULL
+					,	SportId			TINYINT			NULL
+					,	BettypeId		SMALLINT		NULL
+					,	LeagueId		INT				NULL
+					,	Stake			MONEY			NULL
+					,	WinLost			MONEY			NULL
+					,	Comm			MONEY			NULL
+					,	BetCount		INT				NULL
+					,	Target			DECIMAL(18, 2)	NULL
+					);
 
-	IF OBJECT_ID('tempdb..#tmpEventDate') IS NOT NULL    DROP TABLE #tmpEventDate;
+	INSERT INTO #tmpOSDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Stake, WinLost, Comm, BetCount, Target)
+	SELECT	'TraderId'		= TraderId
+		,	'MatchId'		= MatchId
+		,	'MatchCode'		= MatchCode
+		,	'EventDate'		= EventDate
+		,	'SportId'		= SportId
+		,	'LeagueId'		= LeagueId
+		,	'BettypeId'		= BettypeId
+		,	'Stake'			= FLOOR(SUM(Turnover))
+		,	'WinLoss'		= FLOOR(SUM(WinLoss))
+		,	'Comm'			= FLOOR(SUM(Comm))
+		,	'BetCount'		= FLOOR(SUM(BetCount))
+		,	'Target'		= Target
+	FROM	dbo.OSDataTGRS WITH (NOLOCK)
+	WHERE	EventDate BETWEEN @BalanceUpDay AND @Yesterday
+	GROUP BY TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Target;
 
-	CREATE TABLE #tmpEventDate([EventDate] DATE);
+	SET	@RowCount = @@ROWCOUNT;
 
-	INSERT INTO #tmpEventDate([EventDate])
-	SELECT [EventDate]
-	FROM
-		(
-			SELECT [TraderId]
-					,[MatchId]
-					,[MatchCode]     
-					,[EventDate]
-					,[SportId]
-					,[LeagueId]
-					,[BettypeId]
-					,[Target]
-					,FLOOR(SUM([Turnover])) [Stake]
-					,FLOOR(SUM([WinLoss])) [WinLoss]
-					,FLOOR(SUM([Comm])) [Comm]
-					,FLOOR(SUM([BetCount])) [BetCount]
-			FROM  [dbo].OSStagingDataTGRS WITH(NOLOCK)
-			GROUP BY [TraderId] 
-					,[MatchId]
-					,[MatchCode]   
-					,[EventDate]
-					,[SportId]
-					,[LeagueId]
-					,[BettypeId]
-					,[Target]
-			EXCEPT
-			SELECT [TraderId]
-					,[MatchId]
-					,[MatchCode]
-					,[EventDate]
-					,[SportId]
-					,[LeagueId]
-					,[BettypeId]
-					,[Target]
-					,[Stake]
-					,[WinLost]
-					,[Comm]
-					,[BetCount]
-			FROM  #tmpOSDataTGRS
-		)tmp
-	GROUP BY [EventDate];
+	IF	@Debug = 1
+		SELECT	'Step'		= 'Insert #OSDataTGRS'
+			,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+			,	'RowCount'	= @RowCount;
 
-	SET @RowCount = @@ROWCOUNT;
+/************************************************************************
+ *********** 20170711@Billy: Remove delete OSStagingDataTGRS ************
 
-	IF @Debug = 1
-		SELECT 'Insert ##tmpEventDate EXCEPT OSStagingDataTGRS' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration,@RowCount  [RowCount];
+	IF	OBJECT_ID('tempdb..#tmpEventDate') IS NOT NULL
+		DROP TABLE	#tmpEventDate;
 
-	INSERT INTO #tmpEventDate([EventDate])
-	SELECT [EventDate]
-	FROM
-		(
-			SELECT [TraderId]
-					,[MatchId]
-					,[MatchCode]
-					,[EventDate]
-					,[SportId]
-					,[LeagueId]
-					,[BettypeId]
-					,[Target]
-					,[Stake]
-					,[WinLost]
-					,[Comm]
-					,[BetCount]
-			FROM  #tmpOSDataTGRS
-			EXCEPT
-			SELECT [TraderId]     
-					,[MatchId]
-					,[MatchCode]
-					,[EventDate]
-					,[SportId]
-					,[LeagueId]
-					,[BettypeId]	
-					,[Target]			
-					,FLOOR(SUM([Turnover])) [Stake]
-					,FLOOR(SUM([WinLoss])) [WinLoss]
-					,FLOOR(SUM([Comm])) [Comm]
-					,FLOOR(SUM([BetCount])) [BetCount]
-			FROM  [dbo].OSStagingDataTGRS WITH(NOLOCK)
-			GROUP BY [TraderId]   
-					,[MatchId]
-					,[MatchCode]  
-					,[EventDate]
-					,[SportId]      
-					,[LeagueId]
-					,[BettypeId]
-					,[Target]
-		)tmp
-	GROUP BY [EventDate];
+	CREATE TABLE	#tmpEventDate (
+						EventDate DATE
+					);
 
-	SET @RowCount = @@ROWCOUNT;
+	INSERT INTO	#tmpEventDate (EventDate)
+	SELECT	tmp.EventDate
+	FROM	(
+		SELECT	'TraderId'	= TraderId
+			,	'MatchId'	= MatchId
+			,	'MatchCode'	= MatchCode
+			,	'EventDate'	= EventDate
+			,	'SportId'	= SportId
+			,	'LeagueId'	= LeagueId
+			,	'BettypeId'	= BettypeId
+			,	'Target'	= Target
+			,	'Stake'		= FLOOR(SUM(Turnover))
+			,	'WinLoss'	= FLOOR(SUM(WinLoss))
+			,	'Comm'		= FLOOR(SUM(Comm))
+			,	'BetCount'	= FLOOR(SUM(BetCount))
+		FROM	dbo.OSStagingDataTGRS WITH (NOLOCK)
+		GROUP BY TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Target
+		EXCEPT
+		SELECT	TraderId
+			,	MatchId
+			,	MatchCode
+			,	EventDate
+			,	SportId
+			,	LeagueId
+			,	BettypeId
+			,	Target
+			,	Stake
+			,	WinLost
+			,	Comm
+			,	BetCount
+		FROM	#tmpOSDataTGRS
+	) AS tmp
+	GROUP BY tmp.EventDate;
 
-	IF @Debug = 1
-		SELECT 'Insert ##tmpEventDate EXCEPT Staging' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration,@RowCount  [RowCount];
+	SET	@RowCount = @@ROWCOUNT;
 
-	IF OBJECT_ID('tempdb..##tmpOSDataTGRS') IS NOT NULL DROP TABLE #tmpOSDataTGRS;
+	IF	@Debug = 1
+		SELECT	'Step'		= 'Insert ##tmpEventDate EXCEPT OSStagingDataTGRS'
+			,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+			,	'RowCount'	= @RowCount;
 
-	DELETE	FROM  [dbo].OSStagingDataTGRS 
-	WHERE [EventDate] NOT IN(SELECT [EventDate] FROM #tmpEventDate WHERE [EventDate] IS NOT  NULL);
+	INSERT INTO	#tmpEventDate (EventDate)
+	SELECT	tmp.EventDate
+	FROM	(
+		SELECT	TraderId
+			,	MatchId
+			,	MatchCode
+			,	EventDate
+			,	SportId
+			,	LeagueId
+			,	BettypeId
+			,	Target
+			,	Stake
+			,	WinLost
+			,	Comm
+			,	BetCount
+		FROM	#tmpOSDataTGRS
+		EXCEPT
+		SELECT	'TraderId'	= TraderId
+			,	'MatchId'	= MatchId
+			,	'MatchCode'	= MatchCode
+			,	'EventDate'	= EventDate
+			,	'SportId'	= SportId
+			,	'LeagueId'	= LeagueId
+			,	'BettypeId'	= BettypeId
+			,	'Target'	= Target
+			,	'Stake'		= FLOOR(SUM(Turnover))
+			,	'WinLoss'	= FLOOR(SUM(WinLoss))
+			,	'Comm'		= FLOOR(SUM(Comm))
+			,	'BetCount'	= FLOOR(SUM(BetCount))
+		FROM	dbo.OSStagingDataTGRS WITH (NOLOCK)
+		GROUP BY TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Target
+	) AS tmp
+	GROUP BY tmp.EventDate;
 
-	SET @RowCount = @@ROWCOUNT;
+	SET	@RowCount = @@ROWCOUNT;
 
-	IF @Debug = 1
-		SELECT 'DELETE OSStagingDataTGRS' Step, DATEDIFF(millisecond,@Begin,GETDATE()) Duration,@RowCount  [RowCount];
+	IF	@Debug = 1
+		SELECT	'Step'		= 'Insert ##tmpEventDate EXCEPT Staging'
+			,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+			,	'RowCount'	= @RowCount;
 
-	IF @Debug = 1
-		SELECT * FROM #tmpEventDate;
-	IF OBJECT_ID('tempdb..#tmpEventDate') IS NOT NULL    DROP TABLE #tmpEventDate;
+	IF	OBJECT_ID('tempdb..##tmpOSDataTGRS') IS NOT NULL
+		DROP TABLE	#tmpOSDataTGRS;
 
+	DELETE
+	FROM	dbo.OSStagingDataTGRS
+	WHERE	EventDate NOT IN (	SELECT	EventDate
+								FROM	#tmpEventDate
+								WHERE	EventDate IS NOT NULL
+							 );
+
+	SET	@RowCount = @@ROWCOUNT;
+
+	IF	@Debug = 1
+		SELECT	'Step'		= 'DELETE OSStagingDataTGRS'
+			,	'Duration'	= DATEDIFF(MILLISECOND, @Begin, GETDATE())
+			,	'RowCount'	= @RowCount;
+
+	IF	@Debug = 1
+		SELECT	*
+		FROM	#tmpEventDate;
+
+	IF	OBJECT_ID('tempdb..#tmpEventDate') IS NOT NULL
+		DROP TABLE	#tmpEventDate;
+
+************************************************************************
+************************************************************************/
 END;
-
-
-
-GO
-
-SET QUOTED_IDENTIFIER OFF 
-GO
-SET ANSI_NULLS ON 
-GO
-
-
-GO 
