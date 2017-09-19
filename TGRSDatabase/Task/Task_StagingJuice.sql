@@ -16,6 +16,7 @@ AS
 		- 20170315@Long:	devide batch by date (not by 200k records as it is)
 		- 20170830@Long:	support UnassignedTrader
 		- 20170914@Billy:	Format code and tune performance for Task Staging Juice - [Redmine: #81465]
+		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]
    		
 	Param's Explanation:
 		
@@ -287,7 +288,8 @@ BEGIN;
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND	b.LiveIndicator = 1
-				AND	m.SportType = 1;
+				AND	m.SportType = 1
+				AND	m.MatchCode NOT LIKE '%hedge%';
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
