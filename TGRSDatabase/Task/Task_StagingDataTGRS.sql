@@ -23,6 +23,7 @@ AS
 		- 20170830@Long:	Add more bettypes from Dot_Assginment
 		- 20170816@Percy:	Change data type of Sporttype [RedmineID: #73545]
 		- 20170914@Billy:	Format code and tune performance for Task Staging - [Redmine: #81465]
+		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]
    		
 	Param's Explanation:
 		
@@ -349,7 +350,8 @@ BEGIN;
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND	b.LiveIndicator = 1
-				AND	m.sporttype = 1;
+				AND	m.sporttype = 1
+				AND	m.MatchCode NOT LIKE '%hedge%';
 					
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
