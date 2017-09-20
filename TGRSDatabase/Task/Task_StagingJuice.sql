@@ -568,7 +568,8 @@ BEGIN;
 			AND	b.statusID IN (112, 113)
 			AND	b.Currency NOT IN (20, 27, 28)
 			AND	b.LiveIndicator = 1
-			AND	m.SportType = 1;
+			AND	m.SportType = 1
+			AND	m.MatchCode NOT LIKE '%hedge%';
 			
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -812,7 +813,7 @@ BEGIN;
 		,	'BetType'			= t.BetType
 		,	'StakeMYBeforeComm'	= SUM(t.StakeMYBeforeComm)
 		,	'Juice'				= SUM(t.Juice)
-		,	'StakeMYRJuice'		= SUM(CASE WHEN t.StakeMYRTotal = 0 THEN 0 ELSE t.StakeMYBeforeComm * t.StakeMYRJuice / t.StakeMYRTotal END) -- Before comm
+		,	'StakeMYRJuice'		= SUM(CASE WHEN t.StakeMYRTotal = 0 THEN 0 ELSE CAST(t.StakeMYBeforeComm AS DECIMAL(38,18)) * t.StakeMYRJuice / t.StakeMYRTotal END) -- Before comm
 	FROM	#tmpJuice t
 	GROUP BY t.MatchId, t.BetType, t.EventDate, t.ScoreHDP;
 
