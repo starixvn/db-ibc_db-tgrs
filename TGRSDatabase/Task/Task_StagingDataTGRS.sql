@@ -24,6 +24,7 @@ AS
 		- 20170816@Percy:	Change data type of Sporttype [RedmineID: #73545]
 		- 20170914@Billy:	Format code and tune performance for Task Staging - [Redmine: #81465]
 		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]
+		- 20170922@Long:	Support more bettypes for Soccer PH AiO - [Redmine: #83621]
    		
 	Param's Explanation:
 		
@@ -308,8 +309,6 @@ BEGIN;
 													THEN 154
 												WHEN b.bettype = 1316
 													THEN 155
-												WHEN b.bettype IN (2, 4, 6, 12, 13, 16, 22, 24, 25, 26, 27, 28, 30, 121, 122, 123, 126, 129, 143, 144, 151, 159, 161, 162, 171, 191, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 417, 418, 448, 449, 450, 451, 452, 458)
-													THEN 459
 												ELSE b.bettype
 											END
 				,	'modds'				= b.modds
@@ -647,8 +646,6 @@ BEGIN;
 												THEN 154
 											WHEN b.bettype = 1316
 												THEN 155
-											WHEN b.bettype IN (2, 4, 6, 12, 13, 16, 22, 24, 25, 26, 27, 28, 30, 121, 122, 123, 126, 129, 143, 144, 151, 159, 161, 162, 171, 191, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 417, 418, 448, 449, 450, 451, 452, 458)
-												THEN 459
 											ELSE b.bettype
 										END
 			,	'modds'				= b.modds
