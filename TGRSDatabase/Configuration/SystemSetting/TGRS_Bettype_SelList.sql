@@ -24,7 +24,7 @@ BEGIN
 	FROM	dbo.BetType WITH (NOLOCK)
 	WHERE
 		@ViewPermission = 0
-		OR (@ViewPermission = 1 AND OrderId != 999)
+		OR (@ViewPermission = 1 AND (OrderId <> 999 OR OrderId IS NULL))
 		OR (@ViewPermission = 2 AND OrderId = 999)
 	ORDER BY OrderId
 END 
