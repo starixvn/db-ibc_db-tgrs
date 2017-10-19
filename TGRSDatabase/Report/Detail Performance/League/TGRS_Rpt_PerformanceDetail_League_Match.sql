@@ -10,7 +10,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League_Match]
 					@FROMDate	DATE
 				,	@ToDate		DATE
 				,	@LeagueId		INT
-				,	@Bettypes	VARCHAR(200) =  '0'
+				,	@Bettypes	VARCHAR(2000) =  '0'
 AS    
 /*  
 	Created:	20160328@Thai.Tran
@@ -18,7 +18,8 @@ AS
 	DB:			DBTGRS.bodb_TGRS
 	Original:      
 				
-	Revisions:         	
+	Revisions: 
+		20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 	Param's ExplanatiON:  	
 	
 	Example: 

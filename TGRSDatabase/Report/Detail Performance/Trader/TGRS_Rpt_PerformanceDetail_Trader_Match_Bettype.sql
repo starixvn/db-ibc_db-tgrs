@@ -3,7 +3,7 @@
 	@ToDate		DATE,
 	@CustId		INT,
 	@MatchId	INT,
-	@Bettypes	VARCHAR(200) =  '0'
+	@Bettypes	VARCHAR(2000) =  '0'
 AS    
 /*  
  Created:	20161503@Aaron
@@ -13,6 +13,7 @@ AS
   
  Revisions:      
 			20162103@Simon: restore orgirinal temp table code
+			20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
  Param's Explanation:  	
 	
  Exam: 

@@ -4,7 +4,7 @@
 	@FromDate	 DATE,
 	@ToDate		 DATE,
 	@LeagueId	 INT = 0, 
-	@Bettypes    VARCHAR(200) = '0',
+	@Bettypes    VARCHAR(2000) = '0',
 	@BetTypeBMFrom MONEY = NULL,
 	@BetTypeBMTo MONEY = NULL
 AS    
@@ -15,7 +15,8 @@ AS
  Original:  
   
  Revisions:      
-   		- 20140728@Sophia: Change Benchmark to percentage instead of decimal number			
+   		- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
+		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
  Param's Explanation:  
 	
  Exam: 
