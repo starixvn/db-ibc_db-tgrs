@@ -8,7 +8,7 @@ ALTER PROCEDURE dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match
 				,	@ToDate		DATE
 				,	@LeagueId	INT
 				,	@CustId		INT
-				,	@Bettypes	VARCHAR(200) =  '0'
+				,	@Bettypes	VARCHAR(2000) =  '0'
 AS    
 /*  
 	Created:	20160229@Aaron

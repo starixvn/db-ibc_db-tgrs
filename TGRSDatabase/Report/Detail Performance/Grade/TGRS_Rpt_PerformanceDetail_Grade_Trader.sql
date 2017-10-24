@@ -13,7 +13,7 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader]
 	@FromDate		DATE,
 	@ToDate			DATE,
 	@Grade			INT,
-	@Bettypes		VARCHAR(200) =  '0'
+	@Bettypes		VARCHAR(2000) =  '0'
 AS    
 /*  
 	Created:	20160328@Aaron
@@ -22,7 +22,7 @@ AS
 	Original:  
 	 
 	Revisions:
-	  			
+	  	20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)		
 	Param's Explanation:  	
 	
 	Example: 

@@ -2,7 +2,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader]
   @FromDate DATE,
   @ToDate   DATE,
   @TeamId   SMALLINT,
-  @Bettypes VARCHAR(200) = '0'
+  @Bettypes VARCHAR(2000) = '0'
 AS
 /*
   Created:	20162803@Simon
@@ -11,7 +11,7 @@ AS
   Original:
 
   Revisions:
-
+	20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
   Param's Explanation:
 
   Example:

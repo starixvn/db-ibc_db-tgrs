@@ -3,7 +3,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader_Match]
   , @ToDate   DATE
   , @TeamId   SMALLINT
   , @CustId   INT
-  , @Bettypes VARCHAR(200) = '0'
+  , @Bettypes VARCHAR(2000) = '0'
 AS
 /*
   Created:	20160330@Simon

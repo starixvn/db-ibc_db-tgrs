@@ -4,7 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader_Match]
     , @CustId   INT
     , @TeamId   SMALLINT
     , @LeagueId INT
-    , @Bettypes VARCHAR(200) = '0'
+    , @Bettypes VARCHAR(2000) = '0'
 AS
   /*
     Created:	20160330@Simon

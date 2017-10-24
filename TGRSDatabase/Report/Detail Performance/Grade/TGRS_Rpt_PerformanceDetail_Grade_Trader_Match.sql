@@ -13,7 +13,7 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader_Match]
 					@FromDate	DATE
 				,	@ToDate		DATE
 				,	@CustId		INT
-				,	@Bettypes	VARCHAR(200) =  '0'
+				,	@Bettypes	VARCHAR(2000) =  '0'
 AS    
 /*  
 	Created:	20160328@Aaron
