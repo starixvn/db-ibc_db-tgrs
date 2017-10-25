@@ -1,7 +1,8 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryBetTypePerformance]  
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
-	@ToDate		 DATE	   
+	@ToDate		 DATE,
+	@ViewPermission TINYINT = 0
 AS    
 /*  
  Created:	20140520@Sophia
@@ -11,11 +12,16 @@ AS
   
  Revisions:      
 	-20141219@Sophia: Order by Margin DESC
+	-20171025@Harvey: add @ViewPermission param for data permission
    			
  Param's Explanation:  
  	@ReportType = 1: by Date
 			 = 2: By Month
 			 = 3: By Year
+
+	@ViewPermission = 0: all bet types
+			 = 1: major bet types
+			 = 2: PHAIO bet types
 
  Exam: 
 	EXEC TGRS_Rpt_SummaryBetTypePerformance @FromDate = '2014-05-01', @ToDate = '2014-05-20' 
@@ -35,6 +41,7 @@ BEGIN
 			INNER JOIN	dbo.BetType B WITH (NOLOCK) 
 					ON	S.BetType = B.BetType
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
+					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 
@@ -51,13 +58,12 @@ BEGIN
 			INNER JOIN	dbo.BetType B WITH (NOLOCK) 
 					ON	S.BetType = B.BetType
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
+					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 
 	END
-
-
-END 
+END
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryBetTypePerformance] TO [bodbTGRSNet]
 GO
