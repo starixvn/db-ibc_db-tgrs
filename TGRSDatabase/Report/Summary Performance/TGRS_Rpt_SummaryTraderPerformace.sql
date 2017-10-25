@@ -1,7 +1,8 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTraderPerformace]  
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
-	@ToDate		 DATE    
+	@ToDate		 DATE,
+	@ViewPermission SMALLINT
 AS    
 /*  
  Created:	20140520@Sophia
@@ -10,12 +11,15 @@ AS
  Original:  
   
  Revisions:      
-   			
+   	- 20171024@Simon: Add ViewPermission param				
  Param's Explanation:  
 	@ReportType = 1: by Date
 			 = 2: By Month
 			 = 3: By Year
-
+			 
+	@ViewPermission = 0: all bet types
+			 = 1: major bet types
+			 = 2: PHAIO bet types
  Exam: 
 	EXEC TGRS_Rpt_SummaryTraderPerformace @ReportType = 1, @FromDate = '2014-05-01', @ToDate = '2014-05-20'
 	EXEC TGRS_Rpt_SummaryTraderPerformace @ReportType = 2, @FromDate = '2014-02-01', @ToDate = '2014-04-30'
@@ -33,17 +37,33 @@ BEGIN
 	IF @ReportType	= 1 --- By Date
 	BEGIN 
 		INSERT INTO @Top
-		SELECT  TOP 10  CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)ELSE NULL END AS Margin		
-		FROM	dbo.TraderPerformance P WITH (NOLOCK)			 
-		WHERE	EventDate BETWEEN @FromDate AND @ToDate
-		GROUP BY CustId
+		SELECT  TOP 10  P.CustId, CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)ELSE NULL END AS Margin		
+		FROM	
+			dbo.TraderPerformance P WITH (NOLOCK)
+			INNER JOIN dbo.Bettype bt WITH (NOLOCK)
+				ON P.Bettype = bt.Bettype
+		WHERE	
+			EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR bt.BettypeGroup = @ViewPermission
+				)
+		GROUP BY P.CustId
 		ORDER BY Margin DESC
 
 		INSERT INTO @Bottom
-		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin	
-		FROM	dbo.TraderPerformance WITH (NOLOCK)			 
-		WHERE	EventDate BETWEEN @FromDate AND @ToDate
-		GROUP BY CustId
+		SELECT  TOP 10 P.CustId, CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)  ELSE NULL END AS Margin	
+		FROM	
+			dbo.TraderPerformance P WITH (NOLOCK)			 
+			INNER JOIN dbo.Bettype bt WITH (NOLOCK)
+				ON P.Bettype = bt.Bettype
+		WHERE	
+			EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR bt.BettypeGroup = @ViewPermission
+				)
+		GROUP BY P.CustId
 		ORDER BY Margin ASC
 			
 	END
@@ -52,14 +72,24 @@ BEGIN
 		INSERT INTO @Top
 		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin			
 		FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
-		WHERE	EventDate BETWEEN @FromDate AND @ToDate
+		WHERE	
+			EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR BettypeGroup = @ViewPermission
+				)			
 		GROUP BY CustId
 		ORDER BY Margin DESC
 
 		INSERT INTO @Bottom
 		SELECT  TOP 10 CustId, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin	
 		FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
-		WHERE	EventDate BETWEEN @FromDate AND @ToDate
+		WHERE	
+			EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR BettypeGroup = @ViewPermission
+				)
 		GROUP BY CustId
 		ORDER BY Margin ASC
 	END

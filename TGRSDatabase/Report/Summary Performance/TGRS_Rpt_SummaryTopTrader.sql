@@ -3,7 +3,8 @@
 	@IsBottom	 BIT = 0,
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
-	@ToDate		 DATE  
+	@ToDate		 DATE,
+	@ViewPermission SMALLINT
 AS    
 /*  
  Created:	20140520@Sophia
@@ -12,7 +13,7 @@ AS
  Original:  
   
  Revisions:      
-   			
+   	- 20171024@Simon: Add ViewPermission param		
  Param's Explanation:  
 	@ReportType = 1: by Date
 			 = 2: By Month
@@ -24,6 +25,9 @@ AS
 	@IsBottom = 0: List top traders
 			  = 1: List bottom traders
 
+	@ViewPermission = 0: all bet types
+			 = 1: major bet types
+			 = 2: PHAIO bet types
  Exam: 
 	EXEC TGRS_Rpt_SummaryTopTrader @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
 	EXEC TGRS_Rpt_SummaryTopTrader_Xtest @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
@@ -47,9 +51,14 @@ BEGIN
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin				
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)			
-			INNER JOIN dbo.Trader TR WITH (NOLOCK) 
-					ON TR.CustID = P.CustId	 				
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
+			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = P.CustId
+			INNER JOIN dbo.Bettype bt WITH (NOLOCK) ON P.Bettype = bt.Bettype
+		WHERE	
+			P.EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR bt.BettypeGroup = @ViewPermission
+				)
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade	
 	END
 	ELSE  --- by month-year
@@ -63,7 +72,12 @@ BEGIN
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin		
 		FROM	dbo.SummaryByTrader_Monthly P WITH (NOLOCK)	
 			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = P.CustId				
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
+		WHERE	
+			P.EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR P.BettypeGroup = @ViewPermission
+				)
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade				
 	END
 

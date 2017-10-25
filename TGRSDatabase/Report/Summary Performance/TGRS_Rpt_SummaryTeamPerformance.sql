@@ -1,7 +1,8 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTeamPerformance]  
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
-	@ToDate		 DATE	   
+	@ToDate		 DATE,
+	@ViewPermission SMALLINT
 AS    
 /*  
  Created:	20140520@Sophia
@@ -10,12 +11,15 @@ AS
  Original:  
   
  Revisions:   
- 
-   			
+   	- 20171024@Simon: Add ViewPermission param		
  Param's Explanation:  
 	@ReportType = 1: by Date
 			 = 2: By Month
 			 = 3: By Year
+			 
+	@ViewPermission = 0: all bet types
+			 = 1: major bet types
+			 = 2: PHAIO bet types
  Exam: 
 	EXEC TGRS_Rpt_SummaryTeamPerformance @FromDate = '2014-05-01', @ToDate = '2014-05-20'
   
@@ -32,7 +36,12 @@ BEGIN
 		FROM	dbo.SummaryByTeam_Daily S WITH (NOLOCK)
 			INNER JOIN	dbo.Team T WITH (NOLOCK) 
 					ON	T.TeamId = S.TeamId
-		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
+		WHERE	
+				S.EventDate BETWEEN @FromDate AND @ToDate
+				AND (
+						@ViewPermission = 0
+						OR BettypeGroup = @ViewPermission
+					)
 		GROUP BY T.TeamId, T.TeamName
 		ORDER BY Margin DESC
 	END
@@ -45,7 +54,12 @@ BEGIN
 		FROM	dbo.SummaryByTeam_Monthly S WITH (NOLOCK)
 			INNER JOIN	dbo.Team T WITH (NOLOCK) 
 					ON	T.TeamId = S.TeamId
-		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
+		WHERE	
+				S.EventDate BETWEEN @FromDate AND @ToDate
+				AND (
+						@ViewPermission = 0
+						OR BettypeGroup = @ViewPermission
+					)
 		GROUP BY T.TeamId, T.TeamName
 		ORDER BY Margin DESC 
 	END

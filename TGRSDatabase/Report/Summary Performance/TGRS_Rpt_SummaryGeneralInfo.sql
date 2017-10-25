@@ -3,7 +3,8 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
 	@ReportType	 TINYINT = 2,
 	@FromDate	 DATE,
-	@ToDate		 DATE	   
+	@ToDate		 DATE,
+	@ViewPermission SMALLINT
 AS    
 /*  
  Created:	20140520@Sophia
@@ -13,16 +14,19 @@ AS
   
  Revisions:      
 	- 20140729@Sophia: Change the way to get MatchCount (from TraderPerformance)
-   			
+   	- 20171024@Simon: Add ViewPermission param		
  Param's Explanation:  
 	@ReportType = 1: by Date
 			 = 2: By Month
 			 = 3: By Year
-
+			 
+	@ViewPermission = 0: all bet types
+			 = 1: major bet types
+			 = 2: PHAIO bet types
  Exam: 
-	EXEC TGRS_Rpt_SummaryGeneralInfo @FromDate = '2014-05-01', @ToDate = '2014-05-20'
-	EXEC TGRS_Rpt_SummaryGeneralInfo @FromDate = '2014-02-01', @ToDate = '2014-04-30'
-	EXEC TGRS_Rpt_SummaryGeneralInfo @FromDate = '2012-01-01', @ToDate = '2013-12-31'
+	EXEC TGRS_Rpt_SummaryGeneralInfo @FromDate = '2014-05-01', @ToDate = '2014-05-20', @ViewPermission = 0
+	EXEC TGRS_Rpt_SummaryGeneralInfo @FromDate = '2014-02-01', @ToDate = '2014-04-30', @ViewPermission = 1
+	EXEC TGRS_Rpt_SummaryGeneralInfo @FromDate = '2012-01-01', @ToDate = '2013-12-31', @ViewPermission = 2
   
 */  
  
@@ -39,8 +43,12 @@ BEGIN
 				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) * 100/ISNULL(SUM(Stake),0) ELSE NULL END AS Margin, 
 				SUM(MatchCount) AS MatchCount
 		FROM	dbo.SummaryByLeague_Monthly WITH (NOLOCK)
-		WHERE	EventDate BETWEEN @FromDate AND @ToDate	
-		
+		WHERE	
+				EventDate BETWEEN @FromDate AND @ToDate	
+				AND (
+						@ViewPermission = 0
+						OR BettypeGroup = @ViewPermission
+					)
 	END
 	ELSE---- by date
 	BEGIN 
@@ -51,7 +59,10 @@ BEGIN
 				SUM(MatchCount) AS MatchCount		
 		FROM	dbo.SummaryByLeague_Daily S WITH (NOLOCK)		
 		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
-		
+				AND (
+						@ViewPermission = 0
+						OR BettypeGroup = @ViewPermission
+					)		
 	END
 	 
 	
