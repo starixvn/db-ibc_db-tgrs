@@ -11,7 +11,8 @@ AS
  Original:  
   
  Revisions:      
-	 - 20171025@Long: change the way to get MatchCount
+	- 20171024@Simon: Add ViewPermission param 
+	- 20171025@Long: change the way to get MatchCount
    			
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -71,7 +72,12 @@ BEGIN
 				m.MatchCount AS MatchCount
 		FROM	dbo.SummaryByLeague_Monthly S WITH (NOLOCK)	
 			INNER JOIN #MatchCountByDate m ON S.EventDate = m.EventDate		
-		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate	
+		WHERE	
+			S.EventDate BETWEEN @FromDate AND @ToDate	
+			AND (
+					@ViewPermission = 0
+					OR BettypeGroup = @ViewPermission
+				)
 		GROUP BY S.EventDate
 	END	
 	ELSE 
@@ -84,6 +90,10 @@ BEGIN
 		FROM	dbo.SummaryByLeague_Daily S WITH (NOLOCK)	
 			INNER JOIN #MatchCountByDate m ON S.EventDate = m.EventDate	
 		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate	
+			AND (
+					@ViewPermission = 0
+					OR BettypeGroup = @ViewPermission
+				)
 		GROUP BY S.EventDate
 	END 
 
