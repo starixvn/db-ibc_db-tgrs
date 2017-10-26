@@ -51,7 +51,7 @@ BEGIN
 		, TeamName				NVARCHAR(50)
 		, TeamId				SMALLINT
 		, Grade					TINYINT
-		, MatchCount			INT
+		, MatchCount			BIGINT
 		, BetCount				INT
 		, Turnover				MONEY
 		, WinLost				MONEY
@@ -71,7 +71,7 @@ BEGIN
 
 	CREATE TABLE #MatchCountByCustId (
 		CustId			INT, 
-		MatchCount		INT
+		MatchCount		BIGINT
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_MatchCountByCustIdIdx ON #MatchCountByCustId (
@@ -83,7 +83,7 @@ BEGIN
 		,	MatchCount
 	)
 	SELECT tp.CustId
-		,	SUM(DISTINCT tp.MatchId) AS MatchCount
+		,	COUNT_BIG(DISTINCT tp.MatchId) AS MatchCount
 	FROM dbo.TraderPerformance tp WITH(NOLOCK)
 		INNER JOIN dbo.BetType bt WITH(NOLOCK) on tp.BetType = bt.BetType
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
@@ -97,7 +97,7 @@ BEGIN
 	BEGIN 
 		INSERT INTO #Trader (CustId, Username, TeamId, Grade, MatchCount, BetCount, Turnover, WinLost, Margin)
 		SELECT  P.CustId, TR.Username, TR.TeamId, TR.Grade, 
-				ISNULL(COUNT(DISTINCT MatchID),0) AS MatchCount, 
+				ISNULL(COUNT_BIG(DISTINCT MatchID),0) AS MatchCount, 
 				ISNULL(SUM(BetCount),0) AS BetCount,
 				ISNULL(SUM(Stake),0) AS Turnover, 
 				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
@@ -131,7 +131,7 @@ BEGIN
 					@ViewPermission = 0
 					OR P.BettypeGroup = @ViewPermission
 				)
-		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade				
+		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount			
 	END
 
 	-------------------------------------------------	

@@ -40,7 +40,7 @@ BEGIN
 
 	CREATE TABLE #MatchCountByDate (
 		EventDate		DATE, 
-		MatchCount		INT
+		MatchCount		BIGINT
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_MatchCountByDateIdx ON #MatchCountByDate (
@@ -52,7 +52,7 @@ BEGIN
 		,	MatchCount
 	)
 	SELECT bm.EventDate
-		,	SUM(bm.MatchCount) AS MatchCount
+		,	COUNT_BIG(bm.MatchCount) AS MatchCount
 	FROM dbo.SummaryByBetType_Monthly bm WITH(NOLOCK)
 		INNER JOIN dbo.BetType bt WITH(NOLOCK) on bm.BetType = bt.BetType
 	WHERE bm.EventDate BETWEEN @FromDate AND @ToDate
@@ -94,7 +94,7 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
-		GROUP BY S.EventDate
+		GROUP BY S.EventDate, m.MatchCount
 	END 
 
 END 

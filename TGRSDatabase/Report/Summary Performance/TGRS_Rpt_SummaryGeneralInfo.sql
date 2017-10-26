@@ -35,9 +35,9 @@ AS
 BEGIN 
 	SET NOCOUNT ON  
 
-	DECLARE @MatchCount INT = 0;
+	DECLARE @MatchCount BIGINT = 0;
 
-	SELECT @MatchCount = SUM(DISTINCT tp.MatchId)
+	SELECT @MatchCount = COUNT_BIG(DISTINCT tp.MatchId)
 	FROM dbo.TraderPerformance tp WITH(NOLOCK)
 		INNER JOIN dbo.BetType b WITH(NOLOCK) ON tp.BetType = b.BetType
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
