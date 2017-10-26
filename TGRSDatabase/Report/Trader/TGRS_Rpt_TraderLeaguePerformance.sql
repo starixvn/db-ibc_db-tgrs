@@ -4,7 +4,8 @@ GO
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance]
 	@TraderId	INT,
 	@FromDate	DATETIME,
-	@ToDate		DATETIME
+	@ToDate		DATETIME,
+	@ViewPermission SMALLINT
 AS
 /*
 	Creator: Percy
@@ -14,9 +15,11 @@ AS
 
 	Revisions:
 		- 20160531@Percy: Return new field matchcount, betcount [RedmineID: #58484]
-
+		- 20171024@Simon: Add ViewPermission param
 	Param's Explanation:
-
+		@ViewPermission = 0: all bet types
+				 = 1: major bet types
+				 = 2: PHAIO bet types
 	Exam:
 */
 BEGIN
@@ -32,9 +35,14 @@ BEGIN
 	FROM
 		dbo.TraderPerformance t (NOLOCK)
 		INNER JOIN bodb02.dbo.league l (NOLOCK) ON t.LeagueId = l.leagueid
+		INNER JOIN dbo.Bettype bt WITH(NOLOCK) ON bt.Bettype = t.Bettype
 	WHERE
 		CustId = @TraderId
 		AND EventDate BETWEEN @FromDate AND @ToDate
+		AND (
+				@ViewPermission = 0
+				OR bt.BettypeGroup = @ViewPermission
+			)
 	GROUP BY l.leagueid, l.leaguename
 	ORDER BY Margin DESC
 END

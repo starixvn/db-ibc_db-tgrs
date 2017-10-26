@@ -5,7 +5,8 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
 	@TraderId INT,
 	@ReportType TINYINT = 2,
 	@FromDate DATETIME,
-	@ToDate DATETIME
+	@ToDate DATETIME,
+	@ViewPermission SMALLINT
 AS
 /*
 	Creator: Percy
@@ -14,12 +15,15 @@ AS
 	DB: DBTGRS.bodb_TGRS
 
 	Revisions:
-
+		- 20171024@Simon: Add ViewPermission param
 	Param's Explanation:
 		@ReportType:
 			1: by date
 			2: by month
-
+			
+		@ViewPermission = 0: all bet types
+				 = 1: major bet types
+				 = 2: PHAIO bet types
 	Exam:
 */
 BEGIN
@@ -47,6 +51,10 @@ SET NOCOUNT ON
 		FROM
 			dbo.TraderPerformance t (NOLOCK)
 			RIGHT JOIN @Date d ON t.EventDate = d.WLDate AND CustId = @TraderId
+			INNER JOIN Bettype bt WITH(NOLOCK) ON t.Bettype = bt.Bettype
+		WHERE
+			@ViewPermission = 0
+			OR bt.BettypeGroup = @ViewPermission
 		GROUP BY d.WLDate
 	END
 	ELSE -- Report by date - month, month - month
@@ -73,6 +81,9 @@ SET NOCOUNT ON
 			FROM
 				dbo.SummaryByTrader_Monthly s (NOLOCK)
 				RIGHT JOIN @Date d ON s.Eventdate = d.WLDate AND CustId = @TraderId
+			WHERE
+				@ViewPermission = 0
+				OR BettypeGroup = @ViewPermission
 			GROUP BY d.WLDate
 		END
 		ELSE -- Report by date - month
@@ -87,10 +98,15 @@ SET NOCOUNT ON
 						DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0) AS EventDate,
 						ISNULL(SUM(Stake), 0) AS Turnover,
 						ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost
-					FROM dbo.TraderPerformance (NOLOCK)
+					FROM dbo.TraderPerformance p WITH(NOLOCK)
+						 INNER JOIN Bettype bt WITH(NOLOCK) ON p.Bettype = bt.Bettype
 					WHERE
 						CustId = @TraderId
 						AND EventDate BETWEEN @FromDate AND @ToDate
+						AND (
+								@ViewPermission = 0
+								OR bt.BettypeGroup = @ViewPermission
+							)
 					GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0)
 				) AS s
 				RIGHT JOIN @Date d ON s.EventDate = d.WLDate
