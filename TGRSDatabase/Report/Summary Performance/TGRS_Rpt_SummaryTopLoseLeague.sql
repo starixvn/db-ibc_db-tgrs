@@ -27,7 +27,7 @@ AS
 	EXEC TGRS_Rpt_SummaryTopLoseLeague @FromDate = '2014-05-01', @ToDate = '2014-05-20' 
   
 */  
- select top 10 * from bodb02.dbo.League L
+ 
 BEGIN 
 	SET NOCOUNT ON  
 	IF @ReportType	= 1 --- by date
