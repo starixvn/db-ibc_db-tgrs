@@ -78,7 +78,7 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
-		GROUP BY S.EventDate
+		GROUP BY S.EventDate, m.MatchCount
 	END	
 	ELSE 
 	BEGIN 
