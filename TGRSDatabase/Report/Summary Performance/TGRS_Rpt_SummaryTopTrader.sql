@@ -1,9 +1,9 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTopTrader]  
-	@Top		 TINYINT = 10,
-	@IsBottom	 BIT = 0,
-	@ReportType	 TINYINT = 1,
-	@FromDate	 DATE,
-	@ToDate		 DATE,
+	@Top		 	TINYINT = 10,
+	@IsBottom	 	BIT = 0,
+	@ReportType	 	TINYINT = 1,
+	@FromDate	 	DATE,
+	@ToDate		 	DATE,
 	@ViewPermission SMALLINT
 AS    
 /*  

@@ -2,9 +2,9 @@ USE [bodb_TGRS]
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance]
-	@TraderId	INT,
-	@FromDate	DATETIME,
-	@ToDate		DATETIME,
+	@TraderId		INT,
+	@FromDate		DATETIME,
+	@ToDate			DATETIME,
 	@ViewPermission SMALLINT
 AS
 /*

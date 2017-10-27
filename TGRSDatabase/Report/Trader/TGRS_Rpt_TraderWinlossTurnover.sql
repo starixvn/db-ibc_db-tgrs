@@ -2,10 +2,10 @@ USE [bodb_TGRS]
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
-	@TraderId INT,
-	@ReportType TINYINT = 2,
-	@FromDate DATETIME,
-	@ToDate DATETIME,
+	@TraderId 		INT,
+	@ReportType 	TINYINT = 2,
+	@FromDate 		DATETIME,
+	@ToDate 		DATETIME,
 	@ViewPermission SMALLINT
 AS
 /*

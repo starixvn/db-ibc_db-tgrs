@@ -1,7 +1,7 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTeamPerformance]  
-	@ReportType	 TINYINT = 1,
-	@FromDate	 DATE,
-	@ToDate		 DATE,
+	@ReportType	 	TINYINT = 1,
+	@FromDate	 	DATE,
+	@ToDate		 	DATE,
 	@ViewPermission SMALLINT
 AS    
 /*  
