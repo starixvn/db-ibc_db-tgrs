@@ -7,8 +7,9 @@ DB:  DBTGRS.bodb_TGRS
 
 Revisions:
 	- 20141208@Sophia: get IsDefault
-    -  20171016@Simon: add permission checking
-   
+    - 20171016@Simon: add permission checking
+	- 20171101@Simon: change permission checking method
+	
 Param Explaination:
 	@ViewPermission:
 		0: All
@@ -24,8 +25,7 @@ BEGIN
 	FROM	dbo.BetType WITH (NOLOCK)
 	WHERE
 		@ViewPermission = 0
-		OR (@ViewPermission = 1 AND (OrderId <> 999 OR OrderId IS NULL))
-		OR (@ViewPermission = 2 AND OrderId = 999)
+		OR BettypeGroup = @ViewPermission
 	ORDER BY OrderId
 END 
 	
