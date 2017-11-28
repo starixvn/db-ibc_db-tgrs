@@ -1,4 +1,4 @@
-CREATE PROCEDURE [dbo].[TGRS_UserSetting_GetBettypes]
+﻿CREATE PROCEDURE [dbo].[TGRS_UserSetting_GetBettypes]
 	@UserId INT,
 	@BettypePermission INT
 /*
@@ -14,8 +14,6 @@ CREATE PROCEDURE [dbo].[TGRS_UserSetting_GetBettypes]
 */
 AS
 BEGIN
-	SET NOCOUNT ON
-	
 	DECLARE @Bettypes NVARCHAR(4000);
 	CREATE TABLE #DefaultBettypes (BettypeId INT PRIMARY KEY);
 

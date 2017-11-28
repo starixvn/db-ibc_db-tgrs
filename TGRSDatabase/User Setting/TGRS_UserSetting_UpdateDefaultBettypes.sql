@@ -1,4 +1,4 @@
-CREATE PROCEDURE [dbo].[TGRS_UserSetting_UpdateDefaultBettypes]
+﻿CREATE PROCEDURE [dbo].[TGRS_UserSetting_UpdateDefaultBettypes]
 	@UserId INT,
 	@IsDefaultBettypes NVARCHAR(4000),
 	@ErrCode INT = 0 OUTPUT,  

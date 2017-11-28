@@ -1,15 +1,10 @@
-﻿USE [bodb_TGRS]
-GO
-/****** Object:  StoredProcedure [dbo].[TGRS_Grade_Insert]    Script Date: 5/12/2014 10:00:07 AM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-ALTER PROCEDURE [dbo].[TGRS_Trader_Insert]
+﻿CREATE PROCEDURE [dbo].[TGRS_Trader_Insert]
 	@Username		VARCHAR (30),
 	@EmployeeId		NVARCHAR(20),
 	@TeamId			SMALLINT,
 	@Grade			SMALLINT,
+	@Shift INT,
+	@Remark NVARCHAR(4000),
 	@UserId			INT,
 	@ErrCode		INT = 0 OUTPUT,
 	@ErrMsg			NVARCHAR(200) = '' OUTPUT
@@ -20,7 +15,7 @@ Task : Insert new trader
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
-   
+   - 20171129@Simon: add shift + remark parameter
 */ 
 
 AS
@@ -92,6 +87,9 @@ BEGIN
 							,ModifiedBy
 							,TeamEffectiveDate
 							,GradeEffectiveDate
+							,[Shift]
+							,ShiftEffectiveDate
+							,Remark
 							)
 					VALUES (
 							 @CustId
@@ -105,6 +103,9 @@ BEGIN
 							,NULL							
 							,@CreatedDate
 							,@CreatedDate
+							,@Shift
+							,@CreatedDate
+							,@Remark
 							)
 
 	-- Check fail
@@ -130,6 +131,7 @@ BEGIN
 							,@CreatedDate
 							,NULL
 							)	
+
 	-- Check fail
 	IF @@ERROR > 0
 		BEGIN
@@ -153,6 +155,7 @@ BEGIN
 							,@CreatedDate
 							,NULL
 							)	
+
 	-- Check fail
 	IF @@ERROR > 0
 		BEGIN
@@ -162,7 +165,28 @@ BEGIN
 			RETURN
 		END
 
+	-- Insert trader_shift history
+	INSERT INTO	dbo.TraderShift_History(
+							CustId
+							,ShiftId							
+							,BeginDate
+							,EndDate
+							)
+					VALUES (
+							 @CustId
+							,@Shift											
+							,@CreatedDate
+							,NULL
+							)	
 
+	-- Check fail
+	IF @@ERROR > 0
+		BEGIN
+			SELECT 
+				@ErrCode = 307, 
+				@ErrMsg = 'Failed to add new trader-shift history [Username = ' + @Username +']'
+			RETURN
+		END
 	-- Write log 
 	SET @xml = (
 					SELECT
@@ -172,7 +196,10 @@ BEGIN
 						@TeamId				AS '@t',
 						@Grade				AS '@g',
 						@CreatedDate		AS '@dt',
-						@CreatedDate		AS '@dg'
+						@CreatedDate		AS '@dg',
+						@Shift AS 's',
+						@CreatedDate AS 'ds',
+						@Remark AS 'r'
 					 FOR XML PATH('z'), ROOT('r')
 				)
 
@@ -193,6 +220,11 @@ BEGIN
 
 		
 END
-	
+
+/*
 GO
-GRANT EXECUTE ON [TGRS_Trader_Insert] TO [bodbTGRSNet]
+GRANT EXECUTE ON [dbo].[TGRS_Trader_Insert] TO [bodbTGRSNet]
+GO
+GRANT VIEW DEFINITION ON [dbo].[TGRS_Trader_Insert] TO [bodbTGRSNet]
+GO
+*/
