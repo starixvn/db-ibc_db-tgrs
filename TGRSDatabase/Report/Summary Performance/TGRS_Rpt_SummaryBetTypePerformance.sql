@@ -1,7 +1,7 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryBetTypePerformance]  
-	@ReportType	 	TINYINT = 1,
-	@FromDate	 	DATE,
-	@ToDate		 	DATE,
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryBetTypePerformance]  
+	@ReportType	 TINYINT = 1,
+	@FromDate	 DATE,
+	@ToDate		 DATE,
 	@ViewPermission TINYINT = 0
 AS    
 /*  
@@ -42,6 +42,7 @@ BEGIN
 					ON	S.BetType = B.BetType
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
+					AND B.[Disabled] = 0
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 
@@ -59,12 +60,11 @@ BEGIN
 					ON	S.BetType = B.BetType
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
+					AND B.[Disabled] = 0
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 
 	END
-END
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryBetTypePerformance] TO [bodbTGRSNet]
-GO
 
+
+END

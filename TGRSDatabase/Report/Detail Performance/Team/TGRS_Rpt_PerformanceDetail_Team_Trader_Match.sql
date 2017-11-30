@@ -1,4 +1,5 @@
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader_Match]
+﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_Trader_Match    Script Date: 4/1/2016 8:22:16 AM ******/
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader_Match]
     @FROMDate DATE
   , @ToDate   DATE
   , @TeamId   SMALLINT
@@ -49,7 +50,7 @@ BEGIN
         AND T.TeamId = @TeamId
         AND P.Bettype IN (SELECT bettype
                           FROM @BettypeList)
+		AND P.IsLive = 1
   GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate
   ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC
 END
-GO

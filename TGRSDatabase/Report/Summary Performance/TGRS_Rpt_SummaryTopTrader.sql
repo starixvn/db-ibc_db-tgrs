@@ -1,9 +1,9 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTopTrader]  
-	@Top		 	TINYINT = 10,
-	@IsBottom	 	BIT = 0,
-	@ReportType	 	TINYINT = 1,
-	@FromDate	 	DATE,
-	@ToDate		 	DATE,
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryTopTrader]  
+	@Top		 TINYINT = 10,
+	@IsBottom	 BIT = 0,
+	@ReportType	 TINYINT = 1,
+	@FromDate	 DATE,
+	@ToDate		 DATE,
 	@ViewPermission SMALLINT
 AS    
 /*  
@@ -91,6 +91,8 @@ BEGIN
 				@ViewPermission = 0
 				OR bt.BettypeGroup = @ViewPermission
 			)
+		AND tp.IsLive = 1
+		AND bt.[Disabled] = 0
 	GROUP BY tp.CustId
 
 	IF @ReportType	= 1 --- by date
@@ -111,6 +113,8 @@ BEGIN
 					@ViewPermission = 0
 					OR bt.BettypeGroup = @ViewPermission
 				)
+			AND P.IsLive = 1
+			AND bt.[Disabled] = 0
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade	
 	END
 	ELSE  --- by month-year
@@ -200,9 +204,4 @@ BEGIN
 
 	 END  
 
-END 
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryTopTrader] TO [bodbTGRSNet]
-GO
-
- 
+END

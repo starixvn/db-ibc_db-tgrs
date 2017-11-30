@@ -197,9 +197,9 @@ BEGIN
 						@Grade				AS '@g',
 						@CreatedDate		AS '@dt',
 						@CreatedDate		AS '@dg',
-						@Shift AS 's',
-						@CreatedDate AS 'ds',
-						@Remark AS 'r'
+						@Shift AS '@s',
+						@CreatedDate AS '@ds',
+						@Remark AS '@r'
 					 FOR XML PATH('z'), ROOT('r')
 				)
 

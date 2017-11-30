@@ -1,4 +1,4 @@
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader]
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader]
   @FromDate DATE,
   @ToDate   DATE,
   @TeamId   SMALLINT,
@@ -99,6 +99,7 @@ BEGIN
           AND tp.BetType IN (SELECT bl.bettype
                              FROM @BettypeList AS bl)
           AND t.TeamId = @TeamId
+		  AND tp.IsLive = 1
     GROUP BY tp.CustId;
 
   SELECT
@@ -124,4 +125,3 @@ BEGIN
 
   DROP TABLE #TraderDetail;
 END;
-GO

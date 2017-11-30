@@ -1,12 +1,5 @@
-USE [bodb_TGRS]
-GO
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_PerformanceDetail_Trader_Match]    Script Date: 3/28/2016 1:03:09 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League_Match]
+﻿
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League_Match]
 					@FROMDate	DATE
 				,	@ToDate		DATE
 				,	@LeagueId		INT
@@ -46,6 +39,7 @@ BEGIN
 		WHERE	P.LeagueId = @LeagueId
 			AND P.Bettype IN (SELECT bettype FROM @BettypeList)
 			AND P.EventDate BETWEEN @FROMDate AND @ToDate
+			AND P.IsLive = 1
 		GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate			
 		ORDER BY P.LeagueId ASC,Margin DESC, P.EventDate ASC		 
 END

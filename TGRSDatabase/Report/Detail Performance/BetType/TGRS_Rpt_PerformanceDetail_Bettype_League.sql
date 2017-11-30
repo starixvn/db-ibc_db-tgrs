@@ -1,11 +1,5 @@
-USE [bodb_TGRS]
-GO
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_PerformanceDetail_League]    Script Date: 3/15/2016 1:48:52 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League]  	
+﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_League    Script Date: 3/22/2016 12:48:53 PM ******/
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League]  	
 	@FromDate		DATE,
 	@ToDate			DATE,		
 	@Bettype		SMALLINT
@@ -40,7 +34,8 @@ BEGIN
 	FROM dbo.TraderPerformance P WITH (NOLOCK)	 
 	INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 	WHERE	P.Bettype = @Bettype
-			AND P.EventDate BETWEEN @FromDate AND @ToDate						
+			AND P.EventDate BETWEEN @FromDate AND @ToDate					
+			AND P.IsLive = 1
 	GROUP BY P.LeagueId, L.LeagueName 	
 	ORDER BY Margin DESC, LeagueName ASC
 				 		
@@ -48,4 +43,3 @@ END
 
 --GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League] TO [bodbTGRSNet]
 --GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League] TO [bodbTGRSNet ]
-

@@ -1,9 +1,7 @@
-SET ANSI_NULLS ON;
-GO
-SET QUOTED_IDENTIFIER ON;
-GO
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match    Script Date: 3/14/2016 3:58:14 AM ******/
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match    Script Date: 3/8/2016 2:46:20 PM ******/
 
-ALTER PROCEDURE dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match  	
+CREATE PROCEDURE dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match  	
 					@FromDate	DATE
 				,	@ToDate		DATE
 				,	@LeagueId	INT
@@ -19,7 +17,7 @@ AS
 	Param's Explanation:  	
 	
 	Example: 
-		EXEC [TGRS_Rpt_PerformanceDetail_League_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @LeagueId = 6394, @Bettypes = '0', @CustID = 1530768
+				EXEC [TGRS_Rpt_PerformanceDetail_League_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @LeagueId = 6394, @Bettypes = '0', @CustID = 1530768
   
 */  
  
@@ -47,13 +45,7 @@ BEGIN
 			AND P.LeagueId = @LeagueId
 			AND P.CustId = @CustId
 			AND P.BetType IN (SELECT Bettype FROM @BettypeList)
+			AND P.IsLive = 1
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
 	ORDER BY Margin DESC, P.EventDate ASC;
 END;
-GO
-
-GRANT EXECUTE ON dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match TO [bodbTGRSNet];
-GO
-GRANT VIEW DEFINITION ON dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match TO [bodbTGRSNet];
-GO
-

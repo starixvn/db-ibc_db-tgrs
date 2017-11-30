@@ -1,7 +1,7 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTraderPerformace]  
-	@ReportType	 	TINYINT = 1,
-	@FromDate	 	DATE,
-	@ToDate		 	DATE,
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryTraderPerformace]  
+	@ReportType	 TINYINT = 1,
+	@FromDate	 DATE,
+	@ToDate		 DATE,
 	@ViewPermission SMALLINT
 AS    
 /*  
@@ -48,6 +48,8 @@ BEGIN
 					@ViewPermission = 0
 					OR bt.BettypeGroup = @ViewPermission
 				)
+			AND bt.[Disabled] = 0
+			AND P.IsLive = 1
 		GROUP BY P.CustId
 		ORDER BY Margin DESC
 
@@ -63,6 +65,8 @@ BEGIN
 					@ViewPermission = 0
 					OR bt.BettypeGroup = @ViewPermission
 				)
+			AND P.IsLive = 1
+			AND bt.[Disabled] = 0
 		GROUP BY P.CustId
 		ORDER BY Margin ASC
 			
@@ -77,7 +81,7 @@ BEGIN
 			AND (
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
-				)			
+				)
 		GROUP BY CustId
 		ORDER BY Margin DESC
 
@@ -100,9 +104,4 @@ BEGIN
 	SELECT @TopMinMargin AS TopMinMargin, @TopMaxMargin AS TopMaxMargin, @BottomMinMargin AS BottomMinMargin, @BottomMaxMargin AS BottomMaxMargin
 
 
-END 
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryTraderPerformace] TO [bodbTGRSNet]
-GO
-
- 
+END

@@ -1,4 +1,5 @@
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader]
+﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_League_Trader    Script Date: 4/1/2016 8:22:16 AM ******/
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader]
   @FromDate DATE,
   @ToDate   DATE,
   @TeamId   SMALLINT,
@@ -89,6 +90,7 @@ BEGIN
                              FROM @BettypeList AS bl)
           AND tp.LeagueId = @LeagueId
           AND T.TeamId = @TeamId
+		  AND tp.IsLive  = 1
     GROUP BY tp.CustId;
 
   SELECT
@@ -112,7 +114,3 @@ BEGIN
 
   DROP TABLE #TraderDetail;
 END;
-
--- GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet]
--- GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet ]
--- GO

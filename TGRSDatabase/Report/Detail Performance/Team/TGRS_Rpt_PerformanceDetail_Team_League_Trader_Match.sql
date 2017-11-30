@@ -1,4 +1,4 @@
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader_Match]
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader_Match]
       @FROMDate DATE
     , @ToDate   DATE
     , @CustId   INT
@@ -51,7 +51,7 @@ AS
           AND P.LeagueId = @LeagueId
           AND P.Bettype IN (SELECT bettype
                             FROM @BettypeList)
+		  AND P.IsLive = 1
     GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate
     ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC
   END
-GO

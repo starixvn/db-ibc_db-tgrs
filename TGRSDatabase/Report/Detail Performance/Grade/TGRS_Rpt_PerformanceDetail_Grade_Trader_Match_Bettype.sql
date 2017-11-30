@@ -1,13 +1,4 @@
-USE [bodb_TGRS]
-GO
-
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader_Match_Bettype]    Script Date: 03/28/2016 16:22:36 ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
+﻿
 CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader_Match_Bettype]  	
 	@FromDate	DATE,
 	@ToDate		DATE,
@@ -90,6 +81,8 @@ BEGIN
 			AND tp.MatchId = @MatchId			
 			AND tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND tp.BetType IN (SELECT bettype FROM @BettypeList)
+			AND tp.IsLive = 1
+			AND TN.[Disabled] = 0
 	GROUP BY	tp.BetType, TN.TypeName		
 
 	SELECT	bd.BetType
@@ -112,6 +105,3 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader_Match_Bettype] TO [bodbTGRSNet ]
 GO
 */
-
-GO
-

@@ -81,6 +81,7 @@ BEGIN
 			AND tp.MatchId = @MatchId			
 			AND tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND tp.BetType IN (SELECT bettype FROM @BettypeList)
+			AND tp.IsLive = 1
 	GROUP BY	tp.BetType, TN.TypeName		
 
 	SELECT	bd.BetType

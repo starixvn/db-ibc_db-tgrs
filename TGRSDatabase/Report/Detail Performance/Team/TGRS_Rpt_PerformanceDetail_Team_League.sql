@@ -1,4 +1,5 @@
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League]
+﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_League    Script Date: 4/1/2016 8:22:16 AM ******/
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League]
   @FromDate DATE,
   @ToDate   DATE,
   @TeamId   SMALLINT,
@@ -40,11 +41,8 @@ BEGIN
                                           FROM strSplit_Key(@Bettypes, ',')))
         AND P.EventDate BETWEEN @FromDate AND @ToDate
         AND T.TeamId = @TeamId
+		AND P.IsLive = 1
   GROUP BY P.LeagueId, L.LeagueName
   ORDER BY Margin DESC, LeagueName ASC
 
 END
-
--- GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet]
--- GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Team_League] TO [bodbTGRSNet ]
--- GO

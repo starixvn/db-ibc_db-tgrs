@@ -1,13 +1,4 @@
-USE [bodb_TGRS]
-GO
-
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League]    Script Date: 03/28/2016 16:22:49 ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
+﻿
 CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League]  	
 	@FromDate		DATE,
 	@ToDate			DATE,
@@ -53,7 +44,8 @@ BEGIN
 	INNER JOIN dbo.Trader t WITH (NOLOCK) ON P.CustId = t.CustId
 	WHERE	P.Bettype IN (SELECT bettype FROM @BettypeList)
 			AND t.Grade = @Grade
-			AND P.EventDate BETWEEN @FromDate AND @ToDate						
+			AND P.EventDate BETWEEN @FromDate AND @ToDate	
+			AND P.IsLive = 1
 	GROUP BY P.LeagueId, L.LeagueName 	
 	ORDER BY Margin DESC, LeagueName ASC
 END 
@@ -62,5 +54,3 @@ END
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League] TO [bodbTGRSNet]
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League] TO [bodbTGRSNet ]
 */
-GO
-

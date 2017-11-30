@@ -1,9 +1,9 @@
 ﻿
 
-ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
-	@ReportType	 	TINYINT = 2,
-	@FromDate	 	DATE,
-	@ToDate		 	DATE,
+CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
+	@ReportType	 TINYINT = 2,
+	@FromDate	 DATE,
+	@ToDate		 DATE,
 	@ViewPermission SMALLINT
 AS    
 /*  
@@ -45,6 +45,8 @@ BEGIN
 					@ViewPermission = 0
 					OR b.[BettypeGroup] = @ViewPermission
 				)
+			AND tp.IsLive = 1
+			AND b.[Disabled] = 0
 	
 	IF @ReportType	= 2  ---by month 
 	BEGIN 
@@ -60,6 +62,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
+				
 	END
 	ELSE---- by date
 	BEGIN 
@@ -73,10 +76,6 @@ BEGIN
 				AND (
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
-					)		
+					)
 	END
-END 
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryGeneralInfo] TO [bodbTGRSNet]
-GO
-
+END

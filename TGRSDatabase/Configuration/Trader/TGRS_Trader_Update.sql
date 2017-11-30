@@ -1,4 +1,5 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Trader_Update]
+﻿/****** Object:  Stored Procedure dbo.TGRS_Trader_Update    Script Date: 3/30/2016 8:57:07 AM ******/
+CREATE PROCEDURE [dbo].[TGRS_Trader_Update]
 	@CustId			INT,	
 	@NewTeamId		SMALLINT = NULL,
 	@NewGrade		SMALLINT = NULL,
@@ -6,7 +7,7 @@
 	@NewGradeEffectiveDate	DATE = NULL,
 	@NewShift INT = NULL,
 	@NewShiftEffectiveDate DATE = NULL,
-	@NewRemark NVARCHAR(4000),
+	@NewRemark NVARCHAR(4000) = NULL,
 	@UserId			INT,
 	@ErrCode		INT = 0 OUTPUT,
 	@ErrMsg			NVARCHAR(200) = '' OUTPUT
@@ -102,7 +103,7 @@ BEGIN
 			END
 		END 
 
-	IF @IsTeamUpdate = 0 AND @IsGradeUpdate = 0 AND @IsShiftUpdate = 0
+	IF @IsTeamUpdate = 0 AND @IsGradeUpdate = 0 AND @IsShiftUpdate = 0 AND @NewRemark IS NULL
 	BEGIN 
 		SELECT @ErrCode = 311,
 			   @ErrMsg = 'There is no change.'
@@ -531,11 +532,3 @@ BEGIN
 			@OldData	= @LogTraderOldData
 
 END
-
-/*
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Trader_Update] TO [bodbTGRSNet]
-GO
-GRANT VIEW DEFINITION ON [dbo].[TGRS_Trader_Update] TO [bodbTGRSNet]
-GO
-*/

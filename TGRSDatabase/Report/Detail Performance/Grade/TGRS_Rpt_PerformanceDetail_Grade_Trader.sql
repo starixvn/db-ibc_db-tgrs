@@ -1,13 +1,4 @@
-USE [bodb_TGRS]
-GO
-
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader]    Script Date: 03/28/2016 16:22:19 ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
+﻿
 
 CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader]
 	@FromDate		DATE,
@@ -88,6 +79,7 @@ BEGIN
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.BetType FROM @BettypeList AS bl)
 		AND t.Grade = @Grade
+		AND tp.IsLive = 1
 	GROUP BY	tp.CustId;
 	
 	SELECT	  td.CustID
@@ -116,6 +108,3 @@ END;
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader] TO [bodbTGRSNet]
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader] TO [bodbTGRSNet ]
 */
-
-GO
-
