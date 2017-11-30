@@ -2,10 +2,11 @@ USE [bodb_TGRS]
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderGeneralInfo]
-	@TraderId INT,
-	@ReportType TINYINT = 2,
-	@FromDate DATETIME,
-	@ToDate DATETIME
+	@TraderId 		INT,
+	@ReportType 	TINYINT = 2,
+	@FromDate 		DATETIME,
+	@ToDate 		DATETIME,
+	@ViewPermission SMALLINT
 AS
 /*
 	Creator: Percy
@@ -14,12 +15,15 @@ AS
 	DB: DBTGRS.bodb_TGRS
 
 	Revisions:
-
+		- 20171024@Simon: Add ViewPermission param
 	Param's Explanation:
 		@ReportType:
 			1: by date
 			2: by month
-
+			
+		@ViewPermission = 0: all bet types
+				 = 1: major bet types
+				 = 2: PHAIO bet types
 	Exam:
 */
 BEGIN
@@ -27,14 +31,20 @@ BEGIN
 	IF @ReportType = 1 -- by date
 	BEGIN
 		SELECT
-			ISNULL(SUM(Stake), 0) AS Turnover,
-			ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0) AS WinLost,
-			CASE WHEN ISNULL(SUM(Stake), 0) <> 0 THEN (ISNULL(SUM(WinLost), 0) - ISNULL(SUM(Comm), 0))* 100/SUM(Stake) ELSE NULL END AS Margin,
-			ISNULL(COUNT(DISTINCT MatchID), 0) AS MatchCount
-		FROM dbo.TraderPerformance (NOLOCK)
+			ISNULL(SUM(P.Stake), 0) AS Turnover,
+			ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLost,
+			CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0))* 100/SUM(P.Stake) ELSE NULL END AS Margin,
+			ISNULL(COUNT(DISTINCT P.MatchID), 0) AS MatchCount
+		FROM 
+			dbo.TraderPerformance P WITH(NOLOCK)
+			INNER JOIN Bettype bt WITH(NOLOCK) ON P.Bettype = bt.Bettype
 		WHERE
 			CustId = @TraderId
 			AND EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR bt.BettypeGroup = @ViewPermission
+				)
 	END
 	ELSE -- by month
 	BEGIN
@@ -47,6 +57,10 @@ BEGIN
 		WHERE
 			CustId = @TraderId
 			AND EventDate BETWEEN @FromDate AND @ToDate
+			AND (
+					@ViewPermission = 0
+					OR BettypeGroup = @ViewPermission
+				)
 	END
 END
 GO

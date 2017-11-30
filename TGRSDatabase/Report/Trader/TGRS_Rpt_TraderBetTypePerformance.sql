@@ -2,9 +2,10 @@ USE [bodb_TGRS]
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderBettypePerformance]
-	@TraderId	INT,
-	@FromDate	DATETIME,
-	@ToDate		DATETIME
+	@TraderId		INT,
+	@FromDate		DATETIME,
+	@ToDate			DATETIME,
+	@ViewPermission SMALLINT
 AS
 /*
 	Creator: Percy
@@ -14,9 +15,11 @@ AS
 
 	Revisions:
 		- 20160531@Percy: Return new field betcount [RedmineID: #58484]
-
+		- 20171024@Simon: Add ViewPermission param
 	Param's Explanation:
-
+		@ViewPermission = 0: all bet types
+		 = 1: major bet types
+		 = 2: PHAIO bet types
 	Exam:
 */
 BEGIN
@@ -34,6 +37,10 @@ BEGIN
 	WHERE
 		CustId = @TraderId
 		AND EventDate BETWEEN @FromDate AND @ToDate
+		AND (
+				@ViewPermission = 0
+				OR b.BettypeGroup = @ViewPermission
+			)
 	GROUP BY b.BetType, b.TypeName, b.OrderId
 	ORDER BY Margin DESC, b.OrderId
 END
