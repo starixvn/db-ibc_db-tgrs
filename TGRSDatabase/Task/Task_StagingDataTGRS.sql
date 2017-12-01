@@ -1,5 +1,9 @@
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" viewers="" isFunction="0" isNested="0"></info>*/
 USE [bodb_TGRS]
+GO
+/****** Object:  StoredProcedure [dbo].[Task_StagingDataTGRS]    Script Date: 12/1/2017 4:16:39 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 ALTER PROCEDURE	[dbo].[Task_StagingDataTGRS]
 						@Debug				BIT = 0
@@ -25,6 +29,7 @@ AS
 		- 20170914@Billy:	Format code and tune performance for Task Staging - [Redmine: #81465]
 		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]
 		- 20170922@Long:	Support more bettypes for Soccer PH AiO - [Redmine: #83621]
+		- 20171129@Long:	Support Non-Live tickets - [Redmine: #86289]
    		
 	Param's Explanation:
 		
@@ -153,6 +158,7 @@ BEGIN;
 					,	LeagueId			INT
 					,	HomeId				INT
 					,	AwayId				INT
+					,	LiveIndicator		BIT
 					);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransBKByBatchIdx ON #tmpFilteredBettransBKByBatch (
@@ -188,6 +194,7 @@ BEGIN;
 					,	ExtraPT				DECIMAL(9, 8)
 					,	TPositionTaking		SMALLMONEY
 					,	VirtualRate			FLOAT
+					,	LiveIndicator		BIT
 					);
 		
 	TRUNCATE TABLE	dbo.Staging_TraderPerformance;
@@ -237,7 +244,7 @@ BEGIN;
 			,	'Matchcode'		= m.Matchcode
 			,	'TeamId'		= td_T.TeamId
 			,	'Grade'			= td_G.Grade
-		FROM		DB06.bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
+		FROM		DBARC.bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
 		LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK)
@@ -299,7 +306,7 @@ BEGIN;
 					@WinLostDate = d.winlostdate
 			FROM	#winlostdate AS d;
 			
-			INSERT INTO	#tmpFilteredBettransBKByBatch (transid, matchid, winlostdate, bettype, modds, virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId)
+			INSERT INTO	#tmpFilteredBettransBKByBatch (transid, matchid, winlostdate, bettype, modds, virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, LiveIndicator)
 			SELECT	'transid'			= b.transid
 				,	'matchid'			= b.matchid
 				,	'winlostdate'		= b.winlostdate
@@ -327,6 +334,7 @@ BEGIN;
 				,	'LeagueId'			= m.LeagueId
 				,	'HomeId'			= m.HomeId
 				,	'AwayId'			= m.AwayId
+				,	'LiveIndicator'		= b.liveindicator
 			FROM		bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.match14 AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
@@ -348,7 +356,6 @@ BEGIN;
 			WHERE	b.winlostdate = @winlostdate
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
-				AND	b.LiveIndicator = 1
 				AND	m.sporttype = 1
 				AND	m.MatchCode NOT LIKE '%hedge%';
 					
@@ -361,7 +368,7 @@ BEGIN;
 				RAISERROR('	Insert #tmpFilteredBettransBKByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			INSERT INTO	#tmpStagingTraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate)
+			INSERT INTO	#tmpStagingTraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator)
 			SELECT	'CustId'			= ISNULL(t.Custid, @IdForUnassignedTrader)
 				,	'WorkShift'			= ISNULL(t.WorkShift, 1)
 				,	'MatchId'			= b.MatchId
@@ -383,6 +390,7 @@ BEGIN;
 				,	'ExtraPT'			= SUM(ISNULL(b.ExtraPT, 0))
 				,	'TPositionTaking'	= b.tpositiontaking
 				,	'VirtualRate'		= b.virtualrate
+				,	'LiveIndicator'		= b.LiveIndicator
 			FROM		#tmpFilteredBettransBKByBatch AS b WITH (NOLOCK)
 			LEFT JOIN	#tmpTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
@@ -467,6 +475,7 @@ BEGIN;
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.transid
+					,	b.LiveIndicator
 					;
 					
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -478,7 +487,7 @@ BEGIN;
 				-- Force the output to appear immediately --
 				RAISERROR('	Insert #tmpStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			INSERT INTO	dbo.Staging_TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, Comm, BetCount, Spread)
+			INSERT INTO	dbo.Staging_TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 			SELECT	'CustId'			= t.CustId
 				,	'WorkShift'			= t.WorkShift
 				,	'MatchId'			= t.MatchId
@@ -491,13 +500,14 @@ BEGIN;
 				,	'TeamId'			= t.TeamId
 				,	'Grade'				= t.Grade
 				,	'BetType'			= t.BetType
+				,	'IsLive'			= t.LiveIndicator
 				,	'Stake'				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 				,	'WinLost'			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 				,	'Comm'				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
 				,	'BetCount'			= SUM(t.BetCount)
 				,	'Spread'			= MAX(t.Spread)
 			FROM	#tmpStagingTraderPerformance AS t
-			GROUP BY t.CustId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType;
+			GROUP BY t.CustId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -636,7 +646,7 @@ BEGIN;
 		FROM	#winlostdate AS d;
 			
 		TRUNCATE TABLE	#tmpFilteredBettransBKByBatch;
-		INSERT INTO	#tmpFilteredBettransBKByBatch (transid, matchid, winlostdate, bettype, modds, virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId)
+		INSERT INTO	#tmpFilteredBettransBKByBatch (transid, matchid, winlostdate, bettype, modds, virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, LiveIndicator)
 		SELECT	'transid'			= b.transid
 			,	'matchid'			= b.matchid
 			,	'winlostdate'		= b.winlostdate
@@ -664,6 +674,7 @@ BEGIN;
 			,	'LeagueId'			= m.LeagueId
 			,	'HomeId'			= m.HomeId
 			,	'AwayId'			= m.AwayId
+			,	'LiveIndicator'		= b.liveindicator
 		FROM		bodb02.dbo.bettrans AS b WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK)
 				ON	b.matchid = m.matchid
@@ -685,7 +696,6 @@ BEGIN;
 		WHERE	b.winlostdate = @winlostdate
 			AND	b.statusID IN (112, 113)
 			AND	b.Currency NOT IN (20, 27, 28)
-			AND	b.LiveIndicator = 1
 			AND	m.sporttype = 1
 			AND	m.MatchCode NOT LIKE '%hedge%';
 			
@@ -699,7 +709,7 @@ BEGIN;
 			RAISERROR('	Insert #tmpFilteredBettransBKByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 			
-		INSERT INTO	#tmpStagingTraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate)
+		INSERT INTO	#tmpStagingTraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator)
 		SELECT	'CustId'			= ISNULL(t.Custid, @IdForUnassignedTrader)
 			,	'WorkShift'			= ISNULL(t.WorkShift, 1)
 			,	'MatchId'			= b.MatchId
@@ -721,6 +731,7 @@ BEGIN;
 			,	'ExtraPT'			= SUM(ISNULL(b.ExtraPT, 0))
 			,	'TPositionTaking'	= b.tpositiontaking
 			,	'VirtualRate'		= b.virtualrate
+			,	'LiveIndicator'		= b.LiveIndicator
 		FROM		#tmpFilteredBettransBKByBatch AS b WITH (NOLOCK)
 		LEFT JOIN	#tmpTrader AS t WITH (NOLOCK)
 				ON	b.winlostdate = t.EventDate
@@ -805,6 +816,7 @@ BEGIN;
 				,	b.tpositiontaking
 				,	b.virtualrate
 				,	b.transid
+				,	b.LiveIndicator
 				;
 
 		SELECT	@RowCount	= @@ROWCOUNT
@@ -817,7 +829,7 @@ BEGIN;
 			RAISERROR('	Insert #tmpStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		INSERT INTO	dbo.Staging_TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, Comm, BetCount, Spread)
+		INSERT INTO	dbo.Staging_TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 		SELECT	'CustId'			= t.CustId
 			,	'WorkShift'			= t.WorkShift
 			,	'MatchId'			= t.MatchId
@@ -830,13 +842,14 @@ BEGIN;
 			,	'TeamId'			= t.TeamId
 			,	'Grade'				= t.Grade
 			,	'BetType'			= t.BetType
+			,	'IsLive'			= t.LiveIndicator
 			,	'Stake'				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 			,	'WinLost'			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 			,	'Comm'				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
 			,	'BetCount'			= SUM(t.BetCount)
 			,	'Spread'			= MAX(t.Spread)
 		FROM	#tmpStagingTraderPerformance AS t
-		GROUP BY t.CustId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType;
+		GROUP BY t.CustId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
 				
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -866,215 +879,4 @@ BEGIN;
 		TRUNCATE TABLE #tmpStagingTraderPerformance;
 		TRUNCATE TABLE #tmpFilteredBettransBKByBatch;
 	END;
-
-	--IF	OBJECT_ID('tempdb..#tmpTrader') IS NOT NULL
-	--BEGIN;
-	--	DROP TABLE	#tmpTrader;
-	--END;
-
-	--IF	OBJECT_ID('tempdb..#tmpTraderPerformance') IS NOT NULL
-	--BEGIN;
-	--	DROP TABLE	#tmpTraderPerformance;
-	--END;
-
-	--CREATE TABLE	#tmpTraderPerformance (
-	--					CustId			INT			NULL
-	--				,	MatchId			INT			NULL
-	--				,	WorkShift		TINYINT		NULL
-	--				,	EventDate		DATE		NULL
-	--				,	SportType		SMALLINT	NULL
-	--				,	BetType			SMALLINT	NULL
-	--				,	LeagueId		INT			NULL
-	--				,	TeamId			SMALLINT	NULL
-	--				,	Grade			TINYINT		NULL
-	--				,	Stake			MONEY		NULL
-	--				,	WinLost			MONEY		NULL
-	--				,	Comm			MONEY		NULL
-	--				,	BetCount		INT			NULL
-	--				,	HomeId			INT			NULL
-	--				,	AwayId			INT			NULL
-	--				);
-
-	--INSERT INTO #tmpTraderPerformance (CustId, EventDate, SportType, LeagueId, TeamId, Grade, BetType, WorkShift, MatchId, Stake, WinLost, Comm, BetCount)
-	--SELECT	'CustId'		= CustId
-	--	,	'EventDate'		= EventDate
-	--	,	'SportType'		= SportType
-	--	,	'LeagueId'		= LeagueId
-	--	,	'TeamId'		= TeamId
-	--	,	'Grade'			= Grade
-	--	,	'BetType'		= BetType
-	--	,	'WorkShift'		= WorkShift
-	--	,	'MatchId'		= COUNT(MatchId)
-	--	,	'Stake'			= FLOOR(SUM(Stake))
-	--	,	'WinLost'		= FLOOR(SUM(WinLost))
-	--	,	'Comm'			= FLOOR(SUM(Comm))
-	--	,	'BetCount'		= FLOOR(SUM(BetCount))
-	--FROM	dbo.TraderPerformance WITH (NOLOCK)
-	--WHERE	EventDate BETWEEN @BalanceUpDay AND @Yesterday
-	--GROUP BY CustId, EventDate, SportType, LeagueId, TeamId, Grade, BetType, WorkShift
-
-	--SELECT	@RowCount = @@ROWCOUNT;
-
-	--IF	@Debug = 1
-	--BEGIN;
-	--	SELECT	'Step'		= 'INSERT #TraderPerformance' 
-	--		,	'Duration'	= DATEDIFF(millisecond, @Begin, GETDATE()) 
-	--		,	'RowCount'	= @RowCount 
-	--		;
-
-	--	-- Force the output to appear immediately --
-	--	RAISERROR('', 0, 0) WITH NOWAIT;
-	--END;
-
-	--IF	OBJECT_ID('tempdb..#tmpEventDate') IS NOT NULL
-	--BEGIN;
-	--	DROP TABLE	#tmpEventDate;
-	--END;
-
-	--CREATE TABLE	#tmpEventDate (
-	--					EventDate	DATE
-	--				);
-
-	--INSERT INTO #tmpEventDate (EventDate)
-	--SELECT	EventDate
-	--FROM	(
-	--	SELECT	'CustId'	= CustId
-	--		,	'EventDate'	= EventDate
-	--		,	'SportType'	= SportType
-	--		,	'LeagueId'	= LeagueId
-	--		,	'TeamId'	= TeamId
-	--		,	'Grade'		= Grade
-	--		,	'BetType'	= BetType
-	--		,	'WorkShift'	= WorkShift
-	--		,	'MatchId'	= COUNT(MatchId)
-	--		,	'Stake'		= FLOOR(SUM(Stake))
-	--		,	'WinLost'	= FLOOR(SUM(WinLost))
-	--		,	'Comm'		= FLOOR(SUM(Comm))
-	--		,	'BetCount'	= FLOOR(SUM(BetCount))
-	--	FROM	dbo.Staging_TraderPerformance WITH (NOLOCK)
-	--	GROUP BY CustId, EventDate, SportType, LeagueId, TeamId, Grade, BetType, WorkShift
-
-	--	EXCEPT
-
-	--	SELECT	'CustId'	= CustId
-	--		,	'EventDate'	= EventDate
-	--		,	'SportType'	= SportType
-	--		,	'LeagueId'	= LeagueId
-	--		,	'TeamId'	= TeamId
-	--		,	'Grade'		= Grade
-	--		,	'BetType'	= BetType
-	--		,	'WorkShift'	= WorkShift
-	--		,	'MatchId'	= MatchId
-	--		,	'Stake'		= Stake
-	--		,	'WinLost'	= WinLost
-	--		,	'Comm'		= Comm
-	--		,	'BetCount'	= BetCount
-	--	FROM	#tmpTraderPerformance
-	--) tmp
-	--GROUP BY EventDate;
-
-	--SELECT	@RowCount = @@ROWCOUNT;
-
-	--IF	@Debug = 1
-	--BEGIN;
-	--	SELECT	'Step'		= 'INSERT EventDate FROM Staging_TraderPerformance EXCEPT #tmpTraderPerformance'
-	--		,	'Duration'	= DATEDIFF(millisecond, @Begin, GETDATE()) 
-	--		,	'RowCount'	= @RowCount
-	--		;
-
-	--	-- Force the output to appear immediately --
-	--	RAISERROR('', 0, 0) WITH NOWAIT;
-	--END;
-
-	--INSERT INTO	#tmpEventDate (EventDate)
-	--SELECT	EventDate
-	--FROM	(
-	--	SELECT	'CustId'	= CustId
-	--		,	'EventDate'	= EventDate
-	--		,	'SportType'	= SportType
-	--		,	'LeagueId'	= LeagueId
-	--		,	'TeamId'	= TeamId
-	--		,	'Grade'		= Grade
-	--		,	'BetType'	= BetType
-	--		,	'WorkShift'	= WorkShift
-	--		,	'MatchId'	= MatchId
-	--		,	'Stake'		= Stake
-	--		,	'WinLost'	= WinLost
-	--		,	'Comm'		= Comm
-	--		,	'BetCount'	= BetCount
-	--	FROM	#tmpTraderPerformance
-		
-	--	EXCEPT
-		
-	--	SELECT CustId
-	--		,EventDate
-	--		,SportType
-	--		,LeagueId
-	--		,TeamId
-	--		,Grade
-	--		,BetType
-	--		,WorkShift
-	--		,COUNT(MatchId) MatchId
-	--		,FLOOR(SUM(Stake)) Stake
-	--		,FLOOR(SUM(WinLost)) WinLost
-	--		,FLOOR(SUM(Comm)) Comm
-	--		,FLOOR(SUM(BetCount)) BetCount
-	--	FROM dbo.Staging_TraderPerformance WITH (NOLOCK)
-	--	GROUP BY CustId
-	--		,EventDate
-	--		,SportType
-	--		,LeagueId
-	--		,TeamId
-	--		,Grade
-	--		,BetType
-	--		,WorkShift
-	--	) tmp
-	--GROUP BY EventDate
-	--EXCEPT
-	--SELECT	EventDate
-	--FROM	#tmpEventDate;
-
-	--SELECT	@RowCount = @@ROWCOUNT
-	
-	--IF	@Debug = 1
-	--BEGIN;
-	--	SELECT	'Step'		= 'INSERT EventDate FROM #tmpTraderPerformance EXCEPT Staging_TraderPerformance'
-	--		,	'Duration'	= DATEDIFF(millisecond, @Begin, GETDATE()) 
-	--		,	'RowCount'	= @RowCount
-	--		;
-
-	--	-- Force the output to appear immediately --
-	--	RAISERROR('', 0, 0) WITH NOWAIT;
-	--END;
-
-	--IF	OBJECT_ID('tempdb..#tmpTraderPerformance') IS NOT NULL
-	--BEGIN;
-	--	DROP TABLE	#tmpTraderPerformance;
-	--END;
-
-	--DELETE
-	--FROM	dbo.Staging_TraderPerformance
-	--WHERE	EventDate NOT IN (SELECT EventDate FROM #tmpEventDate WHERE EventDate IS NOT NULL)
-
-	--SELECT	@RowCount = @@ROWCOUNT;
-
-	--IF	@Debug = 1
-	--BEGIN;
-	--	SELECT	'Step'		= 'DELETE Staging_TraderPerformance'
-	--		,	'Duration'	= DATEDIFF(millisecond, @Begin, GETDATE()) 
-	--		,	'RowCount'	= @RowCount
-	--		;
-
-	--	SELECT	*
-	--	FROM	#tmpEventDate
-
-	--	-- Force the output to appear immediately --
-	--	RAISERROR('', 0, 0) WITH NOWAIT;
-	--END;
-
-	--IF	OBJECT_ID('tempdb..#tmpEventDate') IS NOT NULL
-	--BEGIN;
-	--	DROP TABLE	#tmpEventDate;
-	--END;
 END;
-GO
