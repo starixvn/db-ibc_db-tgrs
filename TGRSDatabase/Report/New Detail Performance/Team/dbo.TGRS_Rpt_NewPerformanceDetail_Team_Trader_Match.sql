@@ -1,0 +1,61 @@
+﻿
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Team_Trader_Match    Script Date: 1/17/2017 11:20:01 AM ******/
+
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_Trader_Match    Script Date: 4/1/2016 8:22:16 AM ******/
+CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Team_Trader_Match] 
+	 @FROMDate DATE
+	,@ToDate DATE
+	,@TeamId SMALLINT
+	,@CustId INT
+AS
+/*
+  Created:		20170111@Aaron
+  TASk:			New Detail report Trader Performance - Detail Match
+  DB:			DBTGRS.bodb_TGRS
+  Original:
+
+  Revisions:
+		- 20170316@Long: apply TO's Leftover
+		
+  Param's ExplanatiON:
+
+  Example:
+    EXEC [TGRS_Rpt_NewPerformanceDetail_Team_Trader_Match] @FROMDate = '2014-01-01', @ToDate= '2014-12-30', @TeamId = 5, @CustID = 1530768
+
+*/
+BEGIN
+	SET NOCOUNT ON;
+
+	SELECT P.MatchId
+		,P.LeagueId
+		,P.HomeId
+		,P.AwayId
+		,P.EventDate
+		,ISNULL(SUM(P.StakeMYR), 0) AS Turnover
+		,ISNULL(SUM(P.StakeMYRJuice), 0) AS TurnoverJuice
+		,ISNULL(SUM(P.Juice), 0) AS Juice
+		,ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss
+		,ISNULL(SUM(BetCount), 0) AS BetCount
+	FROM dbo.TraderPerformance P WITH (NOLOCK)
+	INNER JOIN dbo.Trader T WITH (NOLOCK) ON T.CustId = P.CustId
+	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
+	WHERE P.EventDate BETWEEN @FROMDate
+			AND @ToDate
+		AND P.CustId = @CustId
+		AND T.TeamId = @TeamId
+		AND TN.MainDBBetType IN (1,3,7,8)
+		AND TN.[Disabled] = 0
+		AND P.IsLive = 1
+	GROUP BY P.MatchId
+		,P.LeagueId
+		,P.HomeId
+		,P.AwayId
+		,P.EventDate
+END
+/*
+GO
+GRANT EXECUTE ON [dbo].[TGRS_Rpt_NewPerformanceDetail_Team_Trader_Match] TO [bodbTGRSNet]
+GO
+GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_Team_Trader_Match] TO [bodbTGRSNet ]
+GO
+*/
