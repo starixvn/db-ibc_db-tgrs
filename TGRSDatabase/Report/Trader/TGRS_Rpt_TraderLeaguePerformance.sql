@@ -1,7 +1,4 @@
-USE [bodb_TGRS]
-GO
-
-ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance]
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance]
 	@TraderId		INT,
 	@FromDate		DATETIME,
 	@ToDate			DATETIME,
@@ -43,6 +40,8 @@ BEGIN
 				@ViewPermission = 0
 				OR bt.BettypeGroup = @ViewPermission
 			)
+		AND t.IsLive = 1
+		AND bt.[Disabled] = 0
 	GROUP BY l.leagueid, l.leaguename
 	ORDER BY Margin DESC
 END

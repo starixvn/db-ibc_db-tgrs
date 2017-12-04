@@ -1,7 +1,5 @@
-USE [bodb_TGRS]
-GO
-
-ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance_Detail]
+﻿
+CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance_Detail]
 	@TraderId	INT,
 	@LeagueId	INT,
 	@FromDate	DATETIME,
@@ -33,10 +31,7 @@ BEGIN
 		CustId = @TraderId
 		AND LeagueId = @LeagueId
 		AND EventDate BETWEEN @FromDate AND @ToDate
+		AND IsLive = 1
 	GROUP BY MatchId, HomeId, AwayId, EventDate
 	ORDER BY Margin DESC
 END
-GO
-
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderLeaguePerformance_Detail] TO [bodbTGRSNet]
-GO

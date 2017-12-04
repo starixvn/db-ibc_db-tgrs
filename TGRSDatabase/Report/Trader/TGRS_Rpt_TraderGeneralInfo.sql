@@ -45,6 +45,8 @@ BEGIN
 					@ViewPermission = 0
 					OR bt.BettypeGroup = @ViewPermission
 				)
+			AND P.IsLive = 1
+			AND bt.[Disabled] = 0
 	END
 	ELSE -- by month
 	BEGIN

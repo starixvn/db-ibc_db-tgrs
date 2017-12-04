@@ -1,7 +1,4 @@
-USE [bodb_TGRS]
-GO
-
-ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
 	@TraderId 		INT,
 	@ReportType 	TINYINT = 2,
 	@FromDate 		DATETIME,
@@ -53,8 +50,9 @@ SET NOCOUNT ON
 			RIGHT JOIN @Date d ON t.EventDate = d.WLDate AND CustId = @TraderId
 			INNER JOIN Bettype bt WITH(NOLOCK) ON t.Bettype = bt.Bettype
 		WHERE
-			@ViewPermission = 0
-			OR bt.BettypeGroup = @ViewPermission
+			(@ViewPermission = 0 OR bt.BettypeGroup = @ViewPermission)
+			AND t.IsLive = 1
+			AND bt.[Disabled] = 0
 		GROUP BY d.WLDate
 	END
 	ELSE -- Report by date - month, month - month
@@ -107,6 +105,8 @@ SET NOCOUNT ON
 								@ViewPermission = 0
 								OR bt.BettypeGroup = @ViewPermission
 							)
+						AND p.IsLive = 1
+						AND bt.[Disabled] = 0
 					GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0)
 				) AS s
 				RIGHT JOIN @Date d ON s.EventDate = d.WLDate
