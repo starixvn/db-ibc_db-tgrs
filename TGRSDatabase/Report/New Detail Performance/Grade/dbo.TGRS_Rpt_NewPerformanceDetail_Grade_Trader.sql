@@ -15,6 +15,7 @@ AS
 	 
 	Revisions:
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 	  			
 	Param's Explanation:  	
 	
@@ -37,7 +38,7 @@ BEGIN
 		,WinLossScore MONEY
 		,BetCount INT
 		,SumCategory MONEY
-		);
+	);
 
 	INSERT INTO #TraderDetail (
 		CustID
@@ -50,7 +51,7 @@ BEGIN
 		,WinLossScore
 		,BetCount
 		,SumCategory
-		)
+	)
 	SELECT tp.CustId AS CustId
 		,COUNT(DISTINCT tp.LeagueId) AS LeagueCount
 		,COUNT(DISTINCT tp.MatchId) AS MatchCount
@@ -66,12 +67,12 @@ BEGIN
 		,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 		,ISNULL(SUM(tp.StakeMYR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON tp.CustId = t.CustId
-	LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
-		AND tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
-		AND s.Rate = tm.Rate
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON tp.CustId = t.CustId
+		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
+			AND tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
+			AND s.Rate = tm.Rate
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
 	WHERE tp.EventDate BETWEEN @FromDate
 			AND @ToDate
 		AND t.Grade = @Grade
@@ -98,8 +99,8 @@ BEGIN
 			ELSE td.WinLossScore * 100 / td.SumCategory
 			END AS Score
 	FROM #TraderDetail AS td
-	INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = td.CustID
-	INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId
+		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = td.CustID
+		INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId;
 
 	DROP TABLE #TraderDetail;
 END;

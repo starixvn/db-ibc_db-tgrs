@@ -17,6 +17,8 @@ AS
 		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
 		- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
 		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 	

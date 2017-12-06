@@ -16,10 +16,13 @@ AS
 	DB:			DBTGRS.bodb_TGRS
 	Original:
 	  			
+	Revision:
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 
-				exec TGRS_Rpt_NewPerformanceDetail_Bettype_League_Trader_Match @Bettype=3,@LeagueId=3162,@FromDate='2016-03-02 00:00:00',@ToDate='2016-03-16 00:00:00',@CustId=2438
+		exec TGRS_Rpt_NewPerformanceDetail_Bettype_League_Trader_Match @Bettype=3,@LeagueId=3162,@FromDate='2016-03-02 00:00:00',@ToDate='2016-03-16 00:00:00',@CustId=2438
   
 */
 BEGIN
@@ -37,7 +40,7 @@ BEGIN
 		,WinLossScore MONEY
 		,BetCount INT
 		,SumCategory MONEY
-		);
+	);
 
 	INSERT INTO #TraderDetail (
 		MatchId
@@ -51,7 +54,7 @@ BEGIN
 		,TurnoverJuice
 		,Juice
 		,SumCategory
-		)
+	)
 	SELECT tp.MatchId
 		,tp.HomeId
 		,tp.AwayId
@@ -98,7 +101,7 @@ BEGIN
 				THEN NULL
 			ELSE td.WinLossScore * 100 / td.SumCategory
 			END AS Score
-	FROM #TraderDetail AS td
+	FROM #TraderDetail AS td;
 
 	DROP TABLE #TraderDetail;
 END;

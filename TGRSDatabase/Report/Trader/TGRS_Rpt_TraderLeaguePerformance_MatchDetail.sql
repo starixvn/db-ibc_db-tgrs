@@ -1,5 +1,4 @@
-﻿
-CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance_MatchDetail]
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance_MatchDetail]
 	@TraderId	INT,
 	@MatchId	INT,
 	@EventDate	DATETIME
@@ -11,13 +10,15 @@ AS
 	DB: DBTGRS.bodb_TGRS
 
 	Revisions:
-		20171204@Simon: Add is live + active filter
+		- 20171204@Simon: Add is live + active filter
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:
 
 	Exam:
 */
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 	
 	SELECT
 		b.Bettype, b.TypeName,
@@ -35,5 +36,5 @@ BEGIN
 		AND t.IsLive = 1
 		AND b.[Disabled] = 0
 	GROUP BY b.Bettype, b.TypeName
-	ORDER BY Margin DESC
-END
+	ORDER BY Margin DESC;
+END;

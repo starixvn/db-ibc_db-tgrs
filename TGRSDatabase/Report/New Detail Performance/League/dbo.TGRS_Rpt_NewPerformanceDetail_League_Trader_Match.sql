@@ -15,10 +15,13 @@ AS
 	DB:			DBTGRS.bodb_TGRS
 	Original:      
 	  			
+	Revision:
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 
-				EXEC [TGRS_Rpt_PerformanceDetail_League_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @LeagueId = 6394, @Bettypes = '0', @CustID = 1530768
+		EXEC [TGRS_Rpt_PerformanceDetail_League_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @LeagueId = 6394, @Bettypes = '0', @CustID = 1530768
   
 */
 BEGIN

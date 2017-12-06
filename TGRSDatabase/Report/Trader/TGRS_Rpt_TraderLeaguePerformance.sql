@@ -1,8 +1,8 @@
 ﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderLeaguePerformance]
-	@TraderId		INT,
-	@FromDate		DATETIME,
-	@ToDate			DATETIME,
-	@ViewPermission SMALLINT
+	@TraderId			INT,
+	@FromDate			DATETIME,
+	@ToDate				DATETIME,
+	@ViewPermission		SMALLINT
 AS
 /*
 	Creator: Percy
@@ -13,6 +13,8 @@ AS
 	Revisions:
 		- 20160531@Percy: Return new field matchcount, betcount [RedmineID: #58484]
 		- 20171024@Simon: Add ViewPermission param
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:
 		@ViewPermission = 0: all bet types
 				 = 1: major bet types
@@ -20,7 +22,7 @@ AS
 	Exam:
 */
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 
 	SELECT
 		COUNT(DISTINCT t.MatchId) AS MatchCount,
@@ -43,8 +45,8 @@ BEGIN
 		AND t.IsLive = 1
 		AND bt.[Disabled] = 0
 	GROUP BY l.leagueid, l.leaguename
-	ORDER BY Margin DESC
-END
+	ORDER BY Margin DESC;
+END;
 GO
 
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderLeaguePerformance] TO [bodbTGRSNet]

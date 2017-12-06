@@ -12,50 +12,52 @@ AS
  Original:  
   
  Revisions:      
-			20162103@Simon: restore orgirinal temp table code
-			20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+		- 20162103@Simon: restore orgirinal temp table code
+		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
  Param's Explanation:  	
 	
- Exam: 
-				
-	exec [TGRS_Rpt_PerformanceDetail_Trader_Match_Bettype] @FromDate='2016-02-29 00:00:00',@ToDate='2016-02-29 00:00:00',@CustId=14228019,@MatchId=16990574,@Bettypes='0' 
+ Exam: 				
+		EXEC [TGRS_Rpt_PerformanceDetail_Trader_Match_Bettype] @FromDate='2016-02-29 00:00:00',@ToDate='2016-02-29 00:00:00',@CustId=14228019,@MatchId=16990574,@Bettypes='0' 
 */  
  
 BEGIN 
-	 SET NOCOUNT ON
+	SET NOCOUNT ON;
 	   
-	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
-		IF @Bettypes <> '0'
-		 INSERT INTO @BettypeList
-		 SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
-		ELSE 
-		 INSERT INTO @BettypeList
-		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
+	DECLARE @BettypeList AS TABLE (bettype SMALLINT);
+
+	IF @Bettypes <> '0'
+		INSERT INTO @BettypeList
+		SELECT val 
+		FROM dbo.strSplit_Key(@Bettypes,',');
+	ELSE 
+		INSERT INTO @BettypeList
+		SELECT Bettype 
+		FROM dbo.Bettype WITH (NOLOCK);
 		 		 
 	CREATE TABLE #BettypeDetail (
-					BetType				SMALLINT
-				,	TypeName			NVARCHAR(100)
-				,	Turnover			MONEY
-				,	WinLoss				MONEY
-				,	WinLossScore		MONEY
-				,	BetCount			INT
-				,	Margin				MONEY
-				,	SumCategory			MONEY
-				);
-
+			BetType				SMALLINT
+		,	TypeName			NVARCHAR(100)
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	WinLossScore		MONEY
+		,	BetCount			INT
+		,	Margin				MONEY
+		,	SumCategory			MONEY
+	);
 	
 	INSERT INTO	#BettypeDetail (
-					BetType
-				,	TypeName				
-				,	Turnover
-				,	WinLoss
-				,	WinLossScore
-				,	BetCount
-				,	Margin
-				,	SumCategory
-				)		 
-	
-	 SELECT	tp.BetType
+			BetType
+		,	TypeName				
+		,	Turnover
+		,	WinLoss
+		,	WinLossScore
+		,	BetCount
+		,	Margin
+		,	SumCategory
+	)		 	
+	SELECT	tp.BetType
 		,	TN.TypeName		
 		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss		
@@ -68,21 +70,21 @@ BEGIN
 		,   ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
-			ON	t.CustId = tp.CustId
-	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
-			ON	tm.BetType = tp.BetType
-			AND	tm.WorkShift = tp.WorkShift	
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
-			ON	s.Spread = tp.Spread
-			AND	s.Rate = tm.Rate
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
+				ON	t.CustId = tp.CustId
+		LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+				ON	tm.BetType = tp.BetType
+				AND	tm.WorkShift = tp.WorkShift	
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
+				ON	s.Spread = tp.Spread
+				AND	s.Rate = tm.Rate
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
 	WHERE	tp.CustId = @CustId		
-			AND tp.MatchId = @MatchId			
-			AND tp.EventDate BETWEEN @FromDate AND @ToDate
-			AND tp.BetType IN (SELECT bettype FROM @BettypeList)
-			AND tp.IsLive = 1
-	GROUP BY	tp.BetType, TN.TypeName		
+		AND tp.MatchId = @MatchId			
+		AND tp.EventDate BETWEEN @FromDate AND @ToDate
+		AND tp.BetType IN (SELECT bettype FROM @BettypeList)
+		AND tp.IsLive = 1
+	GROUP BY	tp.BetType, TN.TypeName;
 
 	SELECT	bd.BetType
 		,	bd.TypeName		
@@ -92,7 +94,7 @@ BEGIN
 		,	bd.Margin
 		,	CASE WHEN bd.SumCategory = 0 THEN NULL ELSE bd.WinLossScore * 100 / bd.SumCategory END AS Score
 	FROM		#BettypeDetail AS bd		
-	ORDER BY	bd.Margin DESC
+	ORDER BY	bd.Margin DESC;
 
 	DROP TABLE #BettypeDetail;
-END
+END;

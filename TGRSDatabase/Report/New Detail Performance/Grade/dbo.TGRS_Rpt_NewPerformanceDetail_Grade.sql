@@ -13,6 +13,7 @@ AS
 	 
 	Revisions:
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 
 	Param's Explanation:  	
 	
@@ -28,7 +29,7 @@ BEGIN
 		CustID INT
 		,WinLoss MONEY
 		,SumCategory MONEY
-		);
+	);
 
 	DECLARE @Grade TABLE (
 		Grade TINYINT
@@ -41,22 +42,22 @@ BEGIN
 		,WinLoss MONEY
 		,BetCount INT
 		,Score MONEY
-		);
+	);
 
 	INSERT INTO #ScoreDetail (
 		CustID
 		,WinLoss
 		,SumCategory
-		)
+	)
 	SELECT tp.CustId
 		,ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0) AS WinLoss
 		,ISNULL(SUM(tp.StakeMYR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
-		AND tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
-		AND s.Rate = tm.Rate	
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		INNER JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
+			AND tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
+			AND s.Rate = tm.Rate	
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
@@ -132,7 +133,7 @@ BEGIN
 		,WinLoss
 		,BetCount
 		,Score
-	FROM @Grade g
+	FROM @Grade g;
 
 	DROP TABLE #ScoreDetail;
 END;

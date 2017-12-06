@@ -7,34 +7,34 @@
 	@ViewPermission SMALLINT
 AS    
 /*  
- Created:	20140520@Sophia
- Task :		Summary report - Top Trader performace
- DB:		DBTGRS.bodb_TGRS
- Original:  
+	 Created:	20140520@Sophia
+	 Task :		Summary report - Top Trader performace
+	 DB:		DBTGRS.bodb_TGRS
+	 Original:  
   
- Revisions:      
-   	- 20171024@Simon: Add ViewPermission param		
-	- 20171025@Long: Change the way to get MatchCount
+	 Revisions:      
+   		- 20171024@Simon: Add ViewPermission param		
+		- 20171025@Long: Change the way to get MatchCount
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 
- Param's Explanation:  
-	@ReportType = 1: by Date
-			 = 2: By Month
-			 = 3: By Year
+	 Param's Explanation:  
+		@ReportType = 1: by Date
+				 = 2: By Month
+				 = 3: By Year
 
-	@Top	= XX:  Rows to display
-			= 0: All
+		@Top	= XX:  Rows to display
+				= 0: All
 
-	@IsBottom = 0: List top traders
-			  = 1: List bottom traders
+		@IsBottom = 0: List top traders
+				  = 1: List bottom traders
 
-	@ViewPermission = 0: all bet types
-			 = 1: major bet types
-			 = 2: PHAIO bet types
- Exam: 
-	EXEC TGRS_Rpt_SummaryTopTrader @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
-	EXEC TGRS_Rpt_SummaryTopTrader_Xtest @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
-	EXEC TGRS_Rpt_SummaryTopTrader @Top = 10, @IsBottom = 0, @ReportType = 3, @FromDate = '2012-01-01', @ToDate = '2013-12-31'
-  
+		@ViewPermission = 0: all bet types
+				 = 1: major bet types
+				 = 2: PHAIO bet types
+	 Exam: 
+		EXEC TGRS_Rpt_SummaryTopTrader @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
+		EXEC TGRS_Rpt_SummaryTopTrader_Xtest @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
+		EXEC TGRS_Rpt_SummaryTopTrader @Top = 10, @IsBottom = 0, @ReportType = 3, @FromDate = '2012-01-01', @ToDate = '2013-12-31'  
 */  
  
 BEGIN 
@@ -93,7 +93,7 @@ BEGIN
 			)
 		AND tp.IsLive = 1
 		AND bt.[Disabled] = 0
-	GROUP BY tp.CustId
+	GROUP BY tp.CustId;
 
 	IF @ReportType	= 1 --- by date
 	BEGIN 
@@ -115,7 +115,7 @@ BEGIN
 				)
 			AND P.IsLive = 1
 			AND bt.[Disabled] = 0
-		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade	
+		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade;
 	END
 	ELSE  --- by month-year
 	BEGIN 
@@ -135,7 +135,7 @@ BEGIN
 					@ViewPermission = 0
 					OR P.BettypeGroup = @ViewPermission
 				)
-		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount			
+		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount;	
 	END
 
 	-------------------------------------------------	
@@ -143,7 +143,7 @@ BEGIN
 	SET		TeamName = TE.TeamName
 	FROM	#Trader T
 	INNER JOIN dbo.Team TE WITH (NOLOCK) 
-			ON T.TeamId = TE.TeamId		 
+			ON T.TeamId = TE.TeamId; 
 
 	UPDATE  T
 	SET		NoOfTeamChanged = ISNULL(TH.NoOfTeamChanged,0),
@@ -168,7 +168,7 @@ BEGIN
 							)
 					GROUP BY T.CustId
 				) GH
-			ON GH.CustId = T.CustId
+			ON GH.CustId = T.CustId;
 	
 	-----------------------------------------------	 
 	 IF @Top <> 0  ----Top
@@ -201,7 +201,5 @@ BEGIN
 				FROM #Trader T
 				ORDER BY T.Margin ASC, T.WinLost ASC, T.Turnover ASC
 			END
-
-	 END  
-
-END
+	 END 
+END;

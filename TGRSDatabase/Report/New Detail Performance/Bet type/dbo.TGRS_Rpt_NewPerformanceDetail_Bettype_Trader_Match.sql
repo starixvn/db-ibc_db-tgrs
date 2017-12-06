@@ -16,6 +16,7 @@ AS
 	  		
 	Revisions:
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		
 	Param's Explanation:  	
 	
@@ -39,7 +40,7 @@ BEGIN
 		,WinLossScore MONEY
 		,BetCount INT
 		,SumCategory MONEY
-		);
+	);
 
 	INSERT INTO #TraderDetail (
 		MatchId
@@ -54,7 +55,7 @@ BEGIN
 		,WinLossScore
 		,BetCount
 		,SumCategory
-		)
+	)
 	SELECT tp.MatchId
 		,tp.LeagueId
 		,tp.HomeId
@@ -104,7 +105,7 @@ BEGIN
 				THEN NULL
 			ELSE td.WinLossScore * 100 / td.SumCategory
 			END AS Score
-	FROM #TraderDetail td
+	FROM #TraderDetail td;
 
 	DROP TABLE #TraderDetail;
 END;

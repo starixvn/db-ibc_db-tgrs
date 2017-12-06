@@ -14,11 +14,12 @@ AS
   
  Revisions: 	
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
    			
  Param's Explanation:  	
 
  Exam: 
-	  	  	  	  	  	  	  	  EXEC  [TGRS_Rpt_NewPerformanceDetail_BetType] @FromDate = '2014-01-01', @ToDate= '2015-12-30' 
+	  	 EXEC  [TGRS_Rpt_NewPerformanceDetail_BetType] @FromDate = '2014-01-01', @ToDate= '2015-12-30' 
   
 */
 BEGIN
@@ -35,10 +36,9 @@ BEGIN
 		,ISNULL(SUM(P.BetCount), 0) AS BetCount
 	INTO #TraderPerformanceTemp
 	FROM dbo.TraderPerformance P WITH (NOLOCK)
-	WHERE 
-		P.EventDate BETWEEN @FromDate AND @ToDate
+	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.IsLive = 1
-	GROUP BY P.BetType
+	GROUP BY P.BetType;
 
 	SELECT P.BetType
 		,TN.TypeName
@@ -51,12 +51,11 @@ BEGIN
 		,P.Juice
 		,P.BetCount
 	FROM #TraderPerformanceTemp P
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
-	WHERE 
-		TN.MainDBBetType IN (1,3,7,8)
-		AND TN.[Disabled] = 0
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
+	WHERE TN.MainDBBetType IN (1,3,7,8)
+		AND TN.[Disabled] = 0;
 
-	DROP TABLE #TraderPerformanceTemp
+	DROP TABLE #TraderPerformanceTemp;
 END
 
 /*

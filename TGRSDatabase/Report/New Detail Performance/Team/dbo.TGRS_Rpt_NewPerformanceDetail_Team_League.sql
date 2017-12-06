@@ -15,6 +15,7 @@ AS
 
  Revisions:
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 
  Param's Explanation:
 
@@ -35,9 +36,9 @@ BEGIN
 		,ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss
 		,ISNULL(SUM(P.BetCount), 0) AS BetCount
 	FROM dbo.TraderPerformance P WITH (NOLOCK)
-	INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-	INNER JOIN Trader T WITH (NOLOCK) ON T.CustId = P.CustId
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
+		INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+		INNER JOIN Trader T WITH (NOLOCK) ON T.CustId = P.CustId
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
 	WHERE P.EventDate BETWEEN @FromDate
 			AND @ToDate
 		AND T.TeamId = @TeamId
@@ -45,7 +46,7 @@ BEGIN
 		AND TN.[Disabled] = 0
 		AND P.IsLive = 1
 	GROUP BY P.LeagueId
-		,L.LeagueName
+		,L.LeagueName;
 END
 
 /*

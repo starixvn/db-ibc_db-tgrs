@@ -18,6 +18,8 @@ AS
 		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
 		- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
 		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 	
@@ -59,16 +61,16 @@ BEGIN
 		 FROM	dbo.BetType AS bt WITH (NOLOCK);
 	
 	INSERT INTO	#TraderDetail (
-					CustID
-				,	LeagueCount
-				,	MatchCount
-				,	Turnover
-				,	WinLoss
-				,	WinLossScore
-				,	BetCount
-				,	Margin
-				,	SumCategory
-				)
+			CustID
+		,	LeagueCount
+		,	MatchCount
+		,	Turnover
+		,	WinLoss
+		,	WinLossScore
+		,	BetCount
+		,	Margin
+		,	SumCategory
+	)
 	SELECT	tp.CustId
 		,	COUNT(DISTINCT tp.LeagueId)								AS LeagueCount
 		,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
@@ -82,14 +84,14 @@ BEGIN
 			END														AS Margin				
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
-			ON	t.CustId = tp.CustId
-	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
-			ON	tm.BetType = tp.BetType
-			AND	tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
-			ON	s.Spread = tp.Spread
-			AND	s.Rate = tm.Rate
+		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
+				ON	t.CustId = tp.CustId
+		LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+				ON	tm.BetType = tp.BetType
+				AND	tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
+				ON	s.Spread = tp.Spread
+				AND	s.Rate = tm.Rate
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND	t.Username LIKE '%' + @Username + '%'
@@ -109,16 +111,16 @@ BEGIN
 		,	td.Margin
 		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
 	FROM		#TraderDetail AS td
-	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
-			ON	t.CustId = td.CustId
-	INNER JOIN	dbo.Team AS tm WITH (NOLOCK) 
-			ON	t.TeamId = tm.TeamId
+		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
+				ON	t.CustId = td.CustId
+		INNER JOIN	dbo.Team AS tm WITH (NOLOCK) 
+				ON	t.TeamId = tm.TeamId
 	WHERE	(@Turnover IS NULL OR td.Turnover >= @Turnover)
 		AND	(@WinLoss IS NULL OR td.WinLoss >= @WinLoss)
 		AND	(@MarginFrom IS NULL OR td.Margin >= @MarginFrom)
 		AND	(@MarginTo IS NULL OR td.Margin <= @MarginTo)
 	ORDER BY	td.Margin DESC
-			,	t.Username ASC;
+		,	t.Username ASC;
 
 	DROP TABLE #TraderDetail;
 END;

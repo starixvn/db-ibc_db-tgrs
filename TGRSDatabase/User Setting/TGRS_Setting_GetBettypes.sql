@@ -7,6 +7,8 @@
 	Task: Trader Report - League Performance
 	DB: DBTGRS.bodb_TGRS
 
+	Revision:
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 	Param's Explanation:
 		@ViewPermission = 0: all bet types
 				 = 1: major bet types
@@ -15,28 +17,31 @@
 AS
 BEGIN
 	DECLARE @Bettypes NVARCHAR(4000);
-	CREATE TABLE #DefaultBettypes (BettypeId INT PRIMARY KEY);
+
+	CREATE TABLE #DefaultBettypes 
+	(
+		BettypeId INT PRIMARY KEY
+	);
 
 	SELECT @Bettypes = BetTypes 
 	FROM UserDefaultBettypes WITH(NOLOCK)
-	WHERE CustId = @UserId 
+	WHERE CustId = @UserId;
 
 	
 	INSERT INTO #DefaultBettypes
-	SELECT * FROM dbo.strSplit_Key(@Bettypes, ',');
+	SELECT * 
+	FROM dbo.strSplit_Key(@Bettypes, ',');
 
 	SELECT 
 		BetType,
 		TypeName,
 		ISNULL(BettypeId, 0) AS IsDefault
-	FROM 
-		BetType WITH(NOLOCK)
+	FROM BetType WITH(NOLOCK)
 		LEFT JOIN #DefaultBettypes WITH(NOLOCK) ON BetType = BettypeId
-	WHERE
-		(@BettypePermission = 0 OR @BettypePermission = BettypeGroup)
-		AND [Disabled] = 0
+	WHERE (@BettypePermission = 0 OR @BettypePermission = BettypeGroup)
+		AND [Disabled] = 0;
 
-	DROP TABLE #DefaultBettypes
+	DROP TABLE #DefaultBettypes;
 END
 
 /* 

@@ -11,6 +11,7 @@ AS
  Original:  
  
  Revisions:      	
+	- 20171205@Simon: get only Live data & Bettypes are not disabled
  
  Param's Explanation:  	
 
@@ -20,31 +21,32 @@ AS
 */  
  
 BEGIN 
-	 SET NOCOUNT ON;
+	SET NOCOUNT ON;
 
-   CREATE TABLE	#TraderDetail (
-					CustID				INT
-				,	TeamId				INT
-				,	LeagueCount			INT				
-				,	MatchCount			INT
-				,	Turnover			MONEY
-				,	WinLoss				MONEY
-				,	WinLossScore		MONEY
-				,	BetCount			INT
-				,	Margin				MONEY
-				,	SumCategory			MONEY
-				);	
+	CREATE TABLE	#TraderDetail (
+			CustID				INT
+		,	TeamId				INT
+		,	LeagueCount			INT				
+		,	MatchCount			INT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	WinLossScore		MONEY
+		,	BetCount			INT
+		,	Margin				MONEY
+		,	SumCategory			MONEY
+	);	
 	   
-    INSERT INTO #TraderDetail (
-			 CustID
-			 ,LeagueCount
-			 ,MatchCount
-			 ,Turnover
-			 ,WinLoss
-			 ,WinLossScore
-			 ,BetCount
-			 ,Margin
-			 ,SumCategory)
+	INSERT INTO #TraderDetail (
+			CustID
+		,	LeagueCount
+		,	MatchCount
+		,	Turnover
+		,	WinLoss
+		,	WinLossScore
+		,	BetCount
+		,	Margin
+		,	SumCategory
+	)
 	SELECT	tp.CustId																			AS CustId
 		,	COUNT(DISTINCT tp.LeagueId)															AS LeagueCount
 		,	COUNT(DISTINCT tp.MatchId)															AS MatchCount
@@ -53,7 +55,7 @@ BEGIN
 		,	SUM( (tp.WinLost - tp.Comm) * CASE WHEN tp.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END) 	AS WinLossScore	
 		,	ISNULL(SUM(tp.BetCount), 0)															AS BetCount
 		,	CASE   WHEN SUM(tp.Stake) = 0 THEN NULL
-				   ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END				AS Margin		
+					ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END				AS Margin		
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
 	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
@@ -68,17 +70,17 @@ BEGIN
 	GROUP BY	tp.CustId;
 	
 	SELECT	  td.CustID
-			 ,t.Username
-			 ,t.Grade
-			 ,t.TeamId
-			 ,tm.TeamName
-			 ,td.LeagueCount
-			 ,td.MatchCount
-			 ,td.Turnover
-			 ,td.WinLoss
-			 ,td.BetCount
-			 ,td.Margin
-			 ,CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
+				,t.Username
+				,t.Grade
+				,t.TeamId
+				,tm.TeamName
+				,td.LeagueCount
+				,td.MatchCount
+				,td.Turnover
+				,td.WinLoss
+				,td.BetCount
+				,td.Margin
+				,CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
 	FROM		#TraderDetail AS td
 	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 			ON	t.CustId = td.CustID

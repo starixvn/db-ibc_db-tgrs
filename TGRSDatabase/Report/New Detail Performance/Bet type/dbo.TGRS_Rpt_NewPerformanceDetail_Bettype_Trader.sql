@@ -15,6 +15,7 @@ AS
  
  Revisions:      	
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
  
  Param's Explanation:  	
 
@@ -37,7 +38,7 @@ BEGIN
 		,TurnoverJuice MONEY
 		,Juice MONEY
 		,SumCategory MONEY
-		);
+	);
 
 	INSERT INTO #TraderDetail (
 		CustID
@@ -50,7 +51,7 @@ BEGIN
 		,TurnoverJuice
 		,Juice
 		,SumCategory
-		)
+	)
 	SELECT tp.CustId AS CustId
 		,COUNT(DISTINCT tp.LeagueId) AS LeagueCount
 		,COUNT(DISTINCT tp.MatchId) AS MatchCount
@@ -94,8 +95,8 @@ BEGIN
 			ELSE td.WinLossScore * 100 / td.SumCategory
 			END AS Score
 	FROM #TraderDetail AS td
-	INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = td.CustID
-	INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId
+		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = td.CustID
+		INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId;
 
 	DROP TABLE #TraderDetail;
 END

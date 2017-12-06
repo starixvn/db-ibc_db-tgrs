@@ -16,7 +16,9 @@ AS
  Original:  
  
  Revisions:      	
- 	20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+ 	- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+	- 20171205@Simon: get only Live data & Bettypes are not disabled
+
  Param's Explanation:  	
 
  Exam: 
@@ -25,15 +27,18 @@ AS
 */  
  
 BEGIN 
-	SET NOCOUNT ON  
+	SET NOCOUNT ON;
 
-	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
+	DECLARE @BettypeList AS TABLE (bettype SMALLINT);
+
 	IF @Bettypes <> '0'
 		INSERT INTO @BettypeList
-		SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
+		SELECT val 
+		FROM dbo.strSplit_Key(@Bettypes,',');
 	ELSE 
 		INSERT INTO @BettypeList
-		SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
+		SELECT Bettype 
+		FROM dbo.Bettype WITH (NOLOCK);
 	
 	IF (@LeagueName IS NULL OR @LeagueName = '')
 		BEGIN
@@ -57,8 +62,8 @@ BEGIN
 				AND ( @Turnover IS NULL OR p.Turnover >= @Turnover)
 				AND ( @MarginFrom IS NULL  OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover  >= @MarginFrom))
 				AND ( @MarginTo IS NULL OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover <= @MarginTo))
-			ORDER BY Margin DESC, P.LeagueName ASC
-		END
+			ORDER BY Margin DESC, P.LeagueName ASC;
+		END;
 	ELSE
 		BEGIN
 			SELECT *, CASE WHEN p.Turnover <> 0  THEN  p.WinLoss * 100 /p.Turnover ELSE NULL END  as margin
@@ -82,6 +87,6 @@ BEGIN
 				AND ( @Turnover IS NULL OR p.Turnover >= @Turnover)
 				AND ( @MarginFrom IS NULL  OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover  >= @MarginFrom))
 				AND ( @MarginTo IS NULL OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover <= @MarginTo))
-			ORDER BY Margin DESC, P.LeagueName ASC
-		END
-END
+			ORDER BY Margin DESC, P.LeagueName ASC;
+		END;
+END;

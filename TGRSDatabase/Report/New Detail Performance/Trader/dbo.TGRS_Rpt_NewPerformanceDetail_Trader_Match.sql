@@ -16,6 +16,7 @@ AS
                 
 	Revisions:       
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		
     Param's ExplanatiON:      
     
@@ -26,9 +27,9 @@ AS
 					@CustID = 1530768  
 */
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 
-	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
+	DECLARE @BettypeList AS TABLE (bettype SMALLINT);
 
 	IF @Bettypes <> '0'
 		INSERT INTO @BettypeList (bettype)
@@ -64,7 +65,7 @@ BEGIN
 		,tp.LeagueId
 		,tp.HomeId
 		,tp.AwayId
-		,tp.EventDate
+		,tp.EventDate;
 END
 
 /*

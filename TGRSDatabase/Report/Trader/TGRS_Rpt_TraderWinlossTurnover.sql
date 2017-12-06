@@ -1,9 +1,9 @@
 ﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
-	@TraderId 		INT,
-	@ReportType 	TINYINT = 2,
-	@FromDate 		DATETIME,
-	@ToDate 		DATETIME,
-	@ViewPermission SMALLINT
+	@TraderId 			INT,
+	@ReportType 		TINYINT = 2,
+	@FromDate 			DATETIME,
+	@ToDate 			DATETIME,
+	@ViewPermission		SMALLINT
 AS
 /*
 	Creator: Percy
@@ -13,6 +13,8 @@ AS
 
 	Revisions:
 		- 20171024@Simon: Add ViewPermission param
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:
 		@ReportType:
 			1: by date
@@ -24,14 +26,14 @@ AS
 	Exam:
 */
 BEGIN
-SET NOCOUNT ON
+SET NOCOUNT ON;
 
-	DECLARE @Date TABLE (WLDate DATETIME)
-	DECLARE @FDate DATETIME, @TDate DATETIME
+	DECLARE @Date TABLE (WLDate DATETIME);
+	DECLARE @FDate DATETIME, @TDate DATETIME;
 
 	IF @ReportType = 1 -- Report by date - date, month - date
 	BEGIN
-		SELECT @FDate = @FromDate
+		SELECT @FDate = @FromDate;
 
 		WHILE @FDate <= @ToDate
 		BEGIN

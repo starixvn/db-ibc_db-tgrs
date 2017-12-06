@@ -15,6 +15,7 @@ AS
  
  Revisions:      	
 	- 20170316@Long: apply TO's Leftover
+	- 20171205@Simon: get only Live data & Bettypes are not disabled
 	
  Param's Explanation:  	
 

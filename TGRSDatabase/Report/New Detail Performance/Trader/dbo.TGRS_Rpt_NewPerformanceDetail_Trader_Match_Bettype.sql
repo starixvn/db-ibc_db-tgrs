@@ -17,6 +17,7 @@ AS
 
 	Revisions:       
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		  				
 	Param's Explanation:  	
 
@@ -29,9 +30,9 @@ AS
 					@Bettypes='1,3,7,8'
 */
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 
-	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
+	DECLARE @BettypeList AS TABLE (bettype SMALLINT);
 
 	IF @Bettypes <> '0'
 		INSERT INTO @BettypeList (bettype)
@@ -54,7 +55,7 @@ BEGIN
 		,WinLossScore		MONEY
 		,BetCount			INT
 		,SumCategory		MONEY
-		);
+	);
 
 	INSERT INTO #BettypeDetail (
 		BetType
@@ -66,7 +67,7 @@ BEGIN
 		,WinLossScore
 		,BetCount
 		,SumCategory
-		)
+	)
 	SELECT tp.BetType
 		,bt.TypeName
 		,ISNULL(SUM(tp.StakeMYR), 0) AS Turnover		
@@ -81,12 +82,12 @@ BEGIN
 		,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 		,ISNULL(SUM(tp.StakeMYR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
-	LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
-		AND tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
-		AND s.Rate = tm.Rate
-	LEFT JOIN dbo.BetType bt WITH (NOLOCK) ON bt.BetType = tp.BetType
+		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
+		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
+			AND tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
+			AND s.Rate = tm.Rate
+		LEFT JOIN dbo.BetType bt WITH (NOLOCK) ON bt.BetType = tp.BetType
 	WHERE tp.CustId = @CustId
 		AND tp.MatchId = @MatchId
 		AND tp.EventDate BETWEEN @FromDate
@@ -98,7 +99,7 @@ BEGIN
 		AND tp.IsLive = 1
 		AND bt.[Disabled] = 0
 	GROUP BY tp.BetType
-		,bt.TypeName
+		,bt.TypeName;
 
 	SELECT bd.BetType
 		,bd.TypeName
@@ -112,7 +113,7 @@ BEGIN
 				THEN NULL
 			ELSE bd.WinLossScore * 100 / bd.SumCategory
 			END AS Score
-	FROM #BettypeDetail AS bd
+	FROM #BettypeDetail AS bd;
 
 	DROP TABLE #BettypeDetail;
 END

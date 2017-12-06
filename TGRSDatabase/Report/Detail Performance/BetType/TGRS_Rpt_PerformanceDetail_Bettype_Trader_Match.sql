@@ -12,6 +12,9 @@ AS
 	DB:			DBTGRS.bodb_TGRS
 	Original:      
 	  			
+	Revision:
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 

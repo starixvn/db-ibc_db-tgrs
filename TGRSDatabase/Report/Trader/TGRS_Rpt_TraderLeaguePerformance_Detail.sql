@@ -12,13 +12,14 @@ AS
 	DB: DBTGRS.bodb_TGRS
 
 	Revisions:
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 
 	Param's Explanation:
 
 	Exam:
 */
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 	
 	SELECT
 		MatchId, HomeId, AwayId, EventDate,
@@ -33,5 +34,5 @@ BEGIN
 		AND EventDate BETWEEN @FromDate AND @ToDate
 		AND IsLive = 1
 	GROUP BY MatchId, HomeId, AwayId, EventDate
-	ORDER BY Margin DESC
-END
+	ORDER BY Margin DESC;
+END;

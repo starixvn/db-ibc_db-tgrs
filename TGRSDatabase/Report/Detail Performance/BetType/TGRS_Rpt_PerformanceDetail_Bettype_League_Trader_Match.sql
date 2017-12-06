@@ -13,6 +13,9 @@ AS
 	DB:			DBTGRS.bodb_TGRS
 	Original:      
 	  			
+	Revision:
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 
@@ -21,17 +24,17 @@ AS
 */  
  
 BEGIN 
-    SET NOCOUNT ON;
+	SET NOCOUNT ON;
 
-    DECLARE @BettypeList TABLE (BetType SMALLINT);				   
+	DECLARE @BettypeList TABLE (BetType SMALLINT);				   
 	   
-    SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
+	SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLoss, 
 			ISNULL(SUM(P.BetCount),0) as BetCount,
 			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
-	 FROM	dbo.TraderPerformance P WITH (NOLOCK)		 
-	 WHERE	P.LeagueId = @LeagueId
+		FROM	dbo.TraderPerformance P WITH (NOLOCK)		 
+		WHERE	P.LeagueId = @LeagueId
 			AND P.CustId = @CustId
 			AND P.BetType = @Bettype
 			AND P.EventDate BETWEEN @FromDate AND @ToDate

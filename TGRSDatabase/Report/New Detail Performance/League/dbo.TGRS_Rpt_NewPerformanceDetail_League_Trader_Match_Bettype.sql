@@ -37,7 +37,7 @@ BEGIN
 		,WinLossScore MONEY
 		,BetCount INT
 		,SumCategory MONEY
-		);
+	);
 
 	INSERT INTO #BettypeDetail (
 		BetType
@@ -49,7 +49,7 @@ BEGIN
 		,WinLossScore
 		,BetCount
 		,SumCategory
-		)
+	)
 	SELECT tp.BetType
 		,TN.TypeName
 		,ISNULL(SUM(tp.StakeMYR), 0) AS Turnover
@@ -64,12 +64,12 @@ BEGIN
 		,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 		,ISNULL(SUM(tp.StakeMYR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
-	LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
-		AND tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
-		AND s.Rate = tm.Rate
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
+		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
+			AND tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
+			AND s.Rate = tm.Rate
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
 	WHERE tp.CustId = @CustId
 		AND tp.LeagueId = @LeagueId
 		AND tp.MatchId = @MatchId
@@ -78,7 +78,7 @@ BEGIN
 		AND TN.[Disabled] = 0
 		AND tp.IsLive = 1
 	GROUP BY tp.BetType
-		,TN.TypeName
+		,TN.TypeName;
 
 	SELECT bd.BetType
 		,bd.TypeName
@@ -92,7 +92,7 @@ BEGIN
 				THEN NULL
 			ELSE bd.WinLossScore * 100 / bd.SumCategory
 			END AS Score
-	FROM #BettypeDetail AS bd
+	FROM #BettypeDetail AS bd;
 
 	DROP TABLE #BettypeDetail;
 END

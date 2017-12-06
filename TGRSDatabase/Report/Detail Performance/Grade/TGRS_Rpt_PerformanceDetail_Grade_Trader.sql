@@ -13,7 +13,9 @@ AS
 	Original:  
 	 
 	Revisions:
-	  	20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)		
+	  	- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)		
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 
@@ -27,17 +29,17 @@ BEGIN
    DECLARE @BettypeList TABLE (BetType SMALLINT);
 
    CREATE TABLE	#TraderDetail (
-					CustID				INT
-				,	TeamId				INT
-				,	LeagueCount			INT
-				,	MatchCount			INT
-				,	Turnover			MONEY
-				,	WinLoss				MONEY
-				,	WinLossScore		MONEY
-				,	BetCount			INT
-				,	Margin				MONEY
-				,	SumCategory			MONEY
-				);
+			CustID				INT
+		,	TeamId				INT
+		,	LeagueCount			INT
+		,	MatchCount			INT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	WinLossScore		MONEY
+		,	BetCount			INT
+		,	Margin				MONEY
+		,	SumCategory			MONEY
+	);
 				
     IF @Bettypes <> '0'
 	   INSERT INTO @BettypeList (BetType)
@@ -49,15 +51,16 @@ BEGIN
 	   FROM	dbo.BetType AS bt WITH (NOLOCK);
 	   
     INSERT INTO #TraderDetail (
-			 CustID
-			 ,LeagueCount
-			 ,MatchCount
-			 ,Turnover
-			 ,WinLoss
-			 ,WinLossScore
-			 ,BetCount
-			 ,Margin
-			 ,SumCategory)
+			CustID
+		,	LeagueCount
+		,	MatchCount
+		,	Turnover
+		,	WinLoss
+		,	WinLossScore
+		,	BetCount
+		,	Margin
+		,	SumCategory
+	)
 	SELECT	tp.CustId																			AS CustId
 		,	COUNT(DISTINCT tp.LeagueId)															AS LeagueCount
 		,	COUNT(DISTINCT tp.MatchId)															AS MatchCount
@@ -69,13 +72,13 @@ BEGIN
 				   ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END				AS Margin		
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON tp.CustId = t.CustId
-	LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
-			ON	tm.BetType = tp.BetType
-			AND	tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
-			ON	s.Spread = tp.Spread
-			AND	s.Rate = tm.Rate
+		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON tp.CustId = t.CustId
+		LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+				ON	tm.BetType = tp.BetType
+				AND	tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
+				ON	s.Spread = tp.Spread
+				AND	s.Rate = tm.Rate
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.BetType FROM @BettypeList AS bl)
 		AND t.Grade = @Grade

@@ -16,6 +16,7 @@ AS
 	 
 	Revisions:
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 
 	Param's Explanation:  	
 	
@@ -33,9 +34,10 @@ BEGIN
 		CustID INT
 		,WinLoss MONEY
 		,SumCategory MONEY
-		);
+	);
 
 	DECLARE @TeamList TABLE (TeamId SMALLINT);
+
 	DECLARE @Team TABLE (
 		TeamId SMALLINT
 		,TeamName NVARCHAR(50)
@@ -48,7 +50,7 @@ BEGIN
 		,WinLoss MONEY
 		,BetCount INT
 		,Score MONEY
-		);
+	);
 
 	IF @TeamIds <> '0'
 		INSERT INTO @TeamList (TeamId)
@@ -63,16 +65,16 @@ BEGIN
 		CustID
 		,WinLoss
 		,SumCategory
-		)
+	)
 	SELECT tp.CustId
 		,ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0) AS WinLoss
 		,ISNULL(SUM(tp.StakeMYR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
-		AND tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
-		AND s.Rate = tm.Rate
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		INNER JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
+			AND tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
+			AND s.Rate = tm.Rate
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
 	WHERE tp.EventDate BETWEEN @FromDate
 			AND @ToDate
 		AND TN.MainDBBetType IN (1,3,7,8)
@@ -92,8 +94,8 @@ BEGIN
 			,ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0) AS WinLoss
 			,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 		FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+			INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
+			LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
 		WHERE tp.EventDate BETWEEN @FromDate
 				AND @ToDate
 			AND TN.MainDBBetType IN (1,3,7,8)
@@ -101,8 +103,8 @@ BEGIN
 				SELECT tl.TeamId
 				FROM @TeamList AS tl
 				)
-		AND TN.[Disabled] = 0
-		AND tp.IsLive = 1
+			AND TN.[Disabled] = 0
+			AND tp.IsLive = 1
 		GROUP BY t.TeamId
 		)
 	INSERT INTO @Team (
@@ -116,7 +118,7 @@ BEGIN
 		,Juice
 		,WinLoss
 		,BetCount
-		)
+	)
 	SELECT td.TeamId
 		,t.TeamName
 		,td.TraderCount
@@ -128,7 +130,7 @@ BEGIN
 		,td.WinLoss
 		,td.BetCount
 	FROM TeamDetail td
-	INNER JOIN dbo.Team AS t WITH (NOLOCK) ON t.TeamId = td.TeamId;
+		INNER JOIN dbo.Team AS t WITH (NOLOCK) ON t.TeamId = td.TeamId;
 	
 	WITH score AS (
 			SELECT t.TeamId
@@ -141,7 +143,6 @@ BEGIN
 			INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = sd.CustID
 			GROUP BY t.TeamId
 			)
-
 	UPDATE t
 	SET t.Score = s.Score
 	FROM @Team AS t
@@ -158,7 +159,7 @@ BEGIN
 		,t.WinLoss
 		,t.BetCount
 		,t.Score
-	FROM @Team AS t
+	FROM @Team AS t;
 
 	DROP TABLE #ScoreDetail;
 END;

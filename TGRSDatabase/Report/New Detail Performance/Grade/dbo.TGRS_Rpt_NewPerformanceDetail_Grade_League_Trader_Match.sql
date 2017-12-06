@@ -17,11 +17,12 @@ AS
 	  		
 	Revisions:
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 			
 	Param's Explanation:  	
 	
 	Example: 
-				EXEC [TGRS_Rpt_NewPerformanceDetail_Grade_League_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @LeagueId = 6394, @CustID = 1530768
+		EXEC [TGRS_Rpt_NewPerformanceDetail_Grade_League_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @LeagueId = 6394, @CustID = 1530768
   
 */
 BEGIN
@@ -47,7 +48,7 @@ BEGIN
 	GROUP BY P.MatchId
 		,P.HomeId
 		,P.AwayId
-		,P.EventDate
+		,P.EventDate;
 END;
 
 /*

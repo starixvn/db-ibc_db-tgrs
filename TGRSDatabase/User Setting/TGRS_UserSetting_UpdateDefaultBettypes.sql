@@ -3,20 +3,23 @@
 	@IsDefaultBettypes NVARCHAR(4000),
 	@ErrCode INT = 0 OUTPUT,  
     @ErrMsg NVARCHAR(200) = '' OUTPUT  
-/*
-Created: 20171127@Simon
-Task : Insert new bettype
-DB:  DBTGRS.bodb_TGRS
-
-*/ 
 AS
+/*
+	Created: 20171127@Simon
+	Task : Insert new bettype
+	DB:  DBTGRS.bodb_TGRS
+
+	Revision:
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+*/ 
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 
-	DECLARE @OldBettypes NVARCHAR(4000), @xml XML, @StartRun DATETIME = GETDATE(), @EndRun DATETIME, @Duration INT, @NewData NVARCHAR(MAX)
+	DECLARE @OldBettypes NVARCHAR(4000), @xml XML, @StartRun DATETIME = GETDATE(), @EndRun DATETIME, @Duration INT, @NewData NVARCHAR(MAX);
 
-	SELECT @OldBettypes = BetTypes FROM UserDefaultBettypes WITH(NOLOCK)
-	WHERE CustId = @UserId
+	SELECT @OldBettypes = BetTypes 
+	FROM UserDefaultBettypes WITH(NOLOCK)
+	WHERE CustId = @UserId;
 
 	IF(@OldBettypes IS NOT NULL)
 		BEGIN
@@ -28,11 +31,11 @@ BEGIN
 					FOR XML PATH('z'), ROOT('r')
 				)
 
-			DECLARE @OldData NVARCHAR(MAX) = REPLACE(CONVERT(NVARCHAR(MAX), @xml), '" />', '"/"')
+			DECLARE @OldData NVARCHAR(MAX) = REPLACE(CONVERT(NVARCHAR(MAX), @xml), '" />', '"/"');
 
 			UPDATE UserDefaultBettypes
 			SET BetTypes = @IsDefaultBettypes
-			WHERE CustId = @UserId
+			WHERE CustId = @UserId;
 
 			SET @xml =
 				(
@@ -42,10 +45,9 @@ BEGIN
 					FOR XML PATH('z'), ROOT('r')
 				)
 
-			SET @NewData  = REPLACE(CONVERT(NVARCHAR(MAX), @xml), '" />', '"/"')
-
-			SET @EndRun  = GETDATE()
-			SET @Duration  = DATEDIFF(MILLISECOND, @StartRun, @EndRun)
+			SET @NewData  = REPLACE(CONVERT(NVARCHAR(MAX), @xml), '" />', '"/"');
+			SET @EndRun  = GETDATE();
+			SET @Duration  = DATEDIFF(MILLISECOND, @StartRun, @EndRun);
 
 			EXEC	dbo.TGRS_WriteLog_RunSp
 				@UserId		= @UserId,
@@ -54,12 +56,12 @@ BEGIN
 				@Duration	= @Duration,
 				@ObjectId	= @UserId,
 				@Data		= @NewData,
-				@OldData	= @OldData
+				@OldData	= @OldData;
 		END
 	ELSE
 		BEGIN
 			INSERT INTO UserDefaultBettypes(CustId, BetTypes)
-			VALUES (@UserId, @IsDefaultBettypes)
+			VALUES (@UserId, @IsDefaultBettypes);
 
 			SET @xml =
 				(
@@ -69,9 +71,9 @@ BEGIN
 					FOR XML PATH('z'), ROOT('r')
 				)
 
-			SET @NewData = REPLACE(CONVERT(NVARCHAR(MAX), @xml), '" />', '"/"')
-			SET @EndRun  = GETDATE()
-			SET @Duration  = DATEDIFF(MILLISECOND, @StartRun, @EndRun)
+			SET @NewData = REPLACE(CONVERT(NVARCHAR(MAX), @xml), '" />', '"/"');
+			SET @EndRun  = GETDATE();
+			SET @Duration  = DATEDIFF(MILLISECOND, @StartRun, @EndRun);
 
 			EXEC	dbo.TGRS_WriteLog_RunSp
 				@UserId		= @UserId,
@@ -80,7 +82,7 @@ BEGIN
 				@Duration	= @Duration,
 				@ObjectId	= @UserId,
 				@Data		= @NewData,
-				@OldData	= NULL
+				@OldData	= NULL;
 		END
 END
 

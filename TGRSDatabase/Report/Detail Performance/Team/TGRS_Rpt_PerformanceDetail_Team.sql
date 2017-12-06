@@ -18,6 +18,8 @@ AS
 		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
 		- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
 		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:  	
 	
 	Example: 	
@@ -25,7 +27,6 @@ AS
 					@FromDate = '2016-02-22'
 				,	@ToDate = '2016-03-14'
 				,	@Bettypes = '1,3,5', @TeamIds = '0'
-
 */  
  
 BEGIN 
@@ -33,29 +34,29 @@ BEGIN
 	SET NOCOUNT ON;  
 	 
 	CREATE TABLE #ScoreDetail (
-								CustID				INT
-							,	WinLoss				MONEY
-							,	SumCategory			MONEY
-							);
+			CustID			INT
+		,	WinLoss			MONEY
+		,	SumCategory		MONEY
+	);
 
-	DECLARE	@BettypeList	TABLE (
-								BetType			SMALLINT
-							);
-	DECLARE	@TeamList	TABLE (
-								TeamId			SMALLINT
-							);
-	DECLARE	@Team			TABLE (
-								TeamId			SMALLINT
-							,	TeamName		NVARCHAR(50)
-							,	TraderCount		INT
-							,	LeagueCount		INT
-							,	MatchCount		INT
-							,	Turnover		MONEY
-							,	WinLoss			MONEY
-							,	BetCount		INT
-							,	Margin			MONEY
-							,	Score			MONEY
-							);
+	DECLARE	@BettypeList TABLE (
+			BetType			SMALLINT
+	);
+	DECLARE	@TeamList TABLE (
+			TeamId			SMALLINT
+	);
+	DECLARE	@Team TABLE (
+			TeamId			SMALLINT
+		,	TeamName		NVARCHAR(50)
+		,	TraderCount		INT
+		,	LeagueCount		INT
+		,	MatchCount		INT
+		,	Turnover		MONEY
+		,	WinLoss			MONEY
+		,	BetCount		INT
+		,	Margin			MONEY
+		,	Score			MONEY
+	);
 
 	IF	@Bettypes <> '0'
 		 INSERT INTO @BettypeList
@@ -80,20 +81,20 @@ BEGIN
 		 FROM	dbo.Team AS t WITH (NOLOCK);
 
 	INSERT INTO	#ScoreDetail (
-					CustID
-				,	WinLoss
-				,	SumCategory
-				)
+			CustID
+		,	WinLoss
+		,	SumCategory
+	)
 	SELECT	tp.CustId
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss				
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
-			ON	tm.BetType = tp.BetType
-			AND	tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
-			ON	s.Spread = tp.Spread
-			AND	s.Rate = tm.Rate
+		INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+				ON	tm.BetType = tp.BetType
+				AND	tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
+				ON	s.Spread = tp.Spread
+				AND	s.Rate = tm.Rate
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND tp.IsLive = 1
@@ -124,8 +125,8 @@ BEGIN
 		(	TeamId   , TeamName  , TraderCount   , LeagueCount   , MatchCount   , Turnover   , WinLoss   , BetCount   , Margin   )
 	SELECT	td.TeamId, t.TeamName, td.TraderCount, td.LeagueCount, td.MatchCount, td.Turnover, td.WinLoss, td.BetCount, td.Margin
 	FROM		TeamDetail td
-	INNER JOIN	dbo.Team AS t WITH (NOLOCK)
-			ON	t.TeamId = td.TeamId
+		INNER JOIN	dbo.Team AS t WITH (NOLOCK)
+				ON	t.TeamId = td.TeamId
 	WHERE	(@Turnover IS NULL OR td.Turnover >= @Turnover)
 		AND	(@WinLoss IS NULL OR td.WinLoss >= @WinLoss)
 		AND	(@MarginFrom IS NULL OR td.Margin >= @MarginFrom)
@@ -160,5 +161,4 @@ BEGIN
 			,	TeamName ASC;
 	
 	DROP TABLE #ScoreDetail;
-
 END;

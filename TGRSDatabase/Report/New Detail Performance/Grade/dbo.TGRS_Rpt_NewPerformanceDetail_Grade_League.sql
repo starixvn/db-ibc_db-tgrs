@@ -14,6 +14,7 @@ AS
  
  Revisions:      	
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
  
  Param's Explanation:  	
 
@@ -43,7 +44,7 @@ BEGIN
 		AND TN.[Disabled] = 0
 		AND P.IsLive = 1
 	GROUP BY P.LeagueId
-		,L.LeagueName
+		,L.LeagueName;
 END 
 
 /*

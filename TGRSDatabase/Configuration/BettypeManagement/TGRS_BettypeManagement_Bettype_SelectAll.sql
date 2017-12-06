@@ -7,7 +7,7 @@ DB:  DBTGRS.bodb_TGRS
 */ 
 AS
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 
 	SELECT 
 		BetType AS BettypeId, 
@@ -22,7 +22,7 @@ BEGIN
 		) AS [Group],
 		[Disabled] As IsDisabled,
 		IsUsedForJuice
-	FROM dbo.BetType WITH(NOLOCK)
+	FROM dbo.BetType WITH(NOLOCK);
 END
 
 /* 

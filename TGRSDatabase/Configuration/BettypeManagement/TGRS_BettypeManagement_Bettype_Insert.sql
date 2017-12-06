@@ -17,10 +17,10 @@ DB:  DBTGRS.bodb_TGRS
 */ 
 AS
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 
 	BEGIN TRY
-		DECLARE @StartRun DATETIME = GETDATE()
+		DECLARE @StartRun DATETIME = GETDATE();
 
 		DECLARE @xml XML = 
 			(
@@ -33,14 +33,14 @@ BEGIN
 					@IsUsedForJuice	 AS '@j',
 					@Active AS '@at'
 				FOR XML PATH('z'), ROOT('r')
-			)
+			);
 
 		INSERT INTO BetType(BetType, TypeName, OperatorType, AssignmentBetType, IsUsedForJuice, BettypeGroup, [Disabled])
-		VALUES (@BettypeId, @BettypeName, @OperatorType, @AssignmentType, @IsUsedForJuice, @Group, 1 - @Active)
+		VALUES (@BettypeId, @BettypeName, @OperatorType, @AssignmentType, @IsUsedForJuice, @Group, 1 - @Active);
 
-		DECLARE @EndRun DATETIME = GETDATE()
-		DECLARE @Duration INT = DATEDIFF(MILLISECOND, @StartRun, @EndRun)
-		DECLARE @NewData NVARCHAR(MAX) = REPLACE(CONVERT(NVARCHAR(MAX), @Xml), '" />', '"/"')
+		DECLARE @EndRun DATETIME = GETDATE();
+		DECLARE @Duration INT = DATEDIFF(MILLISECOND, @StartRun, @EndRun);
+		DECLARE @NewData NVARCHAR(MAX) = REPLACE(CONVERT(NVARCHAR(MAX), @Xml), '" />', '"/"');
 
 		EXEC	dbo.TGRS_WriteLog_RunSp
 			@UserId		= @UserId,
@@ -49,11 +49,11 @@ BEGIN
 			@Duration	= @Duration,
 			@ObjectId	= @BettypeId,
 			@Data		= @NewData,
-			@OldData	= NULL
+			@OldData	= NULL;
 	END TRY
 	BEGIN CATCH
-		SET @ErrCode = ERROR_NUMBER()
-		SET @ErrMsg = 'There''s already another bet type with this id'
+		SET @ErrCode = ERROR_NUMBER();
+		SET @ErrMsg = 'There''s already another bet type with this id';
 	END CATCH
 END
 

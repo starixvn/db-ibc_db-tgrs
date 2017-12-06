@@ -12,7 +12,8 @@ AS
  Original:  
  
  Revisions:      	
- 
+	- 20171205@Simon: get only Live data & Bettypes are not disabled
+
  Param's Explanation:  	
 
  Exam: 
@@ -26,26 +27,27 @@ BEGIN
    DECLARE @BettypeList TABLE (BetType SMALLINT);
 
    CREATE TABLE	#TraderDetail (
-					CustID				INT
-				,	TeamId				INT
-				,	MatchCount			INT
-				,	Turnover			MONEY
-				,	WinLoss				MONEY
-				,	WinLossScore		MONEY
-				,	BetCount			INT
-				,	Margin				MONEY
-				,	SumCategory			MONEY
-				);	
+			CustID				INT
+		,	TeamId				INT
+		,	MatchCount			INT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	WinLossScore		MONEY
+		,	BetCount			INT
+		,	Margin				MONEY
+		,	SumCategory			MONEY
+	);	
 	   
     INSERT INTO #TraderDetail (
-			 CustID
-			 ,MatchCount
-			 ,Turnover
-			 ,WinLoss
-			 ,WinLossScore
-			 ,BetCount
-			 ,Margin
-			 ,SumCategory)
+			CustID
+		,	MatchCount
+		,	Turnover
+		,	WinLoss
+		,	WinLossScore
+		,	BetCount
+		,	Margin
+		,	SumCategory
+	)
 	SELECT	tp.CustId																			AS CustId
 		,	COUNT(DISTINCT tp.MatchId)															AS MatchCount
 		,	ISNULL(SUM(tp.Stake), 0)															AS Turnover
@@ -68,17 +70,17 @@ BEGIN
 			AND tp.IsLive = 1
 	GROUP BY	tp.CustId;
 	
-	SELECT	  td.CustID
-			 ,t.Username
-			 ,t.Grade
-			 ,t.TeamId
-			 ,tm.TeamName
-			 ,td.MatchCount
-			 ,td.Turnover
-			 ,td.WinLoss
-			 ,td.BetCount
-			 ,td.Margin
-			 ,CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
+	SELECT	td.CustID
+		,	t.Username
+		,	t.Grade
+		,	t.TeamId
+		,	tm.TeamName
+		,	td.MatchCount
+		,	td.Turnover
+		,	td.WinLoss
+		,	td.BetCount
+		,	td.Margin
+		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
 	FROM		#TraderDetail AS td
 	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 			ON	t.CustId = td.CustID
@@ -87,7 +89,7 @@ BEGIN
 	ORDER BY	td.Margin DESC, t.Username ASC;
 	
 	DROP TABLE #TraderDetail;
-END 
+END;
 
 --GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_Trader] TO [bodbTGRSNet]
 --GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_Trader] TO [bodbTGRSNet ]

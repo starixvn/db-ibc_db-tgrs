@@ -16,6 +16,7 @@ AS
 
   Revisions:
 		- 20170316@Long: apply TO's Leftover
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		
   Param's ExplanatiON:
 
@@ -37,8 +38,8 @@ BEGIN
 		,ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss
 		,ISNULL(SUM(BetCount), 0) AS BetCount
 	FROM dbo.TraderPerformance P WITH (NOLOCK)
-	INNER JOIN dbo.Trader T WITH (NOLOCK) ON T.CustId = P.CustId
-	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
+		INNER JOIN dbo.Trader T WITH (NOLOCK) ON T.CustId = P.CustId
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
 	WHERE P.EventDate BETWEEN @FROMDate
 			AND @ToDate
 		AND P.CustId = @CustId
@@ -50,7 +51,7 @@ BEGIN
 		,P.LeagueId
 		,P.HomeId
 		,P.AwayId
-		,P.EventDate
+		,P.EventDate;
 END
 /*
 GO
