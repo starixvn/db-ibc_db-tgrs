@@ -23,6 +23,12 @@ BEGIN
 		BettypeId INT PRIMARY KEY
 	);
 
+	IF(NOT EXISTS(SELECT * FROM UserDefaultBettypes WITH(NOLOCK) WHERE CustId = @UserId))
+	BEGIN
+		INSERT INTO UserDefaultBettypes(CustId, BetTypes)
+		VALUES(@UserId, '1,3,5,7,8,15')
+	END
+
 	SELECT @Bettypes = BetTypes 
 	FROM UserDefaultBettypes WITH(NOLOCK)
 	WHERE CustId = @UserId;
