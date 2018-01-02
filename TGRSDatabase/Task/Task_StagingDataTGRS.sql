@@ -1,6 +1,6 @@
 USE [bodb_TGRS]
 GO
-/****** Object:  StoredProcedure [dbo].[Task_StagingDataTGRS]    Script Date: 12/1/2017 4:16:39 PM ******/
+/****** Object:  StoredProcedure [dbo].[Task_StagingDataTGRS]    Script Date: 1/2/2018 2:26:19 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -30,6 +30,7 @@ AS
 		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]
 		- 20170922@Long:	Support more bettypes for Soccer PH AiO - [Redmine: #83621]
 		- 20171129@Long:	Support Non-Live tickets - [Redmine: #86289]
+		- 20180102@Long:	Change the way to get BU & MB days
    		
 	Param's Explanation:
 		
@@ -74,10 +75,22 @@ BEGIN;
 		,	(1.15  , 0.52  )
 		;
 
-	SELECT	@BalanceUpDay	= MIN(winlostdate)
-		,	@MoveBetsDay	= MAX(winlostdate)
-		,	@Yesterday		= CONVERT(DATE, GETDATE() - 1)
-	FROM	bodb02.dbo.bettrans14 WITH (NOLOCK);
+	IF	OBJECT_ID('tempdb..#BUMBData') IS NOT NULL
+	BEGIN;
+		DROP TABLE	#BUMBData
+	END;
+
+	CREATE TABLE	#BUMBData (
+			BUDay	SMALLDATETIME
+		,	MBDay	SMALLDATETIME
+	);
+
+	INSERT INTO #BUMBData(BUDay,MBDay)
+	EXECUTE bodb02.dbo.Age_SelBalanceUpDay;
+
+	SELECT	TOP 1 @BalanceUpDay	= BUDay FROM #BUMBData;
+	SELECT	TOP 1 @MoveBetsDay	= MBDay FROM #BUMBData;
+	SELECT	@Yesterday		= CONVERT(DATE, GETDATE() - 1);
 
 	IF	@BeforeMoveBetsDay <> 1
 	BEGIN;

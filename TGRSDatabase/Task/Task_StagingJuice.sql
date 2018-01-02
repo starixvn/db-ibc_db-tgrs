@@ -1,5 +1,10 @@
 USE [bodb_TGRS]
 GO
+/****** Object:  StoredProcedure [dbo].[Task_StagingJuice]    Script Date: 1/2/2018 2:24:50 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 ALTER PROCEDURE	[dbo].[Task_StagingJuice]
 						@Debug				BIT = 0
 					,	@BeforeMoveBetsDay	BIT = 1
@@ -16,7 +21,8 @@ AS
 		- 20170315@Long:	devide batch by date (not by 200k records as it is)
 		- 20170830@Long:	support UnassignedTrader
 		- 20170914@Billy:	Format code and tune performance for Task Staging Juice - [Redmine: #81465]
-		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]
+		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]		
+		- 20180102@Long:	Change the way to get BU & MB days
    		
 	Param's Explanation:
 		
@@ -41,11 +47,22 @@ BEGIN;
 		,	@Msg					NVARCHAR(MAX)
 		;
 
-	SELECT	@Yesterday		= CONVERT(DATE, GETDATE() - 1);
+	IF	OBJECT_ID('tempdb..#BUMBData') IS NOT NULL
+	BEGIN;
+		DROP TABLE	#BUMBData
+	END;
 
-	SELECT	@BalanceUpDay	= MIN(winlostdate)
-		,	@MoveBetsDay	= MAX(winlostdate)
-	FROM	bodb02.dbo.bettrans14 WITH (NOLOCK);
+	CREATE TABLE	#BUMBData (
+			BUDay	SMALLDATETIME
+		,	MBDay	SMALLDATETIME
+	);
+
+	INSERT INTO #BUMBData(BUDay,MBDay)
+	EXECUTE bodb02.dbo.Age_SelBalanceUpDay;
+
+	SELECT	TOP 1 @BalanceUpDay	= BUDay FROM #BUMBData;
+	SELECT	TOP 1 @MoveBetsDay	= MBDay FROM #BUMBData;
+	SELECT	@Yesterday		= CONVERT(DATE, GETDATE() - 1);
 
 	IF	@BeforeMoveBetsDay <> 1
 	BEGIN;
@@ -200,7 +217,7 @@ BEGIN;
 											THEN 9
 										ELSE 0
 									END
-		FROM		DB06.bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
+		FROM		DBARC.bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
 		LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK)
@@ -861,4 +878,3 @@ BEGIN;
 		RAISERROR('UPDATE TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 	END;
 END;
-GO
