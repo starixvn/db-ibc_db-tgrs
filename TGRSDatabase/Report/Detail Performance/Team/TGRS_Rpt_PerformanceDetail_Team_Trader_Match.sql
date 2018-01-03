@@ -1,4 +1,5 @@
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader_Match]
+﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_Trader_Match    Script Date: 4/1/2016 8:22:16 AM ******/
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader_Match]
     @FROMDate DATE
   , @ToDate   DATE
   , @TeamId   SMALLINT
@@ -8,8 +9,11 @@ AS
 /*
   Created:	20160330@Simon
   TASk:		Detail report Trader Performance - Detail Match
-  DB:			DBTGRS.bodb_TGRS
+  DB:		DBTGRS.bodb_TGRS
   Original:
+
+  Revision:
+	- 20171205@Simon: get only Live data & Bettypes are not disabled
 
   Param's ExplanatiON:
 
@@ -19,37 +23,38 @@ AS
 */
 
 BEGIN
-  SET NOCOUNT ON
-  DECLARE @BettypeList AS TABLE(bettype SMALLINT)
-  IF @Bettypes <> '0'
-    INSERT INTO @BettypeList
-      SELECT val
-      FROM dbo.strSplit_Key(@Bettypes, ',')
-  ELSE
-    INSERT INTO @BettypeList
-      SELECT Bettype
-      FROM dbo.Bettype WITH ( NOLOCK )
+	SET NOCOUNT ON;
 
-  SELECT
-    P.MatchId,
-    P.LeagueId,
-    P.HomeId,
-    P.AwayId,
-    P.EventDate,
-    ISNULL(SUM(P.Stake), 0)                            AS Turnover,
-    ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss,
-    ISNULL(SUM(BetCount), 0)                           AS BetCount,
-    CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0
-      THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100 / ISNULL(SUM(P.Stake), 0)
-    ELSE NULL END                                      AS Margin
-  FROM dbo.TraderPerformance P WITH ( NOLOCK )
-    INNER JOIN dbo.Trader T WITH ( NOLOCK ) ON T.CustId = P.CustId
-  WHERE P.EventDate BETWEEN @FROMDate AND @ToDate
-        AND P.CustId = @CustId
-        AND T.TeamId = @TeamId
-        AND P.Bettype IN (SELECT bettype
-                          FROM @BettypeList)
-  GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate
-  ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC
-END
-GO
+	DECLARE @BettypeList AS TABLE(bettype SMALLINT);
+
+	IF @Bettypes <> '0'
+	INSERT INTO @BettypeList
+		SELECT val
+		FROM dbo.strSplit_Key(@Bettypes, ',');
+	ELSE
+	INSERT INTO @BettypeList
+		SELECT Bettype
+		FROM dbo.Bettype WITH ( NOLOCK );
+
+	SELECT
+		P.MatchId,
+		P.LeagueId,
+		P.HomeId,
+		P.AwayId,
+		P.EventDate,
+		ISNULL(SUM(P.Stake), 0)                            AS Turnover,
+		ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss,
+		ISNULL(SUM(BetCount), 0)                           AS BetCount,
+		CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0
+			THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100 / ISNULL(SUM(P.Stake), 0)
+		ELSE NULL END                                      AS Margin
+	FROM dbo.TraderPerformance P WITH ( NOLOCK )
+		INNER JOIN dbo.Trader T WITH ( NOLOCK ) ON T.CustId = P.CustId
+	WHERE P.EventDate BETWEEN @FROMDate AND @ToDate
+		AND P.CustId = @CustId
+		AND T.TeamId = @TeamId
+		AND P.Bettype IN (SELECT bettype FROM @BettypeList)
+		AND P.IsLive = 1
+	GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate
+	ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC;
+END;

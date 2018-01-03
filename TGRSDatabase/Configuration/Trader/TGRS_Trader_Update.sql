@@ -1,19 +1,13 @@
-USE [bodb_TGRS]
-GO
-
-/****** Object:  StoredProcedure [dbo].[TGRS_Trader_Update]    Script Date: 03/28/2016 09:08:31 ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
-ALTER PROCEDURE [dbo].[TGRS_Trader_Update]
+﻿/****** Object:  Stored Procedure dbo.TGRS_Trader_Update    Script Date: 3/30/2016 8:57:07 AM ******/
+CREATE PROCEDURE [dbo].[TGRS_Trader_Update]
 	@CustId			INT,	
 	@NewTeamId		SMALLINT = NULL,
 	@NewGrade		SMALLINT = NULL,
 	@NewTeamEffectiveDate	DATE = NULL,
 	@NewGradeEffectiveDate	DATE = NULL,
+	@NewShift INT = NULL,
+	@NewShiftEffectiveDate DATE = NULL,
+	@NewRemark NVARCHAR(4000) = NULL,
 	@UserId			INT,
 	@ErrCode		INT = 0 OUTPUT,
 	@ErrMsg			NVARCHAR(200) = '' OUTPUT
@@ -25,6 +19,7 @@ DB:  DBTGRS.bodb_TGRS
 
 Revisions:
 			- 20160325@Aaron: Bug fixes on updating Grade and refactor the SP.
+			- 20171127@Simon: Add shift + remark parameter
 */ 
 
 AS
@@ -37,22 +32,28 @@ BEGIN
 			@OldTeamId		INT,
 			@OldGrade		INT,
 			@OldTeamEffectiveDate DATE,
-			@OldGradeEffectiveDate DATE			
+			@OldGradeEffectiveDate DATE,
+			@OldShift INT,
+			@OldShiftEffectiveDate DATE,
+			@OldRemark NVARCHAR(4000)
 
 	SELECT  @Username	= Username,
 			@EmployeeId	= EmployeeId,
 			@OldTeamId	= TeamId, 
 			@OldGrade	= Grade,
 			@OldTeamEffectiveDate = TeamEffectiveDate,
-			@OldGradeEffectiveDate = GradeEffectiveDate
+			@OldGradeEffectiveDate = GradeEffectiveDate,
+			@OldShift = [Shift],
+			@OldShiftEffectiveDate = ShiftEffectiveDate,
+			@OldRemark = Remark
 	FROM	dbo.Trader WITH (NOLOCK)
 	WHERE	CustId = @CustId
 	--END
 	
 	--CHECK WHAT IS UPDATING
-	DECLARE @IsTeamUpdate BIT = 0, @IsGradeUpdate BIT = 0, @Today DATE = GETDATE()
+	DECLARE @IsTeamUpdate BIT = 0, @IsGradeUpdate BIT = 0, @IsShiftUpdate BIT = 0, @Today DATE = GETDATE()
 	
-	IF @NewTeamId IS NOT NULL AND @NewTeamEffectiveDate IS NOT NULL AND @NewTeamEffectiveDate >= @Today
+	IF @NewTeamId IS NOT NULL AND @NewTeamEffectiveDate IS NOT NULL
 	BEGIN 
 		SET @IsTeamUpdate = 1
 	
@@ -71,7 +72,7 @@ BEGIN
 		END
 	END 
 
-	IF @NewGrade IS NOT NULL AND @NewGradeEffectiveDate IS NOT NULL AND @NewGradeEffectiveDate >= @Today
+	IF @NewGrade IS NOT NULL AND @NewGradeEffectiveDate IS NOT NULL
 	BEGIN 
 		SET @IsGradeUpdate = 1
 	
@@ -83,7 +84,26 @@ BEGIN
 		END
 	END 
 	
-	IF @IsTeamUpdate = 0 AND @IsGradeUpdate = 0
+	IF @NewShift IS NOT NULL AND @NewShiftEffectiveDate IS NOT NULL
+		BEGIN 
+			SET @IsShiftUpdate = 1
+	
+			IF NOT EXISTS (SELECT TOP 1 1 FROM dbo.[Shift] WITH (NOLOCK) WHERE ShiftId = @NewShift)
+			BEGIN 
+				SELECT  @ErrCode = 304,
+						@ErrMsg = 'Shift is invalid.'
+				RETURN
+			END
+		
+			IF @OldShiftEffectiveDate < @Today AND @NewShift = @OldShift 
+			BEGIN 
+				SELECT @ErrCode = 309,
+					   @ErrMsg = 'New shift is the same with the previous shift.'
+				RETURN
+			END
+		END 
+
+	IF @IsTeamUpdate = 0 AND @IsGradeUpdate = 0 AND @IsShiftUpdate = 0 AND @NewRemark IS NULL
 	BEGIN 
 		SELECT @ErrCode = 311,
 			   @ErrMsg = 'There is no change.'
@@ -119,8 +139,10 @@ BEGIN
 	--VARIABLES FOR CHECKING PURPOSE
 	DECLARE @LatestTeamId SMALLINT, @LatestTeamEffectiveDate DATE,   
 			@LatestGrade TINYINT, @LatestGradeEffectiveDate DATE, 
+			@LatestShift INT, @LatestShiftEffectiveDate DATE,
 			@PreTeamId SMALLINT, @PreTeamEffectiveDate DATE,@PreTeamEndDate DATE,   
-			@PreGrade TINYINT, @PreGradeEffectiveDate DATE, @PreGradeEndDate DATE
+			@PreGrade TINYINT, @PreGradeEffectiveDate DATE, @PreGradeEndDate DATE,
+			@PreShift INT, @PreShiftEffectiveDate DATE, @PreShiftEndDate DATE
 			
 	-------------------------UPDATE------------------------------------------------
 	
@@ -331,6 +353,113 @@ BEGIN
 		END
 	END
 
+	--UPDATE SHIFT - HISTORY
+	IF @IsShiftUpdate = 1
+	BEGIN 		
+		---Latest info
+		SELECT 	TOP 1 
+				@LatestShift = ShiftId, 
+				@LatestShiftEffectiveDate = BeginDate 
+		FROM	dbo.TraderShift_History WITH (NOLOCK)
+		WHERE	CustId = @CustId
+		ORDER BY BeginDate DESC
+				
+		---Previous latest info
+		SELECT 	TOP 1 
+				@PreShift = ShiftId, 
+				@PreShiftEffectiveDate = BeginDate,
+				@PreShiftEndDate = EndDate 
+		FROM	dbo.TraderShift_History WITH (NOLOCK)
+		WHERE	CustId = @CustId 
+				AND EndDate IS NOT NULL
+		ORDER BY EndDate DESC
+		
+		SELECT @LatestShift AS '1', @NewShift AS '2', @LatestShiftEffectiveDate AS '3'
+
+		IF (@LatestShiftEffectiveDate < @Today OR @LatestShiftEffectiveDate IS NULL) AND @NewShift <> ISNULL(@LatestShift, 0)
+		BEGIN
+			----Update EndDate of the Last history
+			UPDATE	dbo.TraderShift_History WITH (ROWLOCK, UPDLOCK) 
+			SET		EndDate = DATEADD (dd, -1, @NewShiftEffectiveDate)
+			WHERE	CustId = @CustId
+					AND BeginDate = @LatestShiftEffectiveDate
+
+			----Insert trader-shift history
+			INSERT INTO	dbo.TraderShift_History (
+								CustId
+								,ShiftId
+								,BeginDate
+								,EndDate
+								)
+						VALUES (
+								 @CustId
+								,@NewShift	
+								,@NewShiftEffectiveDate
+								,NULL
+								)			
+			----Error
+			IF @@ERROR > 0
+			BEGIN				
+				SELECT 
+					@ErrCode = 313, 
+					@ErrMsg = 'Failed to add new trader-shift history [Username = ' + @Username +']'
+				RETURN
+			END	
+		END
+		
+		IF @LatestShiftEffectiveDate  >= @Today AND @NewShift <> ISNULL(@PreShift, 0)
+		BEGIN 
+			----Update EndDate of the previous history
+			UPDATE	dbo.TraderShift_History WITH (ROWLOCK, UPDLOCK) 
+			SET		EndDate = DATEADD (dd, -1, @NewShiftEffectiveDate)
+			WHERE	CustId = @CustId
+					AND ISNULL(EndDate,'') = ISNULL(@PreShiftEndDate,'')
+	
+			----Update trader-shift history
+			UPDATE	dbo.TraderShift_History WITH (ROWLOCK, UPDLOCK) 
+			SET		ShiftId = @NewShift,
+					BeginDate = @NewShiftEffectiveDate,
+					EndDate = NULL
+			WHERE	CustId = @CustId
+					AND BeginDate = @LatestShiftEffectiveDate 
+	 									 
+			----Error
+			IF @@ERROR > 0
+			BEGIN
+				SELECT 
+					@ErrCode = 314, 
+					@ErrMsg = 'Failed to update trader-shift history [Username = ' + @Username +']'
+				RETURN
+			END		
+		
+		END
+		
+		IF @LatestShiftEffectiveDate  >= @Today AND @NewShift  = ISNULL(@PreShift,0)
+		BEGIN
+			----Update EndDate of the previous history
+			UPDATE	dbo.TraderShift_History WITH (ROWLOCK, UPDLOCK) 
+			SET		EndDate = NULL
+			WHERE	CustId = @CustId
+					AND ISNULL(EndDate,'') = ISNULL(@PreShiftEndDate,'')
+
+			----Delete Latest trader-shift history
+			DELETE  dbo.TraderShift_History WITH (ROWLOCK, UPDLOCK)
+			WHERE	CustId = @CustId
+					AND BeginDate = @LatestShiftEffectiveDate 
+	 									 
+			----Error
+			IF @@ERROR > 0
+			BEGIN
+				SELECT 
+					@ErrCode = 315, 
+					@ErrMsg = 'Failed to delete trader-shift history [Username = ' + @Username +']'
+				RETURN
+			END
+			
+			SET @NewShiftEffectiveDate  = @PreShiftEffectiveDate
+		END
+	END 
+
 	--UPDATE TRADER
 	IF @IsTeamUpdate = 0
 	BEGIN 
@@ -343,6 +472,13 @@ BEGIN
 		SELECT	@NewGrade = @OldGrade,
 				@NewGradeEffectiveDate = @OldGradeEffectiveDate
 	END
+
+	IF @IsShiftUpdate = 0
+	BEGIN 
+		SELECT	
+				@NewShift  = @OldShift,
+				@NewShiftEffectiveDate  = @OldShiftEffectiveDate
+	END
 	
 	UPDATE	dbo.Trader WITH (ROWLOCK, UPDLOCK) 
 	SET		TeamId			= @NewTeamId,
@@ -350,7 +486,10 @@ BEGIN
 			Grade = @NewGrade,
 			GradeEffectiveDate = @NewGradeEffectiveDate,
 			ModifiedDate	= Getdate(),
-			ModifiedBy		= @UserId
+			ModifiedBy		= @UserId,
+			[Shift] = @NewShift,
+			ShiftEffectiveDate = @NewShiftEffectiveDate,
+			Remark = @NewRemark
 	WHERE	CustId			= @CustId
 			
 	IF @@ERROR > 0
@@ -371,7 +510,10 @@ BEGIN
 						@NewTeamId			AS '@t',
 						@NewGrade			AS '@g',
 						@NewTeamEffectiveDate AS '@dt',
-						@NewGradeEffectiveDate AS '@dg'
+						@NewGradeEffectiveDate AS '@dg',
+						@NewShift AS '@s',
+						@NewShiftEffectiveDate AS '@ds',
+						@NewRemark AS '@r'
 					 FOR XML PATH('z'), ROOT('r')
 				)
 
@@ -390,5 +532,3 @@ BEGIN
 			@OldData	= @LogTraderOldData
 
 END
-GO
-

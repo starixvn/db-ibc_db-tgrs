@@ -1,7 +1,4 @@
-USE [bodb_TGRS]
-GO
-
-ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderBettypePerformance]
+﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderBettypePerformance]
 	@TraderId		INT,
 	@FromDate		DATETIME,
 	@ToDate			DATETIME,
@@ -16,6 +13,8 @@ AS
 	Revisions:
 		- 20160531@Percy: Return new field betcount [RedmineID: #58484]
 		- 20171024@Simon: Add ViewPermission param
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:
 		@ViewPermission = 0: all bet types
 		 = 1: major bet types
@@ -23,7 +22,7 @@ AS
 	Exam:
 */
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 
 	SELECT
 		b.BetType, b.TypeName, 
@@ -41,9 +40,11 @@ BEGIN
 				@ViewPermission = 0
 				OR b.BettypeGroup = @ViewPermission
 			)
+		AND t.IsLive = 1
+		AND b.[Disabled] = 0
 	GROUP BY b.BetType, b.TypeName, b.OrderId
-	ORDER BY Margin DESC, b.OrderId
-END
+	ORDER BY Margin DESC, b.OrderId;
+END;
 GO
 
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderBettypePerformance] TO [bodbTGRSNet]

@@ -2,11 +2,11 @@ USE [bodb_TGRS]
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderGeneralInfo]
-	@TraderId 		INT,
-	@ReportType 	TINYINT = 2,
-	@FromDate 		DATETIME,
-	@ToDate 		DATETIME,
-	@ViewPermission SMALLINT
+	@TraderId 			INT,
+	@ReportType 		TINYINT = 2,
+	@FromDate 			DATETIME,
+	@ToDate 			DATETIME,
+	@ViewPermission		SMALLINT
 AS
 /*
 	Creator: Percy
@@ -16,6 +16,8 @@ AS
 
 	Revisions:
 		- 20171024@Simon: Add ViewPermission param
+		- 20171205@Simon: get only Live data & Bettypes are not disabled
+
 	Param's Explanation:
 		@ReportType:
 			1: by date
@@ -27,7 +29,7 @@ AS
 	Exam:
 */
 BEGIN
-	SET NOCOUNT ON
+	SET NOCOUNT ON;
 	IF @ReportType = 1 -- by date
 	BEGIN
 		SELECT
@@ -45,6 +47,8 @@ BEGIN
 					@ViewPermission = 0
 					OR bt.BettypeGroup = @ViewPermission
 				)
+			AND P.IsLive = 1
+			AND bt.[Disabled] = 0
 	END
 	ELSE -- by month
 	BEGIN
@@ -62,7 +66,7 @@ BEGIN
 					OR BettypeGroup = @ViewPermission
 				)
 	END
-END
+END;
 GO
 
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderGeneralInfo] TO [bodbTGRSNet]

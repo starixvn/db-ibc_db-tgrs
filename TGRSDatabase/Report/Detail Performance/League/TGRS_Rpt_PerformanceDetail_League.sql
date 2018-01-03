@@ -1,8 +1,5 @@
-﻿SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League]  	
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League    Script Date: 2/24/2016 2:51:26 PM ******/
+CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League]  	
 	@FromDate		DATE,
 	@ToDate			DATE,
 	@LeagueName		NVARCHAR(100)= '',
@@ -19,24 +16,29 @@ AS
  Original:  
  
  Revisions:      	
-	20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+ 	- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
+	- 20171205@Simon: get only Live data & Bettypes are not disabled
+
  Param's Explanation:  	
 
  Exam: 
-	  EXEC  TGRS_Rpt_PerformanceDetail_League @FromDate = '2014-01-01', @ToDate= '2014-05-30' 
+	  	  EXEC  TGRS_Rpt_PerformanceDetail_League @FromDate = '2014-01-01', @ToDate= '2014-05-30' 
   
 */  
  
 BEGIN 
-	SET NOCOUNT ON  
+	SET NOCOUNT ON;
 
-	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
+	DECLARE @BettypeList AS TABLE (bettype SMALLINT);
+
 	IF @Bettypes <> '0'
 		INSERT INTO @BettypeList
-		SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
+		SELECT val 
+		FROM dbo.strSplit_Key(@Bettypes,',');
 	ELSE 
 		INSERT INTO @BettypeList
-		SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
+		SELECT Bettype 
+		FROM dbo.Bettype WITH (NOLOCK);
 	
 	IF (@LeagueName IS NULL OR @LeagueName = '')
 		BEGIN
@@ -53,14 +55,15 @@ BEGIN
 						INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+						AND P.IsLive = 1
 					GROUP BY P.LeagueId , L.LeagueName 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)
 				AND ( @Turnover IS NULL OR p.Turnover >= @Turnover)
 				AND ( @MarginFrom IS NULL  OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover  >= @MarginFrom))
 				AND ( @MarginTo IS NULL OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover <= @MarginTo))
-			ORDER BY Margin DESC, P.LeagueName ASC
-		END
+			ORDER BY Margin DESC, P.LeagueName ASC;
+		END;
 	ELSE
 		BEGIN
 			SELECT *, CASE WHEN p.Turnover <> 0  THEN  p.WinLoss * 100 /p.Turnover ELSE NULL END  as margin
@@ -77,16 +80,13 @@ BEGIN
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
+						AND P.IsLive = 1
 					GROUP BY P.LeagueId , L.LeagueName 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)
 				AND ( @Turnover IS NULL OR p.Turnover >= @Turnover)
 				AND ( @MarginFrom IS NULL  OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover  >= @MarginFrom))
 				AND ( @MarginTo IS NULL OR (Turnover <> 0 and  p.WinLoss * 100 /p.Turnover <= @MarginTo))
-			ORDER BY Margin DESC, P.LeagueName ASC
-		END
-END 
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_League] TO [bodbTGRSNet]
-GO
-
+			ORDER BY Margin DESC, P.LeagueName ASC;
+		END;
+END;
