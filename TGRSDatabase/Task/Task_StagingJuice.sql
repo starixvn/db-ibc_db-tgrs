@@ -1,11 +1,10 @@
-USE [bodb_TGRS]
+SET QUOTED_IDENTIFIER ON 
 GO
-/****** Object:  StoredProcedure [dbo].[Task_StagingJuice]    Script Date: 1/3/2018 8:42:53 AM ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON 
 GO
-SET QUOTED_IDENTIFIER ON
-GO
-ALTER PROCEDURE	[dbo].[Task_StagingJuice]
+
+/****** Object:  Stored Procedure dbo.Task_StagingJuice    Script Date: 1/5/2018 5:04:21 PM ******/
+CREATE PROCEDURE	[dbo].[Task_StagingJuice_xtest]
 		@Debug					BIT = 0
 	,	@BeforeMoveBetsDay		BIT = 1	
 	,	@GenerateFromDate		SMALLDATETIME = NULL
@@ -26,6 +25,7 @@ AS
 		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]		
 		- 20180102@Long:	Change the way to get BU & MB days
 		- 20180103@Long:	Support code for generating historical data
+		- 20180105@Aaron:   Fix date range. Note: BU & MB are in bettrans14
    		
 	Param's Explanation:
 		
@@ -235,106 +235,115 @@ BEGIN;
 		,	@IsGetDataFrom14		BIT = 0
 		,	@IsGetDataFromBK		BIT = 0;
 
-	DECLARE @FromDateOrigin			SMALLDATETIME = ''
-		,	@ToDateOrigin			SMALLDATETIME = ''
-		,	@FromDate14				SMALLDATETIME = ''
-		,	@ToDate14				SMALLDATETIME = ''
-		,	@FromDateBK				SMALLDATETIME = ''
-		,	@ToDateBK				SMALLDATETIME = '';
-
+	DECLARE @FromDateOrigin			SMALLDATETIME = NULL
+		,	@ToDateOrigin			SMALLDATETIME = NULL
+		,	@FromDate14				SMALLDATETIME = NULL
+		,	@ToDate14				SMALLDATETIME = NULL
+		,	@FromDateBK				SMALLDATETIME = NULL
+		,	@ToDateBK				SMALLDATETIME = NULL
+	
+	-- No input date range: Default job run
 	IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
 	BEGIN
-		SELECT	@IsGetDataFromOrigin = 1
-			,	@IsGetDataFrom14 = CASE WHEN @BeforeMoveBetsDay = 1 THEN 1 ELSE 0 END
-			,	@IsGetDataFromBK = 0
-			,	@FromDateOrigin = @MoveBetsDay + 1
-			,	@ToDateOrigin = @Yesterday
-			,	@FromDate14 = CASE WHEN @BeforeMoveBetsDay = 1 THEN @BalanceUpDay + 1 ELSE NULL END
-			,	@ToDate14 = CASE WHEN @BeforeMoveBetsDay = 1 THEN @MoveBetsDay ELSE NULL END
-			,	@FromDateBK = NULL 
-			,	@ToDateBK = NULL;
-	END
-	ELSE
-	BEGIN
-		IF @GenerateToDate <= @BalanceUpDay
+		SELECT @GenerateToDate = @Yesterday;
+
+		IF @BeforeMoveBetsDay = 1
 		BEGIN
-			SELECT	@IsGetDataFromOrigin = 0
-				,	@IsGetDataFrom14 = 0			
-				,	@IsGetDataFromBK = 1
-				,	@FromDateOrigin = NULL
-				,	@ToDateOrigin = NULL
-				,	@FromDate14 = NULL
-				,	@ToDate14 = NULL
-				,	@FromDateBK = @GenerateFromDate 
-				,	@ToDateBK = @GenerateToDate;
-		END
-		ELSE IF  @GenerateToDate > @BalanceUpDay AND @GenerateFromDate <= @BalanceUpDay
-		BEGIN
-			IF @GenerateToDate <= @MoveBetsDay
-			BEGIN
-				SELECT	@IsGetDataFromOrigin = 0
-					,	@IsGetDataFrom14 = 1
-					,	@IsGetDataFromBK = 1
-					,	@FromDateOrigin = NULL
-					,	@ToDateOrigin = NULL
-					,	@FromDate14 = @BalanceUpDay + 1
-					,	@ToDate14 = @GenerateToDate
-					,	@FromDateBK = @GenerateFromDate 
-					,	@ToDateBK = @BalanceUpDay;
-			END
-			ELSE
-			BEGIN
-				SELECT	@IsGetDataFromOrigin = 1
-					,	@IsGetDataFrom14 = 1
-					,	@IsGetDataFromBK = 1
-					,	@FromDateOrigin = @MoveBetsDay + 1
-					,	@ToDateOrigin = @GenerateToDate
-					,	@FromDate14 = @BalanceUpDay + 1
-					,	@ToDate14 = @MoveBetsDay
-					,	@FromDateBK = @GenerateFromDate 
-					,	@ToDateBK = @BalanceUpDay;
-			END
-		END
-		ELSE IF @GenerateFromDate > @BalanceUpDay
-		BEGIN
-			IF @GenerateToDate <= @MoveBetsDay
-			BEGIN
-				SELECT	@IsGetDataFromOrigin = 0
-					,	@IsGetDataFrom14 = 1
-					,	@IsGetDataFromBK = 0				
-					,	@FromDateOrigin = NULL
-					,	@ToDateOrigin = NULL
-					,	@FromDate14 = @BalanceUpDay + 1
-					,	@ToDate14 = @GenerateToDate				
-					,	@FromDateBK = NULL
-					,	@ToDateBK = NULL;
-			END
-			ELSE
-			BEGIN
-				SELECT	@IsGetDataFromOrigin = 1
-					,	@IsGetDataFrom14 = 1				
-					,	@IsGetDataFromBK = 0
-					,	@FromDateOrigin = @MoveBetsDay + 1
-					,	@ToDateOrigin = @GenerateToDate
-					,	@FromDate14 = @GenerateFromDate
-					,	@ToDate14 = @MoveBetsDay			
-					,	@FromDateBK = NULL
-					,	@ToDateBK = NULL;
-			END
+			SELECT @GenerateFromDate = @BalanceUpDay;
 		END
 		ELSE
 		BEGIN
-			SELECT	@IsGetDataFromOrigin = 1
-				,	@IsGetDataFrom14 = 0
-				,	@IsGetDataFromBK = 0
-				,	@FromDateOrigin = @GenerateFromDate
-				,	@ToDateOrigin = @GenerateToDate
-				,	@FromDate14 = NULL
-				,	@ToDate14 = NULL		
-				,	@FromDateBK = NULL
-				,	@ToDateBK = NULL;
+			SELECT @GenerateFromDate = @MoveBetsDay + 1;
+		END
+	END
+
+	-- Return immediately if wrong date range
+	IF @GenerateToDate < @GenerateFromDate
+	BEGIN
+		IF @Debug = 1
+		BEGIN;
+			SELECT	@Msg = 'GenerateToDate < GenerateFromDate: No exceptable!';
+
+			-- Force the output to appear immediately --
+			RAISERROR(@Msg, 0, 0) WITH NOWAIT;
 		END;
-	END;
+
+		RETURN;
+	END
+
+	IF @GenerateFromDate < @BalanceUpDay
+	BEGIN
+		SELECT @IsGetDataFromBK = 1
+	END
+
+	IF @GenerateFromDate <= @MoveBetsDay
+	BEGIN
+		SELECT @IsGetDataFrom14 = 1
+	END
+
+	IF @GenerateFromDate > @MoveBetsDay
+	BEGIN
+		SELECT @IsGetDataFromOrigin = 1
+	END
+
+	IF @GenerateToDate < @BalanceUpDay
+	BEGIN
+		SELECT @IsGetDataFromBK = 1
+	END
+
+	IF @GenerateToDate <= @MoveBetsDay
+	BEGIN
+		SELECT @IsGetDataFrom14 = 1
+	END
+
+	IF @GenerateToDate > @MoveBetsDay
+	BEGIN
+		SELECT @IsGetDataFromOrigin = 1
+	END
+
+	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1
+	BEGIN
+		SELECT	@FromDateOrigin = @MoveBetsDay + 1
+				,	@ToDateOrigin = @GenerateToDate
+				,	@FromDate14 = @BalanceUpDay
+				,	@ToDate14 = @MoveBetsDay
+				,	@FromDateBK = @GenerateFromDate 
+				,	@ToDateBK = @BalanceUpDay - 1;
+	END
+
+	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 0
+	BEGIN
+		SELECT	@FromDate14 = @BalanceUpDay
+				,	@ToDate14 = @GenerateToDate
+				,	@FromDateBK = @GenerateFromDate 
+				,	@ToDateBK = @BalanceUpDay - 1;
+	END
+
+	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1
+	BEGIN
+		SELECT	@FromDateOrigin = @MoveBetsDay + 1
+				,	@ToDateOrigin = @GenerateToDate
+				,	@FromDate14 = @GenerateFromDate
+				,	@ToDate14 = @MoveBetsDay
+	END
+
+	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 0 AND @IsGetDataFromOrigin = 0
+	BEGIN
+		SELECT	@FromDateBK = @GenerateFromDate 
+				,	@ToDateBK = @GenerateToDate;
+	END
+
+	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 0
+	BEGIN
+		SELECT	@FromDate14 = @GenerateFromDate
+				,	@ToDate14 = @GenerateToDate
+	END
+
+	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 0 AND @IsGetDataFromOrigin = 1
+	BEGIN
+		SELECT	@FromDateOrigin = @GenerateFromDate
+				,	@ToDateOrigin = @GenerateToDate
+	END
 
 	IF @IsGetDataFromBK = 1
 	BEGIN
@@ -661,7 +670,7 @@ BEGIN;
 				ON	m.homeid = t.teamid
 		LEFT JOIN	bodb02.dbo.League l WITH (NOLOCK)
 				ON	m.leagueid = l.leagueid
-		WHERE	m.EventDate BETWEEN @FromDate14 AND @FromDate14
+		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
 			AND	m.SportType = 1
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%';
@@ -679,7 +688,7 @@ BEGIN;
 		INSERT INTO	#winlostdate (winlostdate)
 		SELECT	tally.winlostdate
 		FROM	(
-			SELECT	'NoDays' = DATEDIFF(DAY, @FromDate14, @FromDate14) + 1
+			SELECT	'NoDays' = DATEDIFF(DAY, @FromDate14, @ToDate14) + 1
 		) cnt
 		CROSS APPLY	(
 			SELECT	TOP(cnt.NoDays)
@@ -940,7 +949,7 @@ BEGIN;
 				ON	m.homeid = t.teamid
 		LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK)
 				ON	m.leagueid = l.leagueid
-		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @Yesterday
+		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
 			AND	a.OperatorType < 3
@@ -1266,3 +1275,13 @@ BEGIN;
 		RAISERROR('UPDATE TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 	END;
 END;
+
+GO
+
+SET QUOTED_IDENTIFIER OFF 
+GO
+SET ANSI_NULLS ON 
+GO
+
+
+GO
