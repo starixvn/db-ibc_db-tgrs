@@ -1,11 +1,10 @@
 USE [bodb_TGRS]
 GO
-/****** Object:  StoredProcedure [dbo].[Task_StagingTraderPerformanceByDate]    Script Date: 12/1/2017 4:16:25 PM ******/
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-/****** Object:  Stored Procedure dbo.Task_StagingTraderPerformanceByDate    Script Date: 3/8/2016 2:46:20 PM ******/
 
 ALTER PROCEDURE	[dbo].[Task_StagingTraderPerformanceByDate]
 	@Date DATE = NULL
@@ -21,6 +20,7 @@ AS
 		- 20160307@Billy:	Add new field Spread for staging data - [Redmine: #53240]
 		- 20171025@Long:	Sum by BettypeGroup (Major, PH)
 		- 20171127@Long:	Support Live Status
+		- 20180119@John.Ngo: Update Logic generating data [Redmine: #87861]
    			
 	Param's Explanation:  
 	
@@ -51,52 +51,6 @@ BEGIN;
 	SELECT DISTINCT b.BetType
 		,	b.BettypeGroup
 	FROM dbo.BetType b WITH(NOLOCK);
-
-	-- [TraderPerformance] table
-	DELETE [dbo].[TraderPerformance]	WHERE EventDate = @Date;
-
-	INSERT INTO [dbo].[TraderPerformance]
-    (
-			[CustId]
-        ,	[MatchId]
-		,	[WorkShift]
-		,	[MatchCode]
-        ,	[EventDate]
-        ,	[SportType]
-        ,	[BetType]
-        ,	[LeagueId]
- 		,	[HomeId]
-        ,	[AwayId]
-        ,	[TeamId]
-        ,	[Grade]
-        ,	[Stake]
-        ,	[WinLost]
-        ,	[Comm]
-        ,	[BetCount]
-		,	[Spread]
-		,	[IsLive]
-    )
- 
-	SELECT	[CustId]
-        ,	[MatchId]
-		,	[WorkShift]
-		,	[MatchCode]
-        ,	[EventDate]
-        ,	[SportType]
-        ,	[BetType]
-        ,	[LeagueId]
- 		,	[HomeId]
-        ,	[AwayId]
-        ,	[TeamId]
-        ,	[Grade]
-        ,	[Stake]
-        ,	[WinLost]
-        ,	[Comm]
-        ,	[BetCount]
-		,	[Spread]
-		,	[IsLive]
-	FROM [dbo].[Staging_TraderPerformance] WITH(NOLOCK)
-	WHERE EventDate = @Date;
  
 	-- [SummaryByBetType_Daily] table
 	DELETE [dbo].[SummaryByBetType_Daily]	WHERE EventDate = @Date;
@@ -122,7 +76,7 @@ BEGIN;
 		,	SUM([Comm]) [Comm]
 		,	SUM([BetCount]) BetCount
 		,	COUNT(DISTINCT [MatchId])[MatchCount]
-	FROM [dbo].[Staging_TraderPerformance] WITH(NOLOCK)
+	FROM [dbo].[TraderPerformance] WITH(NOLOCK)
 	WHERE EventDate = @Date
 			AND IsLive = 1
 	GROUP BY [LeagueId]
@@ -153,7 +107,7 @@ BEGIN;
 		,	SUM(s.[BetCount]) BetCount
 		,	COUNT(DISTINCT s.[MatchId])[MatchCount]
 		,	g.[BettypeGroup]
-	FROM [dbo].[Staging_TraderPerformance] s WITH(NOLOCK)
+	FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 		INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 	WHERE EventDate = @Date
 		AND IsLive = 1
@@ -185,7 +139,7 @@ BEGIN;
 		,	SUM(s.[BetCount]) BetCount
 		,	COUNT(DISTINCT s.[MatchId])[MatchCount]
 		,	g.[BettypeGroup]
-	FROM [dbo].[Staging_TraderPerformance] s WITH(NOLOCK)
+	FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 		INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 	WHERE EventDate = @Date
 		AND IsLive = 1
