@@ -102,11 +102,6 @@ BEGIN;
 
 	SELECT	@Yesterday		= CONVERT(DATE, GETDATE() - 1);
 
-	IF	@BeforeMoveBetsDay <> 1
-	BEGIN;
-		SELECT	@BalanceUpDay = @MoveBetsDay + 1;
-	END;
-
 	IF	@Debug = 1
 	BEGIN;
 		SELECT	@Msg = '
@@ -442,6 +437,23 @@ BEGIN;
 			RAISERROR('From BK - Insert #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
+		-- No input date range: Default job run
+		IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
+		BEGIN;
+			INSERT INTO dbo.Staging_EventDate (EventDate)
+			SELECT winlostdate FROM #winlostdate
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN;
+				-- Force the output to appear immediately --
+				RAISERROR('From BK - Insert Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			END;
+		END;
+
 		------------
 		WHILE	EXISTS (SELECT 1 FROM #winlostdate)
 		BEGIN;
@@ -508,7 +520,8 @@ BEGIN;
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
+			IF	@Debug = 1
 			BEGIN;
 				-- Force the output to appear immediately --
 				RAISERROR('From BK - Insert #tmpFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
@@ -667,7 +680,7 @@ BEGIN;
 			IF	@Debug = 1
 			BEGIN;
 				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From BK - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate
@@ -695,7 +708,7 @@ BEGIN;
 			IF	@Debug = 1
 			BEGIN;
 				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From BK - Insert TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			DELETE	d
@@ -705,7 +718,8 @@ BEGIN;
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
+			IF	@Debug = 1
 			BEGIN;
 				-- Force the output to appear immediately --
 				PRINT	@WinLostDate
@@ -819,13 +833,21 @@ BEGIN;
 			RAISERROR('From 14 - Insert #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		INSERT INTO dbo.Staging_EventDate (EventDate)
-		SELECT winlostdate FROM #winlostdate
-
-		IF	@Debug = 1
+		-- No input date range: Default job run
+		IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
 		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('From 14 - Insert #Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			INSERT INTO dbo.Staging_EventDate (EventDate)
+			SELECT winlostdate FROM #winlostdate
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN;
+				-- Force the output to appear immediately --
+				RAISERROR('From 14 - Insert Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			END;
 		END;
 
 		------------
@@ -893,7 +915,8 @@ BEGIN;
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
+			IF	@Debug = 1
 			BEGIN;
 				-- Force the output to appear immediately --
 				RAISERROR('From 14 - Insert #tmpFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
@@ -1052,7 +1075,7 @@ BEGIN;
 			IF	@Debug = 1
 			BEGIN;
 				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #Staging_TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From 14 - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate
@@ -1078,9 +1101,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN
+			BEGIN;
 				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From 14 - Insert TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			DELETE	d
@@ -1090,7 +1113,8 @@ BEGIN;
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
+			IF	@Debug = 1
 			BEGIN;
 				-- Force the output to appear immediately --
 				PRINT	@WinLostDate
@@ -1204,13 +1228,21 @@ BEGIN;
 			RAISERROR('From Origin - Insert #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		INSERT INTO dbo.Staging_EventDate (EventDate)
-		SELECT winlostdate FROM #winlostdate
-
-		IF	@Debug = 1
+		-- No input date range: Default job run
+		IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
 		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('From Origin - Insert #Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			INSERT INTO dbo.Staging_EventDate (EventDate)
+			SELECT winlostdate FROM #winlostdate
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN;
+				-- Force the output to appear immediately --
+				RAISERROR('From Origin - Insert Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			END;
 		END;
 
 		WHILE	EXISTS (SELECT 1 FROM #winlostdate)
