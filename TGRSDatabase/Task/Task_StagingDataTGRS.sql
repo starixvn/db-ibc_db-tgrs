@@ -494,8 +494,6 @@ BEGIN;
 			FROM		DBARC.bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
 			INNER JOIN	DBARC.bodb_Archive.dbo.match_bk AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
-			INNER JOIN	dbo.BetType bt WITH(NOLOCK)
-					ON	b.bettype = bt.BetType 
 			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
@@ -890,7 +888,6 @@ BEGIN;
 			FROM		bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.match14 AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
-			INNER JOIN dbo.BetType bt WITH(NOLOCK) ON b.bettype = bt.BetType
 			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
@@ -1285,7 +1282,6 @@ BEGIN;
 			FROM		bodb02.dbo.bettrans AS b WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
-			INNER JOIN dbo.BetType bt WITH(NOLOCK) ON b.bettype = bt.BetType
 			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
