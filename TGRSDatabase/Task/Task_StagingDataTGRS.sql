@@ -36,6 +36,7 @@ AS
 		- 20180109@Long:	Support code for generating historical data
 		- 20180116@Long:	Group-by for BetChoice on each bettype [Redmine: #87861]
 		- 20180119@John.Ngo: Update Logic generating data [Redmine: #87861]
+		- 20180228@Long:	Track changes on matches [Redmine: #87962]
    		
 	Param's Explanation:
 		
@@ -221,6 +222,103 @@ BEGIN;
 			CustId				ASC
 		,	EventDate			ASC
 	); 
+
+	-- Track changes on matches
+	IF	OBJECT_ID('tempdb..#tmpDateToTraceChangesOnMatch') IS NOT NULL
+	BEGIN;
+		DROP TABLE	#tmpDateToTraceChangesOnMatch;
+	END;
+
+	CREATE TABLE	#tmpDateToTraceChangesOnMatch (
+			EventDate			DATE
+	);
+
+	INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
+	SELECT DISTINCT TOP (2) tp.EventDate
+	FROM dbo.TraderPerformance tp WITH(NOLOCK)
+	ORDER BY tp.EventDate DESC;
+
+	IF	OBJECT_ID('tempdb..#tmpTraderSummarizedDataOld') IS NOT NULL
+	BEGIN;
+		DROP TABLE	#tmpTraderSummarizedDataOld;
+	END;
+
+	CREATE TABLE	#tmpTraderSummarizedDataOld (
+			MatchId				INT
+		,	CustId				INT
+		,	SportType			INT
+		,	BetType				SMALLINT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	BetCount			INT
+	);
+
+	CREATE CLUSTERED INDEX	#CIX_tmpTraderSummarizedOldDataIdx ON #tmpTraderSummarizedDataOld (
+			MatchId				ASC
+		,	CustId				ASC
+		,	SportType			ASC
+		,	BetType				ASC
+	);
+
+	IF	OBJECT_ID('tempdb..#tmpTraderSummarizedDataNew') IS NOT NULL
+	BEGIN;
+		DROP TABLE	#tmpTraderSummarizedDataNew;
+	END;
+
+	CREATE TABLE	#tmpTraderSummarizedDataNew (
+			MatchId				INT
+		,	CustId				INT
+		,	SportType			INT
+		,	BetType				SMALLINT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	BetCount			INT
+	);
+
+	CREATE CLUSTERED INDEX	#CIX_tmpTraderSummarizedDataNewIdx ON #tmpTraderSummarizedDataNew (
+			MatchId				ASC
+		,	CustId				ASC
+		,	SportType			ASC
+		,	BetType				ASC
+	);
+
+	IF	OBJECT_ID('tempdb..#tmpTraderSummarizedDataChanged') IS NOT NULL
+	BEGIN;
+		DROP TABLE	#tmpTraderSummarizedDataChanged;
+	END;
+
+	CREATE TABLE	#tmpTraderSummarizedDataChanged (
+			MatchId				INT
+		,	CustId				INT
+		,	SportType			INT
+		,	BetType				SMALLINT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	BetCount			INT
+		,	DataSource			BIT
+	);
+
+	CREATE CLUSTERED INDEX	#CIX_tmpTraderSummarizedDataChangedIdx ON #tmpTraderSummarizedDataChanged (
+			MatchId				ASC
+		,	CustId				ASC
+		,	SportType			ASC
+		,	BetType				ASC
+	);
+
+	INSERT INTO #tmpTraderSummarizedDataOld(MatchId, CustId, SportType, BetType, Turnover, WinLoss, BetCount)
+	SELECT	tp.MatchId
+		,	tp.CustId
+		,	tp.SportType
+		,	tp.BetType
+		,	SUM(tp.Stake) AS Turnover
+		,	SUM(tp.WinLost) AS WinLoss
+		,	SUM(tp.BetCount) AS BetCount
+	FROM dbo.TraderPerformance tp WITH(NOLOCK)
+		INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
+	GROUP BY tp.MatchId
+		,	tp.CustId
+		,	tp.SportType
+		,	tp.BetType;
 
 	-- Initialize date range
 	DECLARE @IsGetDataFromOrigin	BIT = 0
@@ -1515,5 +1613,37 @@ BEGIN;
 			TRUNCATE TABLE #tmpStagingTraderPerformance;
 			TRUNCATE TABLE #tmpFilteredBettransByBatch;
 		END;
-	END;	
+	END;		
+
+	-- check data changed on matches
+	INSERT INTO #tmpTraderSummarizedDataNew(MatchId, CustId, SportType, BetType, Turnover, WinLoss, BetCount)
+	SELECT	tp.MatchId
+		,	tp.CustId
+		,	tp.SportType
+		,	tp.BetType
+		,	SUM(tp.Stake) AS Turnover
+		,	SUM(tp.WinLost) AS WinLoss
+		,	SUM(tp.BetCount) AS BetCount
+	FROM dbo.TraderPerformance tp WITH(NOLOCK)
+		INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
+	GROUP BY tp.MatchId
+		,	tp.CustId
+		,	tp.SportType
+		,	tp.BetType;
+
+	INSERT INTO dbo.ChangedMatch([MatchId],[CustId],[SportType],[BetType],[Turnover],[Winloss],[BetCount],[CapturedDate])
+	SELECT DATEADD(DAY,-1, GETDATE()) AS [CapturedDate], T1.MatchId, T1.CustId, T1.SportType, T1.BetType, T1.Turnover, T1.WinLoss, T1.BetCount
+	FROM (
+		  SELECT * FROM #tmpTraderSummarizedDataOld
+		  EXCEPT
+		  SELECT * FROM #tmpTraderSummarizedDataNew
+	) AS T1
+	UNION ALL
+	SELECT GETDATE() AS [CapturedDate], T2.MatchId, T2.CustId, T2.SportType, T2.BetType, T2.Turnover, T2.WinLoss, T2.BetCount
+	FROM (
+		  SELECT * FROM #tmpTraderSummarizedDataNew
+		  EXCEPT
+		  SELECT * FROM #tmpTraderSummarizedDataOld
+	) AS T2
+	;
 END;
