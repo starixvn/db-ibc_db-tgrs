@@ -1,6 +1,6 @@
 USE [bodb_TGRS]
 GO
-
+/****** Object:  StoredProcedure [dbo].[Task_StagingDataTGRS]    Script Date: 3/6/2018 8:45:51 AM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -238,6 +238,16 @@ BEGIN;
 	FROM dbo.TraderPerformance tp WITH(NOLOCK)
 	ORDER BY tp.EventDate DESC;
 
+	SELECT	@RowCount	= @@ROWCOUNT
+		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+		;
+
+	IF	@Debug = 1
+	BEGIN
+		-- Force the output to appear immediately --
+		RAISERROR('From TraderPerformance - Insert #tmpDateToTraceChangesOnMatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+	END;
+
 	IF	OBJECT_ID('tempdb..#tmpTraderSummarizedDataOld') IS NOT NULL
 	BEGIN;
 		DROP TABLE	#tmpTraderSummarizedDataOld;
@@ -245,6 +255,7 @@ BEGIN;
 
 	CREATE TABLE	#tmpTraderSummarizedDataOld (
 			MatchId				INT
+		,	EventDate			DATE
 		,	CustId				INT
 		,	SportType			INT
 		,	BetType				SMALLINT
@@ -267,6 +278,7 @@ BEGIN;
 
 	CREATE TABLE	#tmpTraderSummarizedDataNew (
 			MatchId				INT
+		,	EventDate			DATE
 		,	CustId				INT
 		,	SportType			INT
 		,	BetType				SMALLINT
@@ -282,43 +294,52 @@ BEGIN;
 		,	BetType				ASC
 	);
 
-	IF	OBJECT_ID('tempdb..#tmpTraderSummarizedDataChanged') IS NOT NULL
+	IF	OBJECT_ID('tempdb..#tmpChangedMatches') IS NOT NULL
 	BEGIN;
-		DROP TABLE	#tmpTraderSummarizedDataChanged;
+		DROP TABLE	#tmpChangedMatches;
 	END;
 
-	CREATE TABLE	#tmpTraderSummarizedDataChanged (
+	CREATE TABLE	#tmpChangedMatches (
 			MatchId				INT
+		,	EventDate			DATE
 		,	CustId				INT
 		,	SportType			INT
 		,	BetType				SMALLINT
-		,	Turnover			MONEY
-		,	WinLoss				MONEY
-		,	BetCount			INT
-		,	DataSource			BIT
 	);
 
-	CREATE CLUSTERED INDEX	#CIX_tmpTraderSummarizedDataChangedIdx ON #tmpTraderSummarizedDataChanged (
+	CREATE CLUSTERED INDEX	#CIX_#tmpChangedMatchesIdx ON #tmpChangedMatches (
 			MatchId				ASC
 		,	CustId				ASC
 		,	SportType			ASC
 		,	BetType				ASC
 	);
 
-	INSERT INTO #tmpTraderSummarizedDataOld(MatchId, CustId, SportType, BetType, Turnover, WinLoss, BetCount)
-	SELECT	tp.MatchId
-		,	tp.CustId
-		,	tp.SportType
-		,	tp.BetType
-		,	SUM(tp.Stake) AS Turnover
-		,	SUM(tp.WinLost) AS WinLoss
-		,	SUM(tp.BetCount) AS BetCount
+	INSERT INTO #tmpTraderSummarizedDataOld(MatchId, EventDate, CustId, SportType, BetType, Turnover, WinLoss, BetCount)
+	SELECT	[MatchId]		= tp.MatchId
+		,	[EventDate]		= tp.EventDate
+		,	[CustId]		= tp.CustId
+		,	[SportType]		= tp.SportType
+		,	[BetType]		= tp.BetType
+		,	[Turnover]		= SUM(tp.Stake)
+		,	[WinLoss]		= SUM(tp.WinLost)
+		,	[BetCount]		= SUM(tp.BetCount)
 	FROM dbo.TraderPerformance tp WITH(NOLOCK)
 		INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
 	GROUP BY tp.MatchId
+		,	tp.EventDate
 		,	tp.CustId
 		,	tp.SportType
 		,	tp.BetType;
+
+	SELECT	@RowCount	= @@ROWCOUNT
+		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+		;
+
+	IF	@Debug = 1
+	BEGIN
+		-- Force the output to appear immediately --
+		RAISERROR('From TraderPerformance - Insert #tmpTraderSummarizedDataOld - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+	END;
 
 	-- Initialize date range
 	DECLARE @IsGetDataFromOrigin	BIT = 0
@@ -1616,34 +1637,75 @@ BEGIN;
 	END;		
 
 	-- check data changed on matches
-	INSERT INTO #tmpTraderSummarizedDataNew(MatchId, CustId, SportType, BetType, Turnover, WinLoss, BetCount)
-	SELECT	tp.MatchId
-		,	tp.CustId
-		,	tp.SportType
-		,	tp.BetType
-		,	SUM(tp.Stake) AS Turnover
-		,	SUM(tp.WinLost) AS WinLoss
-		,	SUM(tp.BetCount) AS BetCount
+	INSERT INTO #tmpTraderSummarizedDataNew(MatchId, EventDate, CustId, SportType, BetType, Turnover, WinLoss, BetCount)
+	SELECT	[MatchId]		= tp.MatchId
+		,	[EventDate]		= tp.EventDate
+		,	[CustId]		= tp.CustId
+		,	[SportType]		= tp.SportType
+		,	[BetType]		= tp.BetType
+		,	[Turnover]		= SUM(tp.Stake)
+		,	[WinLoss]		= SUM(tp.WinLost)
+		,	[BetCount]		= SUM(tp.BetCount)
 	FROM dbo.TraderPerformance tp WITH(NOLOCK)
 		INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
 	GROUP BY tp.MatchId
+		,	tp.EventDate
 		,	tp.CustId
 		,	tp.SportType
 		,	tp.BetType;
 
-	INSERT INTO dbo.ChangedMatch([MatchId],[CustId],[SportType],[BetType],[Turnover],[Winloss],[BetCount],[CapturedDate])
-	SELECT DATEADD(DAY,-1, GETDATE()) AS [CapturedDate], T1.MatchId, T1.CustId, T1.SportType, T1.BetType, T1.Turnover, T1.WinLoss, T1.BetCount
+	SELECT	@RowCount	= @@ROWCOUNT
+		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+		;
+
+	IF	@Debug = 1
+	BEGIN
+		-- Force the output to appear immediately --
+		RAISERROR('From TraderPerformance - Insert #tmpTraderSummarizedDataNew - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+	END;
+	
+	INSERT INTO #tmpChangedMatches(MatchId, EventDate, CustId, SportType, BetType)
+	SELECT	[MatchId]		= n.MatchId
+		,	[EventDate]		= n.EventDate
+		,	[CustId]		= n.CustId
+		,	[SportType]		= n.SportType
+		,	[BetType]		= n.BetType
 	FROM (
-		  SELECT * FROM #tmpTraderSummarizedDataOld
-		  EXCEPT
-		  SELECT * FROM #tmpTraderSummarizedDataNew
-	) AS T1
-	UNION ALL
-	SELECT GETDATE() AS [CapturedDate], T2.MatchId, T2.CustId, T2.SportType, T2.BetType, T2.Turnover, T2.WinLoss, T2.BetCount
-	FROM (
-		  SELECT * FROM #tmpTraderSummarizedDataNew
-		  EXCEPT
-		  SELECT * FROM #tmpTraderSummarizedDataOld
-	) AS T2
-	;
+		SELECT MatchId, EventDate, CustId, SportType, BetType, Turnover, WinLoss, BetCount
+		FROM #tmpTraderSummarizedDataOld
+		UNION ALL
+		SELECT MatchId, EventDate, CustId, SportType, BetType, Turnover, WinLoss, BetCount
+		FROM #tmpTraderSummarizedDataNew) AS n
+	GROUP BY n.MatchId, n.EventDate, n.SportType, n.BetType, n.CustId
+	HAVING MAX(n.Turnover) - MIN(n.Turnover) > 0.1
+		OR ABS(MAX(n.WinLoss) - MIN(n.WinLoss)) > 0.1
+		OR MAX(n.BetCount) - MIN(n.BetCount) > 1
+		OR COUNT(1) < 2;
+
+	INSERT INTO dbo.ChangedMatches(MatchId, EventDate, CustId, SportType, BetType, PreviousTurnover, PreviousWinloss, PreviousBetCount, Turnover, Winloss, BetCount, CapturedDate)
+	SELECT	[MatchId]				= m.MatchId
+		,	[EventDate]				= m.EventDate
+		,	[CustId]				= m.CustId
+		,	[SportType]				= m.SportType
+		,	[BetType]				= m.BetType
+		,	[PreviousTurnover]		= o.Turnover
+		,	[PreviousWinloss]		= o.WinLoss
+		,	[PreviousBetCount]		= o.BetCount
+		,	[Turnover]				= n.Turnover
+		,	[Winloss]				= n.WinLoss
+		,	[BetCount]				= n.BetCount
+		,	[CapturedDate]			= GETDATE()
+	FROM #tmpChangedMatches m
+		LEFT JOIN #tmpTraderSummarizedDataOld o ON m.MatchId = o.MatchId AND m.CustId = o.CustId AND m.SportType = o.SportType AND m.BetType = o.BetType
+		LEFT JOIN #tmpTraderSummarizedDataNew n ON m.MatchId = n.MatchId AND m.CustId = n.CustId AND m.SportType = n.SportType AND m.BetType = n.BetType;
+
+	SELECT	@RowCount	= @@ROWCOUNT
+		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+		;
+
+	IF	@Debug = 1
+	BEGIN
+		-- Force the output to appear immediately --
+		RAISERROR('From #tmpTraderSummarizedDataOld and #tmpTraderSummarizedDataNew - Insert ChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+	END;
 END;
