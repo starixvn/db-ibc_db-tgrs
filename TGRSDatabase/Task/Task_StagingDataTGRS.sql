@@ -1,6 +1,6 @@
 USE [bodb_TGRS]
 GO
-/****** Object:  StoredProcedure [dbo].[Task_StagingDataTGRS]    Script Date: 3/8/2018 9:12:16 AM ******/
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -36,7 +36,7 @@ AS
 		- 20180109@Long:	Support code for generating historical data
 		- 20180116@Long:	Group-by for BetChoice on each bettype [Redmine: #87861]
 		- 20180119@John.Ngo: Update Logic generating data [Redmine: #87861]
-		- 20180228@Long:	Track changes on matches [Redmine: #87962]
+		- 20180228@Long:	Track changes on matches [Redmine: #89493]
    		
 	Param's Explanation:
 		
@@ -64,6 +64,15 @@ BEGIN;
 	DECLARE	@winlostdate			DATETIME
 		;
 	
+	-- Check running job
+	DECLARE @IsRunningJob				BIT;
+	
+	IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
+	BEGIN
+		SELECT @IsRunningJob = 1
+	END
+	--
+
 	IF	OBJECT_ID('tempdb..#Spread1x2') IS NOT NULL
 	BEGIN;
 		DROP TABLE	#Spread1x2
@@ -233,38 +242,41 @@ BEGIN;
 			EventDate			DATE
 	);
 
-	INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
-	VALUES(@MoveBetsDay);
-
-	INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
-	VALUES(DATEADD(DAY, 1, @MoveBetsDay));
-
-	INSERT INTO dbo.ChangedMatches(MatchId, EventDate, CustId, SportType, BetType, PreviousTurnover, PreviousWinloss, PreviousBetCount, CapturedDate)
-	SELECT	[MatchId]		= tp.MatchId
-		,	[EventDate]		= tp.EventDate
-		,	[CustId]		= tp.CustId
-		,	[SportType]		= tp.SportType
-		,	[BetType]		= tp.BetType
-		,	[Turnover]		= SUM(tp.Stake)
-		,	[WinLoss]		= SUM(tp.WinLost)
-		,	[BetCount]		= SUM(tp.BetCount)
-		,	[CapturedDate]	= '1999-01-01'
-	FROM dbo.TraderPerformance tp WITH(NOLOCK)
-		INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
-	GROUP BY tp.MatchId
-		,	tp.EventDate
-		,	tp.CustId
-		,	tp.SportType
-		,	tp.BetType;
-
-	SELECT	@RowCount	= @@ROWCOUNT
-		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-		;
-
-	IF	@Debug = 1
+	IF (@IsRunningJob = 1)
 	BEGIN
-		-- Force the output to appear immediately --
-		RAISERROR('From TraderPerformance - Insert #ChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
+		VALUES(@MoveBetsDay);
+
+		INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
+		VALUES(DATEADD(DAY, 1, @MoveBetsDay));
+
+		INSERT INTO dbo.ChangedMatches(MatchId, EventDate, CustId, SportType, BetType, PreviousTurnover, PreviousWinloss, PreviousBetCount, CapturedDate)
+		SELECT	[MatchId]		= tp.MatchId
+			,	[EventDate]		= tp.EventDate
+			,	[CustId]		= tp.CustId
+			,	[SportType]		= tp.SportType
+			,	[BetType]		= tp.BetType
+			,	[Turnover]		= SUM(tp.Stake)
+			,	[WinLoss]		= SUM(tp.WinLost)
+			,	[BetCount]		= SUM(tp.BetCount)
+			,	[CapturedDate]	= '1999-01-01'
+		FROM dbo.TraderPerformance tp WITH(NOLOCK)
+			INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
+		GROUP BY tp.MatchId
+			,	tp.EventDate
+			,	tp.CustId
+			,	tp.SportType
+			,	tp.BetType;
+
+		SELECT	@RowCount	= @@ROWCOUNT
+			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+			;
+
+		IF	@Debug = 1
+		BEGIN
+			-- Force the output to appear immediately --
+			RAISERROR('From TraderPerformance - Insert #ChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		END;
 	END;
 
 	-- Initialize date range
@@ -280,7 +292,7 @@ BEGIN;
 		,	@ToDateBK				SMALLDATETIME = NULL;
 	
 	-- No input date range: Default job run
-	IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
+	IF (@IsRunningJob = 1)
 	BEGIN
 		TRUNCATE TABLE dbo.Staging_EventDate;
 
@@ -483,7 +495,7 @@ BEGIN;
 		END;
 
 		-- No input date range: Default job run
-		IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
+		IF (@IsRunningJob = 1)
 		BEGIN;
 			INSERT INTO dbo.Staging_EventDate (EventDate)
 			SELECT winlostdate FROM #winlostdate
@@ -877,7 +889,7 @@ BEGIN;
 		END;
 
 		-- No input date range: Default job run
-		IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
+		IF (@IsRunningJob = 1)
 		BEGIN;
 			INSERT INTO dbo.Staging_EventDate (EventDate)
 			SELECT winlostdate FROM #winlostdate
@@ -1271,7 +1283,7 @@ BEGIN;
 		END;
 
 		-- No input date range: Default job run
-		IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
+		IF (@IsRunningJob = 1)
 		BEGIN;
 			INSERT INTO dbo.Staging_EventDate (EventDate)
 			SELECT winlostdate FROM #winlostdate
