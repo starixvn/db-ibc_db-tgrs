@@ -233,22 +233,26 @@ BEGIN;
 	); 
 
 	-- Track changes on matches
-	IF	OBJECT_ID('tempdb..#tmpDateToTraceChangesOnMatch') IS NOT NULL
-	BEGIN;
-		DROP TABLE	#tmpDateToTraceChangesOnMatch;
-	END;
-
-	CREATE TABLE	#tmpDateToTraceChangesOnMatch (
-			EventDate			DATE
-	);
-
 	IF (@IsRunningJob = 1)
 	BEGIN
+
+		IF	OBJECT_ID('tempdb..#tmpDateToTraceChangesOnMatch') IS NOT NULL
+		BEGIN;
+			DROP TABLE	#tmpDateToTraceChangesOnMatch;
+		END;
+
+		CREATE TABLE	#tmpDateToTraceChangesOnMatch (
+				EventDate			DATE
+		);
+
 		INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
 		VALUES(@MoveBetsDay);
 
 		INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
 		VALUES(DATEADD(DAY, 1, @MoveBetsDay));
+
+		DELETE FROM dbo.ChangedMatches
+		WHERE CapturedDate = '1999-01-01';
 
 		INSERT INTO dbo.ChangedMatches(MatchId, EventDate, CustId, SportType, BetType, PreviousTurnover, PreviousWinloss, PreviousBetCount, CapturedDate)
 		SELECT	[MatchId]		= tp.MatchId
