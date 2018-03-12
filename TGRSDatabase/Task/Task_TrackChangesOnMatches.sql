@@ -9,7 +9,7 @@ ALTER PROCEDURE	[dbo].[Task_TrackChangesOnMatches]
 AS
 /*
 	Created:	20180307@Long
-	Task :		Track changes on matches
+	Task :		Track changes on matches [Redmine ID: 89493]
 	DB:			DBTGRS.bodb_TGRS
 	Original:
   
@@ -17,7 +17,7 @@ AS
    		
 	Param's Explanation:
 		
-	Exam: EXEC Task_TrackChangesOnMatches @Debug BIT = 0
+	Exam: EXEC Task_TrackChangesOnMatches] @Debug BIT = 0
 	 
 */
 BEGIN;
@@ -30,8 +30,10 @@ BEGIN;
 		;
 
 	DECLARE @MoveBetsDay			SMALLDATETIME
+		,	@GenerateFromDate		SMALLDATETIME = NULL
+		,	@GenerateToDate			SMALLDATETIME = NULL
 		;
-				
+		
 	IF	OBJECT_ID('tempdb..#BUMBData') IS NOT NULL
 	BEGIN;
 		DROP TABLE	#BUMBData
@@ -47,6 +49,9 @@ BEGIN;
 
 	SELECT	TOP(1) @MoveBetsDay	= MBDay
 	FROM #BUMBData;
+		
+	SELECT  @GenerateFromDate = DATEADD(DAY, -3, @MoveBetsDay)
+		,	@GenerateToDate = DATEADD(DAY, -1, GETDATE());
 
 	IF	OBJECT_ID('tempdb..#tmpDateToTraceChangesOnMatch') IS NOT NULL
 	BEGIN;
@@ -57,11 +62,28 @@ BEGIN;
 			EventDate			DATE
 	);
 
-	INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
-	VALUES(@MoveBetsDay);
+	INSERT INTO	#tmpDateToTraceChangesOnMatch (EventDate)
+	SELECT	tally.EventDate
+		FROM	(
+			SELECT	[NoDays] = DATEDIFF(DAY, @GenerateFromDate, @GenerateToDate) + 1
+		) cnt
+		CROSS APPLY	(
+			SELECT	TOP(cnt.NoDays)
+					[EventDate] = DATEADD(DAY, ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) - 1, @GenerateFromDate)
+			FROM		(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10(n)
+			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100(n)
+			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)
+		) tally;
 
-	INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
-	VALUES(DATEADD(DAY, 1, @MoveBetsDay));
+	SELECT	@RowCount	= @@ROWCOUNT
+		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+		;
+			
+	IF	@Debug = 1
+	BEGIN;
+		-- Force the output to appear immediately --
+		RAISERROR('Track Changes on Matches - Insert #tmpDateToTraceChangesOnMatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+	END;
 
 	-- Track changes on matches	
 	IF	OBJECT_ID('tempdb..#tmpTraderSummarizedDataOld') IS NOT NULL

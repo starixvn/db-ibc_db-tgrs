@@ -232,57 +232,6 @@ BEGIN;
 		,	EventDate			ASC
 	); 
 
-	-- Track changes on matches
-	IF (@IsRunningJob = 1)
-	BEGIN
-
-		IF	OBJECT_ID('tempdb..#tmpDateToTraceChangesOnMatch') IS NOT NULL
-		BEGIN;
-			DROP TABLE	#tmpDateToTraceChangesOnMatch;
-		END;
-
-		CREATE TABLE	#tmpDateToTraceChangesOnMatch (
-				EventDate			DATE
-		);
-
-		INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
-		VALUES(@MoveBetsDay);
-
-		INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
-		VALUES(DATEADD(DAY, 1, @MoveBetsDay));
-
-		DELETE FROM dbo.ChangedMatches
-		WHERE CapturedDate = '1999-01-01';
-
-		INSERT INTO dbo.ChangedMatches(MatchId, EventDate, CustId, SportType, BetType, PreviousTurnover, PreviousWinloss, PreviousBetCount, CapturedDate)
-		SELECT	[MatchId]		= tp.MatchId
-			,	[EventDate]		= tp.EventDate
-			,	[CustId]		= tp.CustId
-			,	[SportType]		= tp.SportType
-			,	[BetType]		= tp.BetType
-			,	[Turnover]		= SUM(tp.Stake)
-			,	[WinLoss]		= SUM(tp.WinLost)
-			,	[BetCount]		= SUM(tp.BetCount)
-			,	[CapturedDate]	= '1999-01-01'
-		FROM dbo.TraderPerformance tp WITH(NOLOCK)
-			INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
-		GROUP BY tp.MatchId
-			,	tp.EventDate
-			,	tp.CustId
-			,	tp.SportType
-			,	tp.BetType;
-
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-			;
-
-		IF	@Debug = 1
-		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From TraderPerformance - Insert #ChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-		END;
-	END;
-
 	-- Initialize date range
 	DECLARE @IsGetDataFromOrigin	BIT = 0
 		,	@IsGetDataFrom14		BIT = 0
@@ -304,7 +253,7 @@ BEGIN;
 
 		IF @BeforeMoveBetsDay = 1
 		BEGIN
-			SELECT @GenerateFromDate = @BalanceUpDay;
+			SELECT @GenerateFromDate = @MoveBetsDay - 3; --@BalanceUpDay;
 		END
 		ELSE
 		BEGIN
@@ -352,6 +301,13 @@ BEGIN;
 		SELECT @IsGetDataFromOrigin = 1
 	END;
 
+	IF @GenerateFromDate < @BalanceUpDay AND @GenerateToDate > @MoveBetsDay
+	BEGIN
+		SELECT @IsGetDataFromBK = 1
+		SELECT @IsGetDataFrom14 = 1
+		SELECT @IsGetDataFromOrigin = 1
+	END;
+
 	IF @IsGetDataFromBK = 1 AND @IsGetDataFromOrigin = 1
 	BEGIN
 		SELECT	@FromDateOrigin = @MoveBetsDay + 1
@@ -395,6 +351,85 @@ BEGIN;
 		SELECT	@FromDateOrigin = @GenerateFromDate
 				,	@ToDateOrigin = @GenerateToDate
 	END;
+
+	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1
+	BEGIN
+		SELECT	@FromDateOrigin = @MoveBetsDay + 1
+				,	@ToDateOrigin = @GenerateToDate
+				,	@FromDate14 = @BalanceUpDay
+				,	@ToDate14 = @MoveBetsDay
+				,	@FromDateBK = @GenerateFromDate 
+				,	@ToDateBK = @BalanceUpDay - 1;
+	END;
+	
+	-- Track changes on matches
+	IF (@IsRunningJob = 1)
+	BEGIN
+
+		IF	OBJECT_ID('tempdb..#tmpDateToTraceChangesOnMatch') IS NOT NULL
+		BEGIN;
+			DROP TABLE	#tmpDateToTraceChangesOnMatch;
+		END;
+
+		CREATE TABLE	#tmpDateToTraceChangesOnMatch (
+				EventDate			DATE
+		);
+
+		INSERT INTO	#tmpDateToTraceChangesOnMatch (EventDate)
+		SELECT	tally.EventDate
+		FROM	(
+			SELECT	[NoDays] = DATEDIFF(DAY, @GenerateFromDate, @GenerateToDate) + 1
+		) cnt
+		CROSS APPLY	(
+			SELECT	TOP(cnt.NoDays)
+					[EventDate] = DATEADD(DAY, ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) - 1, @GenerateFromDate)
+			FROM		(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10(n)
+			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100(n)
+			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)
+		) tally;
+
+		SELECT	@RowCount	= @@ROWCOUNT
+			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+			;
+			
+		IF	@Debug = 1
+		BEGIN;
+			-- Force the output to appear immediately --
+			RAISERROR('Track Changes on Matches - Insert #tmpDateToTraceChangesOnMatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		END;
+
+		DELETE FROM dbo.ChangedMatches
+		WHERE CapturedDate = '1999-01-01';
+
+		INSERT INTO dbo.ChangedMatches(MatchId, EventDate, CustId, SportType, BetType, PreviousTurnover, PreviousWinloss, PreviousBetCount, CapturedDate)
+		SELECT	[MatchId]		= tp.MatchId
+			,	[EventDate]		= tp.EventDate
+			,	[CustId]		= tp.CustId
+			,	[SportType]		= tp.SportType
+			,	[BetType]		= tp.BetType
+			,	[Turnover]		= SUM(tp.Stake)
+			,	[WinLoss]		= SUM(tp.WinLost)
+			,	[BetCount]		= SUM(tp.BetCount)
+			,	[CapturedDate]	= '1999-01-01'
+		FROM dbo.TraderPerformance tp WITH(NOLOCK)
+			INNER JOIN #tmpDateToTraceChangesOnMatch d ON tp.EventDate = d.EventDate
+		GROUP BY tp.MatchId
+			,	tp.EventDate
+			,	tp.CustId
+			,	tp.SportType
+			,	tp.BetType;
+
+		SELECT	@RowCount	= @@ROWCOUNT
+			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+			;
+
+		IF	@Debug = 1
+		BEGIN
+			-- Force the output to appear immediately --
+			RAISERROR('From TraderPerformance - Insert #ChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		END;
+	END;
+
 
 	IF @IsGetDataFromBK = 1
 	BEGIN	
