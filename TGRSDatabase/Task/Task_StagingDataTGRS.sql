@@ -37,6 +37,7 @@ AS
 		- 20180116@Long:	Group-by for BetChoice on each bettype [Redmine: #87861]
 		- 20180119@John.Ngo: Update Logic generating data [Redmine: #87861]
 		- 20180228@Long:	Track changes on matches [Redmine: #89493]
+		- 20180419@Long:	Add 2 more bettypes for Asian 1x2 HDP [Redmine: #93658]
    		
 	Param's Explanation:
 		
@@ -567,6 +568,10 @@ BEGIN;
 													THEN 154
 												WHEN b.bettype = 1316
 													THEN 155
+												WHEN b.bettype = 465
+													THEN 458
+												WHEN b.bettype = 466
+													THEN 459
 												ELSE b.bettype
 											END
 				,	[modds]				= b.modds
@@ -961,6 +966,10 @@ BEGIN;
 													THEN 154
 												WHEN b.bettype = 1316
 													THEN 155
+												WHEN b.bettype = 465
+													THEN 458
+												WHEN b.bettype = 466
+													THEN 459
 												ELSE b.bettype
 											END
 				,	[modds]				= b.modds
@@ -1355,6 +1364,10 @@ BEGIN;
 													THEN 154
 												WHEN b.bettype = 1316
 													THEN 155
+												WHEN b.bettype = 465
+													THEN 458
+												WHEN b.bettype = 466
+													THEN 459
 												ELSE b.bettype
 											END
 				,	[modds]				= b.modds
