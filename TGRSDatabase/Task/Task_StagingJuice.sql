@@ -26,6 +26,7 @@ AS
 		- 20180102@Long:	Change the way to get BU & MB days
 		- 20180103@Long:	Support code for generating historical data
 		- 20180105@Aaron:   Fix date range. Note: BU & MB are in bettrans14
+		- 20180423@John:    Update date range [Redmine: #89493]
    		
 	Param's Explanation:
 		
@@ -249,7 +250,7 @@ BEGIN;
 
 		IF @BeforeMoveBetsDay = 1
 		BEGIN
-			SELECT @GenerateFromDate = @BalanceUpDay;
+			SELECT @GenerateFromDate = @MoveBetsDay - 3; --@BalanceUpDay;
 		END
 		ELSE
 		BEGIN
@@ -344,6 +345,16 @@ BEGIN;
 		SELECT	@FromDateOrigin = @GenerateFromDate
 				,	@ToDateOrigin = @GenerateToDate
 	END
+
+	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1
+	BEGIN
+		SELECT	@FromDateOrigin = @MoveBetsDay + 1
+				,	@ToDateOrigin = @GenerateToDate
+				,	@FromDate14 = @BalanceUpDay
+				,	@ToDate14 = @MoveBetsDay
+				,	@FromDateBK = @GenerateFromDate 
+				,	@ToDateBK = @BalanceUpDay - 1;
+	END;
 
 	IF @IsGetDataFromBK = 1
 	BEGIN
