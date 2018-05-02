@@ -14,7 +14,8 @@ AS
 	Original:
   
 	Revisions:
-   		
+   		-	20180502@Long: change the way to get date range
+
 	Param's Explanation:
 		
 	Exam: EXEC Task_TrackChangesOnMatches] @Debug BIT = 0
@@ -23,35 +24,11 @@ AS
 BEGIN;
 	SET NOCOUNT ON;
 	
-	DECLARE	@Begin					DATETIME = GETDATE()
-		,	@RowCount				INT
-		,	@Duration				INT
-		,	@Msg					NVARCHAR(MAX)
+	DECLARE	@Begin				DATETIME = GETDATE()
+		,	@RowCount			INT
+		,	@Duration			INT
+		,	@Msg				NVARCHAR(MAX)
 		;
-
-	DECLARE @MoveBetsDay			SMALLDATETIME
-		,	@GenerateFromDate		SMALLDATETIME = NULL
-		,	@GenerateToDate			SMALLDATETIME = NULL
-		;
-		
-	IF	OBJECT_ID('tempdb..#BUMBData') IS NOT NULL
-	BEGIN;
-		DROP TABLE	#BUMBData
-	END;
-
-	CREATE TABLE	#BUMBData (
-			BUDay	SMALLDATETIME
-		,	MBDay	SMALLDATETIME
-	);
-
-	INSERT INTO #BUMBData(BUDay,MBDay)
-	EXECUTE bodb02.dbo.Age_SelBalanceUpDay;
-
-	SELECT	TOP(1) @MoveBetsDay	= MBDay
-	FROM #BUMBData;
-		
-	SELECT  @GenerateFromDate = DATEADD(DAY, -3, @MoveBetsDay)
-		,	@GenerateToDate = DATEADD(DAY, -1, GETDATE());
 
 	IF	OBJECT_ID('tempdb..#tmpDateToTraceChangesOnMatch') IS NOT NULL
 	BEGIN;
@@ -61,29 +38,6 @@ BEGIN;
 	CREATE TABLE	#tmpDateToTraceChangesOnMatch (
 			EventDate			DATE
 	);
-
-	INSERT INTO	#tmpDateToTraceChangesOnMatch (EventDate)
-	SELECT	tally.EventDate
-		FROM	(
-			SELECT	[NoDays] = DATEDIFF(DAY, @GenerateFromDate, @GenerateToDate) + 1
-		) cnt
-		CROSS APPLY	(
-			SELECT	TOP(cnt.NoDays)
-					[EventDate] = DATEADD(DAY, ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) - 1, @GenerateFromDate)
-			FROM		(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10(n)
-			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100(n)
-			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)
-		) tally;
-
-	SELECT	@RowCount	= @@ROWCOUNT
-		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-		;
-			
-	IF	@Debug = 1
-	BEGIN;
-		-- Force the output to appear immediately --
-		RAISERROR('Track Changes on Matches - Insert #tmpDateToTraceChangesOnMatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-	END;
 
 	-- Track changes on matches	
 	IF	OBJECT_ID('tempdb..#tmpTraderSummarizedDataOld') IS NOT NULL
@@ -177,6 +131,20 @@ BEGIN;
 
 	DELETE FROM dbo.ChangedMatches
 	WHERE CapturedDate = '1999-01-01';
+	
+	INSERT INTO #tmpDateToTraceChangesOnMatch (EventDate)
+	SELECT DISTINCT o.EventDate
+	FROM #tmpTraderSummarizedDataOld o;
+
+	SELECT	@RowCount	= @@ROWCOUNT
+		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+		;
+			
+	IF	@Debug = 1
+	BEGIN;
+		-- Force the output to appear immediately --
+		RAISERROR('Track Changes on Matches - Insert #tmpDateToTraceChangesOnMatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+	END;
 
 	-- check data changed on matches
 	INSERT INTO #tmpTraderSummarizedDataNew(MatchId, EventDate, CustId, SportType, BetType, Turnover, WinLoss, BetCount)
