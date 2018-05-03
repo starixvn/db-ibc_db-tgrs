@@ -6,6 +6,7 @@ AS
 	DB: bodb_TGRS
 	Original: EXEC [TGRS_Service_ChangedData_Get]
 	Revisions:
+		- 20180503@John: Add more condition to remove old data on ChangedMatches 
 */
 BEGIN
 	SET NOCOUNT ON
@@ -26,7 +27,8 @@ BEGIN
 	INNER JOIN dbo.Trader tr WITH (NOLOCK) ON tr.CustId = ch.CustId
 	INNER JOIN bodb02.dbo.[match14] m WITH (NOLOCK) ON m.matchid = ch.MatchId
 	INNER JOIN dbo.BetType bt WITH (NOLOCK) ON bt.BetType = ch.BetType
-	WHERE ch.IsNotified = 0 OR ch.IsNotified IS NULL
+	WHERE (ch.IsNotified = 0 OR ch.IsNotified IS NULL)
+	      AND ch.CapturedDate <> '1999-01-01'
 
 	SELECT ch.MatchId
 		,m.homeid
@@ -45,10 +47,12 @@ BEGIN
 	INNER JOIN bodb02.dbo.[match] m WITH (NOLOCK) ON m.matchid = ch.MatchId
 	INNER JOIN dbo.BetType bt WITH (NOLOCK) ON bt.BetType = ch.BetType
 	WHERE ch.IsNotified = 0 OR ch.IsNotified IS NULL
+		  AND ch.CapturedDate <> '1999-01-01'
 
 	UPDATE dbo.ChangedMatches
 	WITH (UPDLOCK,ROWLOCK)
 	SET IsNotified = 1
+	WHERE CapturedDate <> '1999-01-01'
 
 END
 
