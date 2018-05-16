@@ -1,6 +1,6 @@
 USE [bodb_TGRS]
 GO
-
+/****** Object:  StoredProcedure [dbo].[Task_StagingDataTGRS]    Script Date: 5/16/2018 12:42:48 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -37,7 +37,8 @@ AS
 		- 20180116@Long:	Group-by for BetChoice on each bettype [Redmine: #87861]
 		- 20180119@John.Ngo: Update Logic generating data [Redmine: #87861]
 		- 20180228@Long:	Track changes on matches [Redmine: #89493]
-		- 20180419@Long:	Add 2 more bettypes for Asian 1x2 HDP [Redmine: #93658]
+		- 20180419@Long:	Add 2 more bettypes for Asian 1x2 HDP [Redmine: #93890]
+		- 20180516@Long:	Filter unsupported bettypes
    		
 	Param's Explanation:
 		
@@ -73,6 +74,20 @@ BEGIN;
 		SELECT @IsRunningJob = 1
 	END
 	--
+
+	IF	OBJECT_ID('tempdb..#SupportedBettypes') IS NOT NULL
+	BEGIN;
+		DROP TABLE	#SupportedBettypes
+	END;
+
+	CREATE TABLE	#SupportedBettypes (
+			BetType					SMALLINT PRIMARY KEY
+	);
+
+	INSERT INTO #SupportedBettypes(BetType)
+	SELECT b.BetType
+	FROM dbo.BetType b WITH(NOLOCK)
+	WHERE b.BetType > 0;
 
 	IF	OBJECT_ID('tempdb..#Spread1x2') IS NOT NULL
 	BEGIN;
@@ -651,6 +666,7 @@ BEGIN;
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[BetChoice]			= b.BetChoice
 			FROM		#tmpFilteredBettransByBatch AS b WITH (NOLOCK)
+			INNER JOIN #SupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 			LEFT JOIN	#tmpTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
@@ -1049,6 +1065,7 @@ BEGIN;
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[BetChoice]			= b.BetChoice
 			FROM		#tmpFilteredBettransByBatch AS b WITH (NOLOCK)
+			INNER JOIN #SupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 			LEFT JOIN	#tmpTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
@@ -1447,6 +1464,7 @@ BEGIN;
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[BetChoice]			= b.BetChoice 
 			FROM		#tmpFilteredBettransByBatch AS b WITH (NOLOCK)
+			INNER JOIN #SupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 			LEFT JOIN	#tmpTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
