@@ -39,6 +39,7 @@ AS
 		- 20180228@Long:	Track changes on matches [Redmine: #89493]
 		- 20180419@Long:	Add 2 more bettypes for Asian 1x2 HDP [Redmine: #93890]
 		- 20180516@Long:	Filter unsupported bettypes
+		- 20180618@John.Ngo: Missing data of FT bettype #97059
    		
 	Param's Explanation:
 		
@@ -1427,6 +1428,7 @@ BEGIN;
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND	m.sporttype = 1
+				AND	m.EventStatus = 'completed'
 				AND	m.MatchCode NOT LIKE '%hedge%';
 			
 			SELECT	@RowCount	= @@ROWCOUNT
