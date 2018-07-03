@@ -103,7 +103,7 @@ BEGIN
 			INNER JOIN #tmpBettypeMatchCount AS bm WITH(NOLOCK) ON  bp.MonthNo = bm.MonthNo AND bp.BetType = bm.BetType
 	ORDER BY MonthNo, BetType	
 	
-	--2: RETURN BetType Performance - Haft First Year
+	--2: RETURN BetType Performance - 1st Half Year
 	SELECT	bp.BetType
 			, SUM(TurnOver) AS TurnOver
 			, SUM(Winloss) AS Winloss
@@ -115,7 +115,7 @@ BEGIN
 	GROUP BY	bp.BetType
 	ORDER BY	bp.BetType
 	
-	--3: RETURN BetType Performance - Haft First Year
+	--3: RETURN BetType Performance - 2nd Half Year
 	SELECT	bp.BetType
 			, SUM(TurnOver) AS TurnOver
 			, SUM(Winloss) AS Winloss
@@ -124,6 +124,17 @@ BEGIN
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
 			INNER JOIN #tmpBettypeMatchCount AS bm WITH(NOLOCK) ON  bp.MonthNo = bm.MonthNo AND bp.BetType = bm.BetType
 	WHERE	bp.MonthNo BETWEEN 7 AND 12
+	GROUP BY	bp.BetType
+	ORDER BY	bp.BetType	
+	
+	--4: RETURN BetType Performance - Full Year
+	SELECT	bp.BetType
+			, SUM(TurnOver) AS TurnOver
+			, SUM(Winloss) AS Winloss
+			, SUM(BetCount) AS BetCount
+			, SUM(bm.MatchCount) AS MatchCount
+	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
+			INNER JOIN #tmpBettypeMatchCount AS bm WITH(NOLOCK) ON  bp.MonthNo = bm.MonthNo AND bp.BetType = bm.BetType
 	GROUP BY	bp.BetType
 	ORDER BY	bp.BetType
 	
