@@ -48,19 +48,9 @@ BEGIN
 		, TurnOver	MONEY
 		, Winloss	MONEY
 		, BetCount	INT
+		, MatchCount INT
 	 );
-	
-	-- 3. Table MatchCount
-	IF  OBJECT_ID('tempdb..#tmpBettypeMatchCount')  IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpBettypeMatchCount;
-	END;
-		
-	CREATE TABLE #tmpBettypeMatchCount (
-		BetType			SMALLINT
-		, MonthNo		TINYINT
-		, MatchCount	INT
-	 );
+
 	---===========2. PROCESS DATA==================================
 	--=============================================================
 	--1: GET BetType
@@ -73,30 +63,19 @@ BEGIN
 	FROM	#tmpBettype AS tbt WITH (ROWLOCK)
 			INNER JOIN dbo.BetType AS bt WITH (NOLOCK) ON tbt.BetType = bt.BetType;
 
-	--2: GET BettypePerformance
-	INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount)
-	SELECT	tp.BetType
+		--2: GET BettypePerformance
+	INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
+	SELECT	sbt.BetType
 			, bt.BetTypeName
-			, MONTH(tp.eventDate) AS MonthNo
-			, SUM(tp.TurnOver) AS TurnOver
-			, SUM(tp.WinLoss) AS WinLoss
-			, SUM(tp.BetCount) AS BetCount
-	FROM	dbo.TraderPerformance_Monthly AS tp	WITH (NOLOCK)
-			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON tp.BetType = bt.BetType
-	WHERE	YEAR(tp.EventDate) = @Year
-			AND tp.IsLive = -1
-	GROUP BY 	tp.BetType, bt.BetTypeName, MONTH(tp.eventDate);
-	
-	--3: GET BettypeMatchCount where IsLive = -1 (both Live and Non-Live)
-	INSERT INTO #tmpBettypeMatchCount(BetType, MonthNo,MatchCount)
-	SELECT	tm.BetType
-			, MONTH(tm.eventDate) AS MonthNo
-			, SUM(tm.MatchCount) AS MatchCount
-	FROM	dbo.TraderMatchCount_Monthly AS tm	WITH (NOLOCK)
-			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON tm.BetType = bt.BetType
-	WHERE	YEAR(tm.EventDate) = @Year
-			AND tm.IsLive = -1
-	GROUP BY 	tm.BetType, MONTH(tm.eventDate);
+			, MONTH(sbt.eventDate) AS MonthNo
+			, SUM(sbt.Stake) AS TurnOver
+			, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
+			, SUM(sbt.BetCount) AS BetCount
+			, SUM(sbt.MatchCount) AS MatchCount
+	FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
+			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
+	WHERE	YEAR(sbt.EventDate) = @Year			
+	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
 	
 	---===========3. RETURN DATA===================================
 	--=============================================================
@@ -105,23 +84,21 @@ BEGIN
 	SELECT	bp.BetType
 			, bp.BetTypeName
 			, bp.MonthNo
-			, TurnOver
-			, Winloss
-			, BetCount
-			, bm.MatchCount
+			, bp.TurnOver
+			, bp.Winloss
+			, bp.BetCount
+			, bp.MatchCount
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
-			INNER JOIN #tmpBettypeMatchCount AS bm WITH(NOLOCK) ON  bp.MonthNo = bm.MonthNo AND bp.BetType = bm.BetType
 	ORDER BY MonthNo, BetType, bp.BetTypeName;
 	
 	--2: RETURN BetType Performance - 1st Half Year
 	SELECT	bp.BetType
 			, bp.BetTypeName
-			, SUM(TurnOver) AS TurnOver
-			, SUM(Winloss) AS Winloss
-			, SUM(BetCount) AS BetCount
-			, SUM(bm.MatchCount) AS MatchCount
+			, SUM(bp.TurnOver) AS TurnOver
+			, SUM(bp.Winloss) AS Winloss
+			, SUM(bp.BetCount) AS BetCount
+			, SUM(bp.MatchCount) AS MatchCount
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
-			INNER JOIN #tmpBettypeMatchCount AS bm WITH(NOLOCK) ON  bp.MonthNo = bm.MonthNo AND bp.BetType = bm.BetType
 	WHERE	bp.MonthNo BETWEEN 1 AND 6
 	GROUP BY	bp.BetType, bp.BetTypeName
 	ORDER BY	bp.BetType;
@@ -129,12 +106,11 @@ BEGIN
 	--3: RETURN BetType Performance - 2nd Half Year
 	SELECT	bp.BetType
 			, bp.BetTypeName
-			, SUM(TurnOver) AS TurnOver
-			, SUM(Winloss) AS Winloss
-			, SUM(BetCount) AS BetCount
-			, SUM(bm.MatchCount) AS MatchCount
+			, SUM(bp.TurnOver) AS TurnOver
+			, SUM(bp.Winloss) AS Winloss
+			, SUM(bp.BetCount) AS BetCount
+			, SUM(bp.MatchCount) AS MatchCount
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
-			INNER JOIN #tmpBettypeMatchCount AS bm WITH(NOLOCK) ON  bp.MonthNo = bm.MonthNo AND bp.BetType = bm.BetType
 	WHERE	bp.MonthNo BETWEEN 7 AND 12
 	GROUP BY	bp.BetType, bp.BetTypeName
 	ORDER BY	bp.BetType;
@@ -142,12 +118,11 @@ BEGIN
 	--4: RETURN BetType Performance - Full Year
 	SELECT	bp.BetType
 			, bp.BetTypeName
-			, SUM(TurnOver) AS TurnOver
-			, SUM(Winloss) AS Winloss
-			, SUM(BetCount) AS BetCount
-			, SUM(bm.MatchCount) AS MatchCount
+			, SUM(bp.TurnOver) AS TurnOver
+			, SUM(bp.Winloss) AS Winloss
+			, SUM(bp.BetCount) AS BetCount
+			, SUM(bp.MatchCount) AS MatchCount
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
-			INNER JOIN #tmpBettypeMatchCount AS bm WITH(NOLOCK) ON  bp.MonthNo = bm.MonthNo AND bp.BetType = bm.BetType
 	GROUP BY	bp.BetType, bp.BetTypeName
 	ORDER BY	bp.BetType;
 	
