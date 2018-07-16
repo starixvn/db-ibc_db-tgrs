@@ -345,7 +345,7 @@ BEGIN
 		,	SUM(td.WinLoss) AS WinLoss
 		,	COUNT(DISTINCT td.SportId) AS SportCount
 		,	SUM(td.EventProductCount) AS EventProductCount
-		,	SUM(tmc.MatchCount) AS MatchCount
+		,	tmc.MatchCount
 	FROM #tmpTraderPerformanceDetailBySport td WITH (NOLOCK)
 		INNER JOIN dbo.OSTrader tr WITH (NOLOCK) ON tr.TraderId = td.TraderId
 		INNER JOIN #tmpTraderMatchCount tmc WITH(NOLOCK) ON tmc.TraderId = td.TraderId
@@ -359,6 +359,7 @@ BEGIN
 		,	gr.GradeName
 		,	d.PointDeduction
 		,	tpr.RegionCount
+		,	tmc.MatchCount
 	ORDER BY tr.TraderName ASC;
 	
 	DROP TABLE #tmpTraderMatchCount;

@@ -148,9 +148,17 @@ BEGIN
 			) AS Point
 		,	tp.EventProductCount
 	FROM #tmpTraderPerformanceDetail tp WITH (NOLOCK)
-		INNER JOIN bodb02.dbo.match m WITH(NOLOCK) ON tp.MatchId = m.matchid;
+		INNER JOIN bodb02.dbo.match m WITH(NOLOCK) ON tp.MatchId = m.matchid
+	GROUP BY tp.LeagueId
+		,	tp.MatchId
+		,	tp.EventDate
+		,	m.homeid
+		,	m.awayid
+		,	tp.Turnover		
+		,	tp.Winloss
+		,	tp.EventProductCount
+		,	tp.Target;
 	
-	--DROP TABLE #tmpTraderPerformanceDetailByBettype;
 	DROP TABLE #tmpTraderPerformanceDetail;
 END
 
