@@ -15,7 +15,7 @@ AS
 		- 20170306@John:	Change table OSDataTGRS
 		- 20170330@Long:	Apply ExtraPT
    		- 20170711@Billy:	Remove delete OSStagingDataTGRS part to update Juice for next step - [Redmine: #79615]
-		- 20170928@Long:	Support more bettypes - [Redmine: #83185]
+		- 20180928@Long:	Support more bettypes - [Redmine: #83185]
 
 	Param's Explanation:
 		
