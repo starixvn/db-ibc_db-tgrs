@@ -6,6 +6,7 @@ GO
 
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_MatchDetails]
 		@TraderId			INT
+	,	@LeagueId			INT
 	,	@FromDate			DATE = '2016-01-01'
 	,	@ToDate				DATE = '2017-12-31'
 	,	@SportId			INT = - 1
@@ -108,20 +109,12 @@ BEGIN
 			tp.SportId = @SportId
 			OR @SportId = - 1
 		)
+		AND tp.LeagueId = @LeagueId
 	GROUP BY tp.LeagueId
 		,	tp.MatchId
 		,	tp.EventDate
 		,	tp.Target;
 
-	/*INSERT INTO #tmpTraderPerformanceDetailByBettype (
-			TraderId
-		,	SportId
-		,	BettypeId
-		,	Turnover
-		,	WinLoss
-		,	Point
-		,	EventProductCount
-	)*/
 	SELECT	tp.LeagueId
 		,	tp.MatchId
 		,	tp.EventDate
