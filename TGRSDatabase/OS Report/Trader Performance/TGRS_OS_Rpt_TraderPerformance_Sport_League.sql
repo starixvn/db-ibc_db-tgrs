@@ -110,7 +110,6 @@ BEGIN
 		CROSS APPLY (
 			SELECT	COUNT(DISTINCT ostp.MatchId) AS MatchCount
 			FROM dbo.OSDataTGRS ostp WITH(NOLOCK)
-				INNER JOIN #tmpOSLeaguePerformance AS t ON ostp.LeagueId = t.LeagueId
 			WHERE ostp.EventDate BETWEEN @FromDate AND @ToDate
 				AND ostp.TraderId = @TraderId
 				AND (

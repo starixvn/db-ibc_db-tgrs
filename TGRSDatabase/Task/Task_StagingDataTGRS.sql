@@ -40,6 +40,7 @@ AS
 		- 20180419@Long:	Add 2 more bettypes for Asian 1x2 HDP [Redmine: #93890]
 		- 20180516@Long:	Filter unsupported bettypes
 		- 20180618@John.Ngo: Missing data of FT bettype #97059
+		- 20180717@Long:	Manage for case changing the status of match before bettrans [Redmine ID: 97987]
    		
 	Param's Explanation:
 		
@@ -75,6 +76,19 @@ BEGIN;
 		SELECT @IsRunningJob = 1
 	END
 	--
+
+	IF	OBJECT_ID('tempdb..#tmpScannedMatches') IS NOT NULL
+	BEGIN;
+		DROP TABLE #tmpScannedMatches;
+	END;
+
+	CREATE TABLE	#tmpScannedMatches (
+			MatchId			INT
+	);
+
+	CREATE CLUSTERED INDEX	#CIX_tmpScannedMatchesIdx ON #tmpScannedMatches (
+			MatchId			ASC
+	);
 
 	IF	OBJECT_ID('tempdb..#SupportedBettypes') IS NOT NULL
 	BEGIN;
@@ -1250,6 +1264,16 @@ BEGIN;
 	BEGIN
 		TRUNCATE TABLE #tmpTrader;
 
+		INSERT INTO #tmpScannedMatches(MatchId)
+		SELECT DISTINCT m.MatchId
+		FROM bodb02.dbo.match AS m WITH(NOLOCK)
+			INNER JOIN bodb02.dbo.bettrans AS b WITH(NOLOCK) ON b.matchid = m.matchid
+		WHERE m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
+			AND	m.SportType = 1
+			AND b.ruben <> 1
+			AND m.EventStatus = 'completed'
+			AND	m.MatchCode NOT LIKE '%hedge%';
+
 		INSERT INTO	#tmpTrader (CustId, LeagueId, WorkShift, MatchId, SportType, EventDate, HomeId, AwayId, BetType, SpecialType, Matchcode, TeamId, Grade)
 		SELECT	DISTINCT
 				[CustId]		= a.OperatorID
@@ -1310,6 +1334,7 @@ BEGIN;
 				ON	td_T.CustID = a.OperatorID
 				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, GETDATE() + 10)
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
+			AND m.matchid NOT IN (SELECT t.MatchId FROM #tmpScannedMatches t WITH (NOLOCK))
 			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
 			AND	a.OperatorType < 3
@@ -1425,6 +1450,7 @@ BEGIN;
 					ON	mm.Spread = s.Margin
 					AND	mm.BetType IN (5, 15)
 			WHERE	b.winlostdate = @winlostdate
+				AND m.matchid NOT IN (SELECT t.MatchId FROM #tmpScannedMatches t WITH (NOLOCK))
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND	m.sporttype = 1
