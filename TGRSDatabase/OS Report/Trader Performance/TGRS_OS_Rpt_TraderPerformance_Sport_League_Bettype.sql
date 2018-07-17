@@ -58,11 +58,10 @@ BEGIN
 			,	SUM(td.WinLoss - td.Comm) AS 'VWinLoss'
 			,	td.Target
 		FROM dbo.OSSummaryByTrader_Daily td WITH (NOLOCK)
-		INNER JOIN dbo.OSTrader t WITH (NOLOCK) ON t.TraderId = td.TraderId
 		WHERE td.TraderId = @TraderId
 		AND td.EventDate BETWEEN @FromDate AND @ToDate
 			AND td.SportId = @SportId
-			AND LeagueId = @LeagueId
+			AND td.LeagueId = @LeagueId
 		GROUP BY td.BettypeId
 			,	td.Target;
 	END
@@ -79,11 +78,10 @@ BEGIN
 			,	SUM(td.WinLoss - td.Comm) AS 'VWinLoss'
 			,	td.Target
 		FROM dbo.OSSummaryByTrader_Monthly td WITH (NOLOCK)
-			INNER JOIN dbo.OSTrader t WITH (NOLOCK) ON t.TraderId = td.TraderId
 		WHERE td.TraderId = @TraderId
 			AND td.EventDate BETWEEN @FromDate AND @ToDate
 			AND td.SportId = @SportId
-			AND LeagueId = @LeagueId
+			AND td.LeagueId = @LeagueId
 		GROUP BY td.BettypeId
 			,	td.Target;
 	END;

@@ -41,20 +41,6 @@ BEGIN
 		,	Target			DECIMAL(18, 2)
 	);
 
-	IF OBJECT_ID('tempdb..#tmpTraderMatchCount') IS NOT NULL
-	BEGIN
-		DROP TABLE #tmpTraderMatchCount
-	END;
-
-	CREATE TABLE #tmpLeagueMatchCount (
-			LeagueId			INT
-		,	MatchCount			INT
-	);
-
-	CREATE CLUSTERED INDEX	#CIX_tmpLeagueMatchCountIdx ON #tmpLeagueMatchCount (
-			LeagueId			ASC
-	);
-
 	-- START
 	SELECT TOP 1 @FMark = ParamValue
 	FROM dbo.OSParameter WITH (NOLOCK)
@@ -107,17 +93,6 @@ BEGIN
 			,	td.Target;
 	END;
 	
-	INSERT INTO #tmpLeagueMatchCount (
-			LeagueId
-		,	MatchCount
-	)
-	SELECT	ostp.LeagueId
-		,	COUNT(DISTINCT ostp.MatchId) AS MatchCount
-	FROM dbo.OSDataTGRS ostp WITH(NOLOCK)
-		INNER JOIN #tmpOSLeaguePerformance AS t ON ostp.LeagueId = t.LeagueId
-	WHERE ostp.EventDate BETWEEN @FromDate AND @ToDate
-	GROUP BY ostp.LeagueId;
-
 	SELECT @TotalTurnover = SUM(Turnover)
 	FROM #tmpOSLeaguePerformance;
 
@@ -137,6 +112,11 @@ BEGIN
 			FROM dbo.OSDataTGRS ostp WITH(NOLOCK)
 				INNER JOIN #tmpOSLeaguePerformance AS t ON ostp.LeagueId = t.LeagueId
 			WHERE ostp.EventDate BETWEEN @FromDate AND @ToDate
+				AND ostp.TraderId = @TraderId
+				AND (
+					ostp.SportId = @SportId
+					OR @SportId = - 1
+				)
 				AND ostp.LeagueId = t.LeagueId
 			GROUP BY ostp.LeagueId
 		) AS LeagueMatchCount
