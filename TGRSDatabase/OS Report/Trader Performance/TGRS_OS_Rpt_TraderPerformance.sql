@@ -53,7 +53,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderPerformanceDetail') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderPerformanceDetail
+		DROP TABLE #tmpTraderPerformanceDetail;
 	END
 
 	CREATE TABLE #tmpTraderPerformanceDetail (
@@ -74,7 +74,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderPerformanceDetailByBettype') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderPerformanceDetailByBettype
+		DROP TABLE #tmpTraderPerformanceDetailByBettype;
 	END
 
 	CREATE TABLE #tmpTraderPerformanceDetailByBettype (
@@ -94,7 +94,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderPerformanceDetailBySport') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderPerformanceDetailBySport
+		DROP TABLE #tmpTraderPerformanceDetailBySport;
 	END
 
 	CREATE TABLE #tmpTraderPerformanceDetailBySport (
@@ -113,7 +113,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderPerformanceRegion') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderPerformanceRegion
+		DROP TABLE #tmpTraderPerformanceRegion;
 	END
 
 	CREATE TABLE #tmpTraderPerformanceRegion (
@@ -127,7 +127,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderPointDeduction') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderPointDeduction
+		DROP TABLE #tmpTraderPointDeduction;
 	END
 	CREATE TABLE #tmpTraderPointDeduction (
 			TraderId			INT
@@ -140,7 +140,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderMatchCount') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderMatchCount
+		DROP TABLE #tmpTraderMatchCount;
 	END
 
 	CREATE TABLE #tmpTraderMatchCount (
@@ -278,13 +278,13 @@ BEGIN
 	FROM #tmpTraderPerformanceDetailByBettype tp WITH (NOLOCK)
 	CROSS APPLY (
 		SELECT SUM(_tp.Turnover)
-		FROM #tmpTraderPerformanceDetailByBettype _tp
+		FROM #tmpTraderPerformanceDetailByBettype _tp WITH(NOLOCK)
 		WHERE _tp.TraderId = tp.TraderId
 			AND _tp.SportId = tp.SportId
 		) ByTraderAndSport(Turnover)
 	CROSS APPLY (
 		SELECT SUM(_tp.Turnover)
-		FROM #tmpTraderPerformanceDetailByBettype _tp
+		FROM #tmpTraderPerformanceDetailByBettype _tp WITH(NOLOCK)
 		WHERE _tp.TraderId = tp.TraderId
 		) ByTrader(Turnover);
 

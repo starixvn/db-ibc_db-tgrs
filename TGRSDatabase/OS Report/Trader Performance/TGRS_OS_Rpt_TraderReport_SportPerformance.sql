@@ -29,13 +29,13 @@ BEGIN
 	DECLARE @FMark			DECIMAL(18, 2)
 		,	@TotalTurnover	MONEY;  
   
-	SELECT TOP 1 @FMark = ParamValue  
+	SELECT TOP(1) @FMark = ParamValue  
 	FROM dbo.OSParameter WITH (NOLOCK)  
 	WHERE ParamId = 7; -- FloorMark value 
    
 	IF OBJECT_ID('tempdb..#tmpOSSportPerformance') IS NOT NULL 
 	BEGIN 
-		DROP TABLE #tmpOSSportPerformance
+		DROP TABLE #tmpOSSportPerformance;
 	END;
   
 	CREATE TABLE #tmpOSSportPerformance (  
@@ -56,7 +56,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpSportPerformanceRegion') IS NOT NULL  
 	BEGIN  
-		DROP TABLE #tmpSportPerformanceRegion  
+		DROP TABLE #tmpSportPerformanceRegion;  
 	END;
   
 	CREATE TABLE #tmpSportPerformanceRegion (  

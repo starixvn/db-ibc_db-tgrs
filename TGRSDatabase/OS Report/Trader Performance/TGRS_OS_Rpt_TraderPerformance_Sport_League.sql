@@ -30,7 +30,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpOSLeaguePerformance') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpOSLeaguePerformance
+		DROP TABLE #tmpOSLeaguePerformance;
 	END;
 
 	CREATE TABLE #tmpOSLeaguePerformance (
@@ -42,7 +42,7 @@ BEGIN
 	);
 
 	-- START
-	SELECT TOP 1 @FMark = ParamValue
+	SELECT TOP(1) @FMark = ParamValue
 	FROM dbo.OSParameter WITH (NOLOCK)
 	WHERE ParamId = 7; -- FloorMark value
 	
@@ -94,7 +94,7 @@ BEGIN
 	END;
 	
 	SELECT @TotalTurnover = SUM(Turnover)
-	FROM #tmpOSLeaguePerformance;
+	FROM #tmpOSLeaguePerformance WITH(NOLOCK);
 
 	SELECT	t.LeagueId AS LeagueId
 		,	l.LeagueName AS LeagueName

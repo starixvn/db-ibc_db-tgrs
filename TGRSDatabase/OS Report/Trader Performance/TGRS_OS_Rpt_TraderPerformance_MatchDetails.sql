@@ -44,7 +44,7 @@ BEGIN
 
 	IF	OBJECT_ID('tempdb..#BUMBData') IS NOT NULL
 	BEGIN;
-		DROP TABLE	#BUMBData
+		DROP TABLE	#BUMBData;
 	END;
 
 	CREATE TABLE	#BUMBData (
@@ -58,7 +58,7 @@ BEGIN
 	SELECT	TOP(1)
 			@BalanceUpDay	= BUDay
 		,	@MoveBetsDay	= MBDay
-	FROM #BUMBData;
+	FROM #BUMBData WITH(NOLOCK);
 
 	IF @SportId IS NULL
 	BEGIN
@@ -67,7 +67,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderPerformanceDetail') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderPerformanceDetail
+		DROP TABLE #tmpTraderPerformanceDetail;
 	END
 
 	CREATE TABLE #tmpTraderPerformanceDetail (
@@ -87,7 +87,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpTraderPerformanceDetailByBettype') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpTraderPerformanceDetailByBettype
+		DROP TABLE #tmpTraderPerformanceDetailByBettype;
 	END
 
 	CREATE TABLE #tmpTraderPerformanceDetailByBettype (
@@ -107,7 +107,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpFinalResults') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpFinalResults
+		DROP TABLE #tmpFinalResults;
 	END
 
 	CREATE TABLE #tmpFinalResults (
@@ -144,35 +144,35 @@ BEGIN
 
 	IF @FromDate < @BalanceUpDay
 	BEGIN
-		SELECT @IsGetDataFromBK = 1
+		SELECT @IsGetDataFromBK = 1;
 	END
 	ELSE IF @FromDate <= @MoveBetsDay
 	BEGIN
-		SELECT @IsGetDataFrom14 = 1
+		SELECT @IsGetDataFrom14 = 1;
 	END
 	ELSE IF @FromDate > @MoveBetsDay
 	BEGIN
-		SELECT @IsGetDataFromOrigin = 1
+		SELECT @IsGetDataFromOrigin = 1;
 	END;
 
 	IF @ToDate < @BalanceUpDay
 	BEGIN
-		SELECT @IsGetDataFromBK = 1
+		SELECT @IsGetDataFromBK = 1;
 	END
 	ELSE IF @ToDate <= @MoveBetsDay
 	BEGIN
-		SELECT @IsGetDataFrom14 = 1
+		SELECT @IsGetDataFrom14 = 1;
 	END
 	ELSE IF @ToDate > @MoveBetsDay
 	BEGIN
-		SELECT @IsGetDataFromOrigin = 1
+		SELECT @IsGetDataFromOrigin = 1;
 	END;
 
 	IF @FromDate < @BalanceUpDay AND @ToDate > @MoveBetsDay
 	BEGIN
-		SELECT @IsGetDataFromBK = 1
-		SELECT @IsGetDataFrom14 = 1
-		SELECT @IsGetDataFromOrigin = 1
+		SELECT @IsGetDataFromBK = 1;
+		SELECT @IsGetDataFrom14 = 1;
+		SELECT @IsGetDataFromOrigin = 1;
 	END;
 
 	IF @IsGetDataFromBK = 1 AND @IsGetDataFromOrigin = 1
@@ -198,7 +198,7 @@ BEGIN
 		SELECT	@FromDateOrigin = @MoveBetsDay + 1
 				,	@ToDateOrigin = @ToDate
 				,	@FromDate14 = @FromDate
-				,	@ToDate14 = @MoveBetsDay
+				,	@ToDate14 = @MoveBetsDay;
 	END;
 
 	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 0 AND @IsGetDataFromOrigin = 0
@@ -210,13 +210,13 @@ BEGIN
 	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 0
 	BEGIN
 		SELECT	@FromDate14 = @FromDate
-				,	@ToDate14 = @ToDate
+				,	@ToDate14 = @ToDate;
 	END;
 
 	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 0 AND @IsGetDataFromOrigin = 1
 	BEGIN
 		SELECT	@FromDateOrigin = @FromDate
-				,	@ToDateOrigin = @ToDate
+				,	@ToDateOrigin = @ToDate;
 	END;
 
 	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1

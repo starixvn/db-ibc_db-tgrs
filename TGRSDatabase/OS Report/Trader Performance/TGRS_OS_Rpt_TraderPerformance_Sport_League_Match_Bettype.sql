@@ -4,6 +4,7 @@ GO
 SET ANSI_NULLS ON 
 GO
 
+
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_Sport_League_Match_Bettype]
 		@SportId			INT
 	,	@LeagueId			INT
@@ -31,7 +32,7 @@ BEGIN
 
 	IF OBJECT_ID('tempdb..#tmpOSBettypePerformance') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpOSBettypePerformance
+		DROP TABLE #tmpOSBettypePerformance;
 	END;
 
 	CREATE TABLE #tmpOSBettypePerformance (

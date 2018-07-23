@@ -29,13 +29,13 @@ BEGIN
 	DECLARE @FMark			DECIMAL(18, 2)
 		,	@TotalTurnover	MONEY;
 
-	SELECT TOP 1 @FMark = ParamValue
+	SELECT TOP(1) @FMark = ParamValue
 	FROM dbo.OSParameter WITH (NOLOCK)
 	WHERE ParamId = 7; -- FloorMark value
 
 	IF OBJECT_ID('tempdb..#tmpOSBettypePerformance') IS NOT NULL
 	BEGIN
-		DROP TABLE #tmpOSBettypePerformance
+		DROP TABLE #tmpOSBettypePerformance;
 	END;
 
 	CREATE TABLE #tmpOSBettypePerformance (
@@ -87,7 +87,7 @@ BEGIN
 	END;
 	
 	SELECT @TotalTurnover = SUM(Turnover)
-	FROM #tmpOSBettypePerformance;
+	FROM #tmpOSBettypePerformance WITH(NOLOCK);
 
 	SELECT	t.BettypeId
 		,	bt.typenamee AS BettypeName
