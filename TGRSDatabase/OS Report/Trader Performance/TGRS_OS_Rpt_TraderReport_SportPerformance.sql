@@ -6,7 +6,7 @@ GO
 
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderReport_SportPerformance]
 		@ReportType			TINYINT = 1
-	,	@TraderId			INT = -1
+	,	@TraderId			INT
 	,	@FromDate			DATE
 	,	@ToDate				DATE
 AS
@@ -27,11 +27,11 @@ BEGIN
 
 	-- INIT
 	DECLARE @FMark			DECIMAL(18, 2)
-		,	@TotalTurnover	MONEY; 
+		,	@TotalTurnover	MONEY;  
   
 	SELECT TOP 1 @FMark = ParamValue  
 	FROM dbo.OSParameter WITH (NOLOCK)  
-	WHERE ParamId = 7 -- FloorMark value  
+	WHERE ParamId = 7; -- FloorMark value 
    
 	IF OBJECT_ID('tempdb..#tmpOSSportPerformance') IS NOT NULL 
 	BEGIN 
@@ -98,9 +98,8 @@ BEGIN
 			,	td.Target;
 	END;    
    
-	SELECT @TotalTurnover = SUM(Turnover)  
-	FROM dbo.OSSummaryByTrader_Daily AS td WITH (NOLOCK)  
-	WHERE td.EventDate BETWEEN @FromDate AND @ToDate;   
+	SELECT @TotalTurnover = SUM(td.Turnover)  
+	FROM #tmpOSSportPerformance AS td WITH (NOLOCK);
    
 	INSERT INTO #tmpSportPerformanceRegion (  
 			SportId  
@@ -119,18 +118,17 @@ BEGIN
   
 	SELECT	t.SportId  
 		,	s.SportName  
-		,	COUNT(DISTINCT LeagueId) AS 'NoOfLeague'  
-		,	SUM(Turnover) AS Turnover  
-		,	SUM(VWinLoss) AS 'VWinLoss'  
-		,	(SUM(VWinLoss) * 100 / SUM(Turnover)) AS 'VMargin'  
-		,	(SUM(Turnover) * 100 / @TotalTurnover) AS 'AverageVTurnover'  
-		,	(SUM(VWinLoss) * (@FMark) / SUM(Turnover)) AS 'PointMargin'  
+		,	COUNT(DISTINCT t.LeagueId) AS 'NoOfLeague'  
+		,	SUM(t.Turnover) AS Turnover  
+		,	(SUM(t.VWinLoss) * 100 / SUM(t.Turnover)) AS 'VMargin'  
+		,	(SUM(t.Turnover) * 100 / @TotalTurnover) AS 'AverageVTurnover'  
+		,	(SUM(t.VWinLoss) * (@FMark) / SUM(t.Turnover)) AS 'PointMargin'  
 		,	tpr.RegionCount  
 	FROM #tmpOSSportPerformance AS t WITH(NOLOCK)  
 		INNER JOIN bodb02.dbo.Sports AS s WITH(NOLOCK) ON t.SportId = s.SportType  
 		INNER JOIN #tmpSportPerformanceRegion AS tpr WITH(NOLOCK) ON tpr.SportId = t.SportId  
 	GROUP BY t.SportId
-		,	SportName
+		,	s.SportName
 		,	tpr.RegionCount;
   
 	DROP TABLE #tmpOSSportPerformance;
