@@ -28,15 +28,15 @@ BEGIN
 		,	@FloorMark				DECIMAL(18, 2);
 
 	SELECT @IncrementTimes = ParamValue
-	FROM [bodb_TGRS].[dbo].[OSParameter] WITH (NOLOCK)
+	FROM dbo.[OSParameter] WITH (NOLOCK)
 	WHERE ParamId = 3;
 
 	SELECT @IncrementValue = ParamValue
-	FROM [bodb_TGRS].[dbo].[OSParameter] WITH (NOLOCK)
+	FROM dbo.[OSParameter] WITH (NOLOCK)
 	WHERE ParamId = 5;
 
 	SELECT @FloorMark = ParamValue
-	FROM [bodb_TGRS].[dbo].[OSParameter] WITH (NOLOCK)
+	FROM dbo.[OSParameter] WITH (NOLOCK)
 	WHERE ParamId = 7;
 	
 	DECLARE @BalanceUpDay			SMALLDATETIME
