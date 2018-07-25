@@ -32,7 +32,22 @@ BEGIN
 	SET NOCOUNT ON;
 
 	-- INIT	 
-	DECLARE @TraderId		INT;
+	DECLARE @TraderId		INT
+		,	@FDate			DATETIME
+		,	@TDate			DATETIME;
+
+	IF	OBJECT_ID('tempdb..#tmpWinlossDate') IS NOT NULL
+	BEGIN;
+		DROP TABLE #tmpWinlossDate;
+	END;
+
+	CREATE TABLE	#tmpWinlossDate (
+			WLDate		DATETIME
+	);
+
+	CREATE CLUSTERED INDEX	#CIX_tmpWinlossDateIdx ON #tmpWinlossDate (
+			WLDate		ASC
+	);
 
 	SELECT @TraderId = t.TraderId
 	FROM dbo.OSTrader AS t WITH(NOLOCK)
@@ -58,6 +73,48 @@ BEGIN
 		WHERE t.TraderId = @TraderId
 			AND t.EventDate BETWEEN @FromDate AND @ToDate 
 		GROUP BY t.EventDate;
+
+		SELECT @FDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @FromDate), 0); -- get first day of month  
+  
+		WHILE @FDate <= @ToDate  
+		BEGIN  
+			INSERT INTO #tmpWinlossDate (WLDate)  
+			VALUES (@FDate);
+     
+			SELECT @FDate = DATEADD(MONTH, 1, @FDate);
+		END;
+  
+		SELECT @FDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @FromDate), 0); -- get first day of month  
+		SELECT @TDate = DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, @ToDate) + 1, 0)); -- get last day of month  
+    
+		IF (@FDate = @FromDate AND @TDate = @ToDate) -- Report by month - month  
+		BEGIN  
+			SELECT	[WLDate]	= d.WLDate
+				,	[Turnover]	= ISNULL(SUM(s.Turnover), 0)
+				,	[WinLost]	= ISNULL(SUM(s.Winloss), 0) - ISNULL(SUM(s.Comm), 0)
+			FROM dbo.OSSummaryByTrader_Monthly AS s WITH(NOLOCK)  
+				RIGHT JOIN #tmpWinlossDate AS d WITH(NOLOCK) ON s.Eventdate = d.WLDate
+			WHERE s.TraderId = @TraderId
+			GROUP BY d.WLDate;
+		END  
+		ELSE -- Report by date - month  
+		BEGIN  
+			SELECT	[WLDate]	= d.WLDate
+				,	[Turnover]	= ISNULL(SUM(Turnover), 0)  
+				,	[WinLost]	= ISNULL(SUM(WinLost), 0)
+			FROM  
+				(  
+					SELECT	[EventDate]	= DATEADD(MONTH, DATEDIFF(MONTH, 0, t.EventDate), 0)
+						,	[Turnover]	= ISNULL(SUM(t.Turnover), 0)
+						,	[WinLost]	= ISNULL(SUM(t.Winloss), 0) - ISNULL(SUM(Comm), 0)
+					FROM dbo.OSSummaryByTrader_Daily AS t WITH(NOLOCK) 
+					WHERE t.TraderId = @TraderId  
+						AND t.EventDate BETWEEN @FromDate AND @ToDate
+					GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, t.EventDate), 0)  
+				) AS s  
+				RIGHT JOIN #tmpWinlossDate AS d WITH(NOLOCK) ON s.EventDate = d.WLDate  
+			GROUP BY d.WLDate;
+		END;
 	END;
 END;
 
