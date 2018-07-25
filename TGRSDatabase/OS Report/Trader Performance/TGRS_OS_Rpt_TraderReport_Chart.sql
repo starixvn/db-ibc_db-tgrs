@@ -4,7 +4,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderReport_Chart]
-		@TraderName 		NVARCHAR(50)
+		@TraderId 			INT
 	,	@ReportType 		TINYINT = 1
 	,	@FromDate 			DATETIME
 	,	@ToDate 			DATETIME
@@ -32,8 +32,7 @@ BEGIN
 	SET NOCOUNT ON;
 
 	-- INIT	 
-	DECLARE @TraderId		INT
-		,	@FDate			DATETIME
+	DECLARE @FDate			DATETIME
 		,	@TDate			DATETIME;
 
 	IF	OBJECT_ID('tempdb..#tmpWinlossDate') IS NOT NULL
@@ -49,10 +48,6 @@ BEGIN
 			WLDate		ASC
 	);
 
-	SELECT @TraderId = t.TraderId
-	FROM dbo.OSTrader AS t WITH(NOLOCK)
-	WHERE t.TraderName = @TraderName;
-
 	-- START
 	IF @ReportType = 1
 	BEGIN		
@@ -66,14 +61,6 @@ BEGIN
 	END  
 	ELSE
 	BEGIN  
-		SELECT	[WLDate]	= t.EventDate
-			,	[Turnover]	= ISNULL(SUM(t.Turnover), 0)
-			,	[WinLost]	= ISNULL(SUM(t.Winloss), 0) - ISNULL(SUM(t.Comm), 0)
-		FROM dbo.OSSummaryByTrader_Monthly AS t WITH(NOLOCK)
-		WHERE t.TraderId = @TraderId
-			AND t.EventDate BETWEEN @FromDate AND @ToDate 
-		GROUP BY t.EventDate;
-
 		SELECT @FDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, @FromDate), 0); -- get first day of month  
   
 		WHILE @FDate <= @ToDate  
