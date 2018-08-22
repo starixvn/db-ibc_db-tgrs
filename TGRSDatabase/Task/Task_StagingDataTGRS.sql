@@ -1,15 +1,14 @@
-USE [bodb_TGRS]
+SET QUOTED_IDENTIFIER ON 
 GO
-/****** Object:  StoredProcedure [dbo].[Task_StagingDataTGRS]    Script Date: 5/16/2018 12:42:48 PM ******/
-SET ANSI_NULLS ON
+SET ANSI_NULLS ON 
 GO
-SET QUOTED_IDENTIFIER ON
-GO
-ALTER PROCEDURE	[dbo].[Task_StagingDataTGRS]
+
+ALTER PROCEDURE  [dbo].[Task_StagingDataTGRS]
 		@Debug					BIT = 0
 	,	@BeforeMoveBetsDay		BIT = 1	
 	,	@GenerateFromDate		SMALLDATETIME = NULL
 	,	@GenerateToDate			SMALLDATETIME = NULL
+	,   @Bettypes				VARCHAR(2000) =  '0'
 AS
 /*
 	Created:	20140603@Tom.Vo
@@ -40,10 +39,10 @@ AS
 		- 20180419@Long:	Add 2 more bettypes for Asian 1x2 HDP [Redmine: #93890]
 		- 20180516@Long:	Filter unsupported bettypes
 		- 20180618@John.Ngo: Missing data of FT bettype #97059
-		- 20180717@Long:	Manage for case changing the status of match before bettrans [Redmine ID: 97987]
+		- 20180822@John.Ngo: Missing data of 124, 125 bettype #100251
    		
 	Param's Explanation:
-		
+		- @Bettype = 0: All bettype
 	Exam:
 	 
 */
@@ -63,6 +62,7 @@ BEGIN;
 	DECLARE @BalanceUpDay			SMALLDATETIME
 		,	@MoveBetsDay			SMALLDATETIME
 		,	@Yesterday				SMALLDATETIME
+		,	@Today					SMALLDATETIME
 		;
 
 	DECLARE	@winlostdate			DATETIME
@@ -77,19 +77,6 @@ BEGIN;
 	END
 	--
 
-	IF	OBJECT_ID('tempdb..#tmpScannedMatches') IS NOT NULL
-	BEGIN;
-		DROP TABLE #tmpScannedMatches;
-	END;
-
-	CREATE TABLE	#tmpScannedMatches (
-			MatchId			INT
-	);
-
-	CREATE CLUSTERED INDEX	#CIX_tmpScannedMatchesIdx ON #tmpScannedMatches (
-			MatchId			ASC
-	);
-
 	IF	OBJECT_ID('tempdb..#SupportedBettypes') IS NOT NULL
 	BEGIN;
 		DROP TABLE	#SupportedBettypes
@@ -99,11 +86,15 @@ BEGIN;
 			BetType					SMALLINT PRIMARY KEY
 	);
 
-	INSERT INTO #SupportedBettypes(BetType)
-	SELECT b.BetType
-	FROM dbo.BetType b WITH(NOLOCK)
-	WHERE b.BetType > 0;
-
+	IF @Bettypes <> '0'
+		 INSERT INTO #SupportedBettypes(BetType)
+		 SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
+	ELSE 
+		 INSERT INTO #SupportedBettypes(BetType)
+		 SELECT b.BetType
+		 FROM bodb02.dbo.SportBettypeMatrix AS b WITH(NOLOCK)
+		 WHERE b.SportType = 1;
+	
 	IF	OBJECT_ID('tempdb..#Spread1x2') IS NOT NULL
 	BEGIN;
 		DROP TABLE	#Spread1x2
@@ -141,7 +132,8 @@ BEGIN;
 		,	@MoveBetsDay	= MBDay
 	FROM #BUMBData;
 
-	SELECT	@Yesterday		= CONVERT(DATE, GETDATE() - 1);
+	SELECT	@Today			= CONVERT(DATE, @Begin);
+	SELECT	@Yesterday		= DATEADD(day, -1, @Today);
 
 	IF	@Debug = 1
 	BEGIN;
@@ -521,10 +513,10 @@ BEGIN;
 				AND	a.OperatorType = b.OperatorType
 		LEFT JOIN	dbo.TraderGrade_History AS td_G WITH (NOLOCK)
 				ON	td_G.CustID = a.OperatorID
-				AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, GETDATE() + 10)
+				AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 		LEFT JOIN	dbo.TraderTeam_History AS td_T WITH (NOLOCK)
 				ON	td_T.CustID = a.OperatorID
-				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, GETDATE() + 10)
+				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
 		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 			--AND	m.EventStatus='completed'
 			AND	m.SportType = 1
@@ -602,6 +594,10 @@ BEGIN;
 													THEN 458
 												WHEN b.bettype = 466
 													THEN 459
+												WHEN b.bettype = 124
+													THEN 5
+												WHEN b.bettype = 125
+													THEN 15
 												ELSE b.bettype
 											END
 				,	[modds]				= b.modds
@@ -633,10 +629,7 @@ BEGIN;
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			LEFT JOIN	DBARC.bodb_Archive.dbo.MatchMaxbet_bk AS mm WITH (NOLOCK)
 					ON	mm.MatchId = b.matchid
-					AND	(	mm.BetType = b.bettype
-						OR	(b.bettype = 124 AND mm.BetType = 5)
-						OR	(b.bettype = 125 AND mm.BetType = 15)
-						)
+					AND	mm.BetType = b.bettype
 			LEFT JOIN	#Spread1x2 AS s
 					ON	mm.Spread = s.Margin
 					AND	mm.BetType IN (5, 15)
@@ -644,7 +637,8 @@ BEGIN;
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND	m.sporttype = 1
-				AND	m.MatchCode NOT LIKE '%hedge%';
+				AND	m.MatchCode NOT LIKE '%hedge%'
+				AND b.bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 					
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -686,8 +680,6 @@ BEGIN;
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	(	b.BetType = t.BetType
-						OR	(b.bettype = 124 AND t.BetType = 5)
-						OR	(b.bettype = 125 AND t.BetType = 15)
 						OR	(b.bettype = 23 AND t.BetType = 1)
 						)
 			CROSS APPLY	(
@@ -779,7 +771,7 @@ BEGIN;
 				RAISERROR('From BK - Insert #tmpStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 	
-			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate
+			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 			SELECT	[CustId]			= t.CustId
@@ -813,7 +805,7 @@ BEGIN;
 				RAISERROR('From BK - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate
+			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.[TraderPerformance_BetChoice] (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, BetCount)
 			SELECT	[CustId]			= t.CustId
@@ -920,10 +912,10 @@ BEGIN;
 				AND	a.OperatorType = b.OperatorType
 		LEFT JOIN	dbo.TraderGrade_History AS td_G WITH (NOLOCK)
 				ON	td_G.CustID = a.OperatorID
-				AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, GETDATE() + 10)
+				AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 		LEFT JOIN	dbo.TraderTeam_History AS td_T WITH (NOLOCK)
 				ON	td_T.CustID = a.OperatorID
-				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, GETDATE() + 10)
+				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
 		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
 			--AND	m.EventStatus='completed'
 			AND	m.SportType = 1
@@ -1001,6 +993,10 @@ BEGIN;
 													THEN 458
 												WHEN b.bettype = 466
 													THEN 459
+												WHEN b.bettype = 124
+													THEN 5
+												WHEN b.bettype = 125
+													THEN 15
 												ELSE b.bettype
 											END
 				,	[modds]				= b.modds
@@ -1032,10 +1028,7 @@ BEGIN;
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			LEFT JOIN	bodb02.dbo.MatchMaxbet14 AS mm WITH (NOLOCK)
 					ON	mm.MatchId = b.matchid
-					AND	(	mm.BetType = b.bettype
-						OR	(b.bettype = 124 AND mm.BetType = 5)
-						OR	(b.bettype = 125 AND mm.BetType = 15)
-						)
+					AND	mm.BetType = b.bettype
 			LEFT JOIN	#Spread1x2 AS s
 					ON	mm.Spread = s.Margin
 					AND	mm.BetType IN (5, 15)
@@ -1043,7 +1036,8 @@ BEGIN;
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND	m.sporttype = 1
-				AND	m.MatchCode NOT LIKE '%hedge%';
+				AND	m.MatchCode NOT LIKE '%hedge%'
+				AND b.bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 					
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1085,8 +1079,6 @@ BEGIN;
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	(	b.BetType = t.BetType
-						OR	(b.bettype = 124 AND t.BetType = 5)
-						OR	(b.bettype = 125 AND t.BetType = 15)
 						OR	(b.bettype = 23 AND t.BetType = 1)
 						)
 			CROSS APPLY	(
@@ -1178,7 +1170,7 @@ BEGIN;
 				RAISERROR('From 14 - Insert #tmpStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
-			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate
+			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 			SELECT	[CustId]			= t.CustId
@@ -1212,7 +1204,7 @@ BEGIN;
 				RAISERROR('From 14 - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate
+			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.[TraderPerformance_BetChoice] (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, BetCount)
 			SELECT	[CustId]			= t.CustId
@@ -1263,16 +1255,6 @@ BEGIN;
 	IF	@IsGetDataFromOrigin = 1
 	BEGIN
 		TRUNCATE TABLE #tmpTrader;
-
-		INSERT INTO #tmpScannedMatches(MatchId)
-		SELECT DISTINCT m.MatchId
-		FROM bodb02.dbo.match AS m WITH(NOLOCK)
-			INNER JOIN bodb02.dbo.bettrans AS b WITH(NOLOCK) ON b.matchid = m.matchid
-		WHERE m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
-			AND	m.SportType = 1
-			AND b.ruben <> 1
-			AND m.EventStatus = 'completed'
-			AND	m.MatchCode NOT LIKE '%hedge%';
 
 		INSERT INTO	#tmpTrader (CustId, LeagueId, WorkShift, MatchId, SportType, EventDate, HomeId, AwayId, BetType, SpecialType, Matchcode, TeamId, Grade)
 		SELECT	DISTINCT
@@ -1329,12 +1311,11 @@ BEGIN;
 				AND	a.OperatorType = b.OperatorType
 		LEFT JOIN	dbo.TraderGrade_History AS td_G WITH (NOLOCK)
 				ON	td_G.CustID = a.OperatorID
-				AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, GETDATE() + 10)
+				AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 		LEFT JOIN	dbo.TraderTeam_History AS td_T WITH (NOLOCK)
 				ON	td_T.CustID = a.OperatorID
-				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, GETDATE() + 10)
+				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
-			AND m.matchid NOT IN (SELECT t.MatchId FROM #tmpScannedMatches t WITH (NOLOCK))
 			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
 			AND	a.OperatorType < 3
@@ -1411,6 +1392,10 @@ BEGIN;
 													THEN 458
 												WHEN b.bettype = 466
 													THEN 459
+												WHEN b.bettype = 124
+													THEN 5
+												WHEN b.bettype = 125
+													THEN 15
 												ELSE b.bettype
 											END
 				,	[modds]				= b.modds
@@ -1442,20 +1427,17 @@ BEGIN;
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			LEFT JOIN	bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK)
 					ON	mm.MatchId = b.matchid
-					AND	(	mm.BetType = b.bettype
-						OR	(b.bettype = 124 AND mm.BetType = 5)
-						OR	(b.bettype = 125 AND mm.BetType = 15)
-						)
+					AND	mm.BetType = b.bettype
 			LEFT JOIN	#Spread1x2 AS s
 					ON	mm.Spread = s.Margin
 					AND	mm.BetType IN (5, 15)
 			WHERE	b.winlostdate = @winlostdate
-				AND m.matchid NOT IN (SELECT t.MatchId FROM #tmpScannedMatches t WITH (NOLOCK))
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND	m.sporttype = 1
 				AND	m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%';
+				AND	m.MatchCode NOT LIKE '%hedge%'
+				AND b.bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1497,8 +1479,6 @@ BEGIN;
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	(	b.BetType = t.BetType
-						OR	(b.bettype = 124 AND t.BetType = 5)
-						OR	(b.bettype = 125 AND t.BetType = 15)
 						OR	(b.bettype = 23 AND t.BetType = 1)
 						)
 			CROSS APPLY	(
@@ -1590,7 +1570,7 @@ BEGIN;
 				RAISERROR('From Origin - Insert #tmpStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate
+			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 			SELECT	[CustId]			= t.CustId
@@ -1624,7 +1604,7 @@ BEGIN;
 				RAISERROR('From Origin - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		
-			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate
+			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #SupportedBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.[TraderPerformance_BetChoice] (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, BetCount)
 			SELECT		[CustId]			= t.CustId
@@ -1672,3 +1652,8 @@ BEGIN;
 		END;
 	END;
 END;
+
+
+GO 
+ GRANT EXECUTE ON [dbo].[Task_StagingDataTGRS] TO [bodbTGRSNet]
+GO 
