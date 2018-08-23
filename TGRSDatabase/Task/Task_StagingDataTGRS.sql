@@ -91,7 +91,7 @@ BEGIN;
 		 SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
 	ELSE 
 		 INSERT INTO #SupportedBettypes(BetType)
-		 SELECT b.BetType
+		 SELECT DISTINCT b.BetType
 		 FROM bodb02.dbo.SportBettypeMatrix AS b WITH(NOLOCK)
 		 WHERE b.SportType = 1;
 	
