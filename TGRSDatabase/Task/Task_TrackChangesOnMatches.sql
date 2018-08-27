@@ -1,12 +1,12 @@
 USE [bodb_TGRS]
 GO
-/****** Object:  StoredProcedure [dbo].[Task_TrackChangesOnMatches_xtest]    Script Date: 8/27/2018 4:33:28 AM ******/
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER PROCEDURE	[dbo].[Task_TrackChangesOnMatches_xtest]
+ALTER PROCEDURE	[dbo].[Task_TrackChangesOnMatches]
 		@Debug					BIT = 0
 AS
 /*
