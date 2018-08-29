@@ -1,3 +1,9 @@
+/*
+	Creator:	20180829@Casey
+	Task:		[Soccer] - Implement a feature to monitor data between NAP vs TGR - [Redmine: #89493]
+	Server:		DB06.bodb_TGRS & DBTP.bodb_TGRS_UAT
+*/
+
 	CREATE TABLE [dbo].[TrackChangedMatch](
 	[TrackChangeID] [bigint] IDENTITY(1,1) NOT NULL,
 	[MatchId] [int] NOT NULL,
@@ -119,5 +125,3 @@ GO
 		,	BetType				ASC
 	)ON [DATA];
 
-	
-	
