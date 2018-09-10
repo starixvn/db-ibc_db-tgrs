@@ -6,8 +6,9 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_BettypePerformanceMonthly] 
-	@Year	INT
-	,@BetTypes NVARCHAR(MAX)
+		@Year				INT
+	,	@BetTypes			NVARCHAR(MAX)
+	,	@IsExcludeLeagues	BIT = 0
 AS
 /*
 	Created: 20180719@CaseyHuynh
@@ -16,6 +17,7 @@ AS
 	Original:
 
 	Revisions:
+		- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
 
 	Param's Explanation (filtered by):
 */
@@ -63,19 +65,39 @@ BEGIN
 	FROM	#tmpBettype AS tbt WITH (ROWLOCK)
 			INNER JOIN dbo.BetType AS bt WITH (NOLOCK) ON tbt.BetType = bt.BetType;
 
-		--2: GET BettypePerformance
-	INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
-	SELECT	sbt.BetType
-			, bt.BetTypeName
-			, MONTH(sbt.eventDate) AS MonthNo
-			, SUM(sbt.Stake) AS TurnOver
-			, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
-			, SUM(sbt.BetCount) AS BetCount
-			, SUM(sbt.MatchCount) AS MatchCount
-	FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
+	--2: GET BettypePerformance
+	IF @IsExcludeLeagues = 0
+	BEGIN
+		INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
+		SELECT	sbt.BetType
+				, bt.BetTypeName
+				, MONTH(sbt.eventDate) AS MonthNo
+				, SUM(sbt.Stake) AS TurnOver
+				, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
+				, SUM(sbt.BetCount) AS BetCount
+				, SUM(sbt.MatchCount) AS MatchCount
+		FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
+				INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
+		WHERE	YEAR(sbt.EventDate) = @Year
+		GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
+	END
+	ELSE
+	BEGIN
+		INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
+		SELECT	sbt.BetType
+				, bt.BetTypeName
+				, MONTH(sbt.eventDate) AS MonthNo
+				, SUM(sbt.Stake) AS TurnOver
+				, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
+				, SUM(sbt.BetCount) AS BetCount
+				, SUM(sbt.MatchCount) AS MatchCount
+		FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
 			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
-	WHERE	YEAR(sbt.EventDate) = @Year			
-	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
+			LEFT JOIN dbo.LeagueExclusion AS le WITH(NOLOCK) ON sbt.LeagueId = le.LeagueId
+		WHERE	YEAR(sbt.EventDate) = @Year
+			AND le.LeagueId IS NULL
+		GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
+	END;
 	
 	---===========3. RETURN DATA===================================
 	--=============================================================
