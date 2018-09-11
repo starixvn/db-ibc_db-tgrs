@@ -29,3 +29,101 @@ GO
 
 ----===================C. ALTER TABLES=========================
 ----===========================================================
+ALTER TABLE [dbo].[SummaryByTrader_Monthly]
+ADD	[LeagueId]				INT NULL;
+GO
+
+CREATE INDEX CIX_SummaryByTrader_Monthly_LeagueId ON [dbo].[SummaryByTrader_Monthly] (
+	[LeagueId]               ASC
+)
+GO
+
+ALTER TABLE [dbo].[SummaryByTeam_Daily]
+ADD	[LeagueId]				INT NULL;
+GO
+
+CREATE INDEX CIX_SummaryByTeam_Daily_LeagueId ON [dbo].[SummaryByTeam_Daily] (
+	[LeagueId]               ASC
+)
+GO
+
+ALTER TABLE [dbo].[SummaryByTeam_Monthly]
+ADD	[LeagueId]				INT NULL;
+GO
+
+CREATE INDEX CIX_SummaryByTeam_Monthly_LeagueId ON [dbo].[SummaryByTeam_Monthly] (
+	[LeagueId]               ASC
+)
+GO
+
+ALTER TABLE [dbo].[TraderMatchCount_Monthly]
+ADD	[LeagueId]				INT NULL;
+GO
+
+ALTER TABLE [TraderMatchCount_Monthly]
+DROP CONSTRAINT PK_TraderMatchCount_Monthly
+GO
+
+CREATE CLUSTERED INDEX CIX_TraderMatchCount_Monthly ON [dbo].[TraderMatchCount_Monthly] (
+	[CustId]				ASC,
+	[EventDate]				ASC,
+	[LeagueId]				ASC,
+	[SportType]				ASC,
+	[BetType]				ASC,
+	[IsLive]				ASC
+)
+GO
+
+ALTER TABLE [dbo].[TraderMatchCount_Yearly]
+ADD	[LeagueId]				INT NULL;
+GO
+
+ALTER TABLE [TraderMatchCount_Yearly]
+DROP CONSTRAINT PK_TraderMatchCount_Yearly
+GO
+
+CREATE CLUSTERED INDEX CIX_TraderMatchCount_Yearly ON [dbo].[TraderMatchCount_Yearly] (
+	[CustId]				ASC,
+	[Year]					ASC,
+	[LeagueId]				ASC,
+	[SportType]				ASC,
+	[BetType]				ASC,
+	[IsLive]				ASC
+)
+GO
+
+ALTER TABLE [dbo].[TraderPerformance_Monthly]
+ADD	[LeagueId]				INT NULL;
+GO
+
+ALTER TABLE [TraderPerformance_Monthly]
+DROP CONSTRAINT PK_TraderPerformance_Monthly
+GO
+
+CREATE CLUSTERED INDEX CIX_TraderPerformance_Monthly ON [dbo].[TraderPerformance_Monthly] (
+	[CustId]				ASC,
+	[EventDate]				ASC,
+	[LeagueId]				ASC,
+	[SportType]				ASC,
+	[BetType]				ASC,
+	[IsLive]				ASC
+)
+GO
+
+ALTER TABLE [dbo].[TraderPerformance_Yearly]
+ADD	[LeagueId]				INT NULL;
+GO
+
+ALTER TABLE [TraderPerformance_Yearly]
+DROP CONSTRAINT PK_TraderPerformance_Yearly
+GO
+
+CREATE CLUSTERED INDEX CIX_TraderPerformance_Yearly ON [dbo].[TraderPerformance_Yearly] (
+	[CustId]				ASC,
+	[Year]					ASC,
+	[LeagueId]				ASC,
+	[SportType]				ASC,
+	[BetType]				ASC,
+	[IsLive]				ASC
+)
+GO
