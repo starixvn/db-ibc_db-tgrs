@@ -29,7 +29,6 @@ BEGIN
 	DECLARE	@Begin				DATETIME = GETDATE()
 		,	@RowCount			INT
 		,	@Duration			INT
-		,	@Msg				NVARCHAR(MAX)
 		;
 
 	IF	OBJECT_ID('tempdb..#tmpTraceMatch') IS NOT NULL
@@ -90,35 +89,7 @@ BEGIN
 		,	BetType				ASC
 	);
 
-	IF	OBJECT_ID('tempdb..#tmpChangedMatches') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpChangedMatches;
-	END;
-
-	CREATE TABLE	#tmpChangedMatches (
-			MatchId				INT
-		,	EventDate			DATE
-		,	SportType			INT
-		,	BetType				SMALLINT
-		,	OldCapturedDate		DATETIME
-		,	OldTraderID			INT
-		,	OldTurnover			MONEY
-		,	OldWinLost			MONEY
-		,	OldBetCount			INT
-		,	NewCapturedDate		DATETIME
-		,	NewTraderID			INT
-		,	NewTurnover			MONEY
-		,	NewWinLost			MONEY
-		,	NewBetCount			INT
-	);
-
-	CREATE CLUSTERED INDEX	#CIX_#tmpChangedMatchesIdx ON #tmpChangedMatches (
-			MatchId				ASC
-		,	EventDate			ASC
-		,	SportType			ASC
-		,	BetType				ASC
-	);
-
+	
 	---GET TRACEMATCH
 	INSERT INTO #tmpTraderSummarizedDataOld(MatchId, EventDate, SportType, BetType, OldCapturedDate, OldTraderID, OldTurnover, OldWinLost, OldBetCount)
 	SELECT	[MatchId]		= mt.MatchId
@@ -202,7 +173,7 @@ BEGIN
 			, 0 AS IsNotified
 	FROM	#tmpTraderSummarizedDataOld AS o WITH (NOLOCK)
 			FULL OUTER JOIN #tmpTraderSummarizedDataNew AS n WITH (NOLOCK) 
-				ON o.MatchId = n.MatchId AND o.EventDate = n.EventDate AND o.SportType = n.SportType AND o.BetType = n.BetType
+				ON o.MatchId = n.MatchId AND o.BetType = n.BetType
 	WHERE  ABS(o.OldTurnover - n.NewTurnover) > 0.1
 			OR ABS(o.OldWinLost - n.NewWinLost) > 0.1
 			OR o.OldBetCount != n.NewBetCount
@@ -219,4 +190,35 @@ BEGIN
 		RAISERROR('From #tmpTraderSummarizedDataOld and #tmpTraderSummarizedDataNew - Insert ChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 	END;
 
+	------------------DELETE OLD TRACE DATA-------------------
+	----ALL Match BEFORE 14 days
+	DELETE	tpt
+	FROM	dbo.TracePerformanceTrader as tpt WITH (ROWLOCK)
+	WHERE	DATEDIFF(DAY, tpt.CapturedDate, @NewCapturedDate) > 14;
+
+	DELETE	tpsm
+	FROM	dbo.TracePerformanceScannedMatches as tpsm WITH (ROWLOCK)
+	WHERE	DATEDIFF(DAY, tpsm.CapturedDate, @NewCapturedDate) > 14;	
+	
+	DELETE	tsmi
+	FROM	dbo.TraceScannedMatchesInfo as tsmi WITH (ROWLOCK)
+	WHERE	DATEDIFF(DAY, tsmi.CapturedDate, @NewCapturedDate) > 14;
+	
+	----All Matches NOT IN ChangedData
+	DELETE	tpt
+	FROM	dbo.TracePerformanceTrader as tpt WITH (ROWLOCK)
+			LEFT JOIN dbo.TrackChangedMatch tcm WITH(NOLOCK) on tpt.MatchId = tcm.MatchId
+	WHERE	tcm.MatchId IS NULL;
+	
+	DELETE	tpsm
+	FROM	dbo.TracePerformanceScannedMatches as tpsm WITH (ROWLOCK)
+			LEFT JOIN dbo.TrackChangedMatch tcm WITH(NOLOCK) on tpsm.MatchId = tcm.MatchId
+	WHERE	tcm.MatchId IS NULL;
+	
+	DELETE	tsmi
+	FROM	dbo.TraceScannedMatchesInfo as tsmi WITH (ROWLOCK)
+			LEFT JOIN dbo.TrackChangedMatch tcm WITH(NOLOCK) on tsmi.MatchId = tcm.MatchId
+	WHERE	tcm.MatchId IS NULL;
+	
 END;
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" viewers="vnteam" isFunction="0" isNested="0"></info>*/
