@@ -221,4 +221,4 @@ BEGIN
 	WHERE	tcm.MatchId IS NULL;
 	
 END;
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" viewers="vnteam" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
