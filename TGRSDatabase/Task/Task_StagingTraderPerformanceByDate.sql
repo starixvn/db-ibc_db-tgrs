@@ -21,6 +21,7 @@ AS
 		- 20171025@Long:	Sum by BettypeGroup (Major, PH)
 		- 20171127@Long:	Support Live Status
 		- 20180119@John.Ngo: Update Logic generating data [Redmine: #87861]
+		- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
    			
 	Param's Explanation:  
 	
@@ -122,6 +123,7 @@ BEGIN;
 	(
 			[EventDate]
 		,	[TeamId]
+		,	[LeagueId]
 		,	[WorkShift]
 		,	[Stake]
 		,	[WinLost]
@@ -132,6 +134,7 @@ BEGIN;
 	)
 	SELECT @Date [EventDate]
 		,	s.[TeamId]
+		,	s.[LeagueId]
 		,	s.[WorkShift]
 		,	SUM(s.[Stake]) [Stake]
 		,	SUM(s.[WinLost]) [WinLost]
@@ -144,6 +147,7 @@ BEGIN;
 	WHERE EventDate = @Date
 		AND IsLive = 1
 	GROUP BY [TeamId]
+		,	s.[LeagueId]
 		,	s.[WorkShift]
 		,	g.[BettypeGroup];
 END;
