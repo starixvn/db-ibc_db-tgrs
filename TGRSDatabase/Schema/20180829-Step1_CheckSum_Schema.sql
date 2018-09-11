@@ -5,7 +5,6 @@
 */
 
 	CREATE TABLE [dbo].[TrackChangedMatch](
-	[TrackChangeID] [bigint] IDENTITY(1,1) NOT NULL,
 	[MatchId] [int] NOT NULL,
 	[EventDate] [date] NOT NULL,
 	[SportType] [smallint] NOT NULL,
@@ -21,16 +20,24 @@
 	[NewWinLost] [money] NULL,
 	[NewBetCount] [int] NULL,
 	[IsNotified] [int] NULL,
-	 CONSTRAINT [PK_TrackChangedMatch] PRIMARY KEY CLUSTERED 
-	(
-		[TrackChangeID] ASC,
-		[MatchId] ASC,
-		[EventDate] ASC,
-		[SportType] ASC,
-		[BetType] ASC
-	)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [DATA]
 	) ON [DATA]
-
+	
+	CREATE CLUSTERED INDEX	CIX_TrackChangedMatch_MatchIdSportBettype ON TrackChangedMatch(
+		MatchId		ASC
+		, Bettype	ASC
+	)ON [DATA];
+	
+	CREATE NONCLUSTERED INDEX	NIX_TrackChangedMatch_EventDate ON TrackChangedMatch(
+		EventDate ASC
+	)ON [DATA];
+	
+	CREATE NONCLUSTERED INDEX	NIX_TrackChangedMatch_OldCapturedDate ON TrackChangedMatch(
+		OldCapturedDate ASC
+	)ON [DATA];
+	
+	CREATE NONCLUSTERED INDEX	NIX_TrackChangedMatch_NewCapturedDate ON TrackChangedMatch(
+		NewCapturedDate ASC
+	)ON [DATA];
 GO
 
 CREATE TABLE [dbo].[TrackChangesOnMatches_Queue](
@@ -43,17 +50,22 @@ CREATE TABLE [dbo].[TrackChangesOnMatches_Queue](
 	[OldTurnOver] [money] NULL,
 	[OldWinLost] [money] NULL,
 	[OldBetCount] [int] NULL,
- CONSTRAINT [PK_TraceMatch] PRIMARY KEY CLUSTERED 
-(
-	[MatchId] ASC,
-	[EventDate] ASC,
-	[SportType] ASC,
-	[BetType] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [DATA]
-) ON [DATA]
+	) ON [DATA]
+	
+	CREATE CLUSTERED INDEX	CIX_TrackChangesOnMatches_Queue_MatchIdSportBettype ON TrackChangesOnMatches_Queue(
+		MatchId		ASC
+		, Bettype	ASC
+	)ON [DATA];
+	
+	CREATE NONCLUSTERED INDEX	NIX_TrackChangesOnMatches_Queue_EventDate ON TrackChangesOnMatches_Queue(
+		EventDate ASC
+	)ON [DATA];
+	
+	CREATE NONCLUSTERED INDEX	NIX_TrackChangesOnMatches_Queue_OldCapturedDate ON TrackChangesOnMatches_Queue(
+		OldCapturedDate ASC
+	)ON [DATA];
 
 GO
-
 	CREATE TABLE	TracePerformanceScannedMatches (
 			MatchId			INT NOT NULL
 			, EventDate		DATETIME
@@ -79,6 +91,9 @@ GO
 		EventDate	ASC
 	)ON [DATA];
 	
+	CREATE NONCLUSTERED INDEX NIX_TracePerformanceScannedMatches_CapturedDate ON TracePerformanceScannedMatches (
+		CapturedDate	ASC
+	)ON [DATA];
 GO
 	CREATE TABLE	TraceScannedMatchesInfo (
 			MatchId			INT NOT NULL
@@ -98,10 +113,16 @@ GO
 	
 	CREATE CLUSTERED INDEX	CIX_TraceScannedMatchesInfo_MatchId ON TraceScannedMatchesInfo(
 		MatchId		ASC
-		,EventDate		ASC
 		,Bettype		ASC
 	)ON [DATA];
-
+	
+	CREATE NONCLUSTERED INDEX NIX_TraceScannedMatchesInfo_EventDate ON TraceScannedMatchesInfo (
+		EventDate	ASC
+	)ON [DATA];
+	
+	CREATE NONCLUSTERED INDEX NIX_TraceScannedMatchesInfo_CapturedDate ON TraceScannedMatchesInfo (
+		CapturedDate	ASC
+	)ON [DATA];
 GO	
 	CREATE TABLE TracePerformanceTrader (
 			CustId				INT
@@ -118,10 +139,16 @@ GO
 		,	CapturedDate		DATETIME	
 	)ON [DATA];
 
-	CREATE CLUSTERED INDEX	#CIX_TracePerformanceTraderIdx ON TracePerformanceTrader (
-			CustId				ASC
-		,	EventDate			ASC
-		,	MatchId				ASC
+	CREATE CLUSTERED INDEX	 CIX_TracePerformanceTrader_CustIdMatchIdBettype ON TracePerformanceTrader (
+			MatchId				ASC
 		,	BetType				ASC
+		,	CustId				ASC
+	)ON [DATA];
+	
+	CREATE NONCLUSTERED INDEX NIX_TracePerformanceTrader_EventDate ON TracePerformanceTrader (
+		EventDate	ASC
 	)ON [DATA];
 
+	CREATE NONCLUSTERED INDEX NIX_TracePerformanceTrader_CapturedDate ON TraceScannedMatchesInfo (
+		CapturedDate	ASC
+	)ON [DATA];
