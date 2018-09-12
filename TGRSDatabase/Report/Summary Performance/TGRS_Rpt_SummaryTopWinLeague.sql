@@ -2,7 +2,8 @@
 	@ReportType		TINYINT = 1,
 	@FromDate		DATE,
 	@ToDate			DATE,
-	@ViewPermission TINYINT = 0
+	@ViewPermission TINYINT = 0,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20140520@Sophia
@@ -13,6 +14,7 @@ AS
  Revisions:
 			20160322@Aaron: changed WinLost to WinLoss    
 			20171025@Harvey: add @ViewPermission param for data permission
+			20180912@Simon: add league exclusion
    			
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -41,6 +43,7 @@ BEGIN
 					ON	S.LeagueId = L.LeagueId
 		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate	
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)			  
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY L.LeagueId, L.LeagueName
 		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 	END
@@ -55,6 +58,7 @@ BEGIN
 					ON	S.LeagueId = L.LeagueId
 		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY L.LeagueId, L.LeagueName
 		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 

@@ -1,11 +1,12 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_BetType]
+﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_BetType]
 	@FromDate	 DATE,
 	@ToDate		 DATE,
 	@Turnover	MONEY = NULL,
 	@WinLoss	MONEY = NULL,
 	@MarginFrom	MONEY = NULL,
 	@MarginTo   MONEY = NULL,
-	@Bettypes	VARCHAR(2000) =  '0'
+	@Bettypes	VARCHAR(2000) =  '0',
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
 	Created:	20160216@Thai
@@ -16,6 +17,7 @@ AS
 	Revisions: 	
    			- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 			- 20171205@Simon: get only Live data & Bettypes are not disabled
+			- 20180912@Simon: add league exclusion
 
 	Param's Explanation:  	
 
@@ -50,6 +52,7 @@ BEGIN
 	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
 		AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 		AND P.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 	GROUP BY P.BetType;
 				 	
 	 SELECT	P.BetType, 

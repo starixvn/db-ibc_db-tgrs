@@ -1,10 +1,11 @@
 ﻿
 
-CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader]
 	@FromDate		DATE,
 	@ToDate			DATE,
 	@Grade			INT,
-	@Bettypes		VARCHAR(2000) =  '0'
+	@Bettypes		VARCHAR(2000) =  '0',
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
 	Created:	20160328@Aaron
@@ -83,6 +84,7 @@ BEGIN
 		AND	tp.BetType IN (SELECT bl.BetType FROM @BettypeList AS bl)
 		AND t.Grade = @Grade
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY	tp.CustId;
 	
 	SELECT	  td.CustID

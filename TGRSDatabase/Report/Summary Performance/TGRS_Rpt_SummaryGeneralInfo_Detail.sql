@@ -2,7 +2,8 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo_Detail]
 	@ReportType			TINYINT = 2,
 	@FromDate			DATE,
 	@ToDate				DATE,
-	@ViewPermission		SMALLINT
+	@ViewPermission		SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20141211@Sophia
@@ -13,6 +14,7 @@ AS
  Revisions:      
 	- 20171024@Simon: Add ViewPermission param 
 	- 20171025@Long: change the way to get MatchCount
+	- 20180912@Simon: add league exclusion
    			
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -60,6 +62,7 @@ BEGIN
 				@ViewPermission = 0
 				OR bt.BettypeGroup = @ViewPermission
 			)
+		AND (@IsExcludeLeagues = 0 OR (bm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = bm.LeagueId)))
 	GROUP BY bm.EventDate
 
 
@@ -78,6 +81,7 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
+			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY S.EventDate, m.MatchCount
 	END	
 	ELSE 
@@ -94,6 +98,7 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
+			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY S.EventDate, m.MatchCount
 	END 
 

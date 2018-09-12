@@ -1,4 +1,4 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team]  
+﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team]  
 					@FromDate		DATE
 				,	@ToDate			DATE
 				,	@TeamIds		VARCHAR(200) =  '0'
@@ -7,6 +7,7 @@
 				,	@MarginFrom		MONEY = NULL
 				,	@MarginTo		MONEY = NULL
 				,	@Bettypes		VARCHAR(2000) =  '0'
+				,	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
 	Created:	20160218@Billy
@@ -19,6 +20,7 @@ AS
 		- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
 		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	Param's Explanation:  	
 	
@@ -98,6 +100,7 @@ BEGIN
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY	tp.CustId;
 
 	WITH TeamDetail AS (
@@ -119,6 +122,7 @@ BEGIN
 			AND	tp.BetType IN (SELECT bl.BetType FROM @BettypeList AS bl)
 			AND	t.TeamId IN (SELECT tl.TeamId FROM @TeamList AS tl)
 			AND tp.IsLive = 1
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 		GROUP BY	t.TeamId
 	)
 	INSERT INTO @Team

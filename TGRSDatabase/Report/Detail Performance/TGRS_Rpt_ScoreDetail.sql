@@ -4,6 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_ScoreDetail]
 	,@CustId INT
 	,@MatchId INT
 	,@Bettypes VARCHAR(2000) = '0'
+	,@IsExcludeLeagues	BIT = 1
 
 AS    
 /*  
@@ -14,6 +15,8 @@ AS
   
  Revisions:      
    	20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)		
+	20180912@Simon: add league exclusion
+
  Param's Explanation:  	
 
  Exam: 
@@ -133,12 +136,14 @@ BEGIN
 								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)		
 								WHERE  B.ModifiedDate BETWEEN @DateB AND @DateE
 									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
+									   AND (@IsExcludeLeagues = 0 OR (B.LeagueId NOT IN (SELECT B.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = B.LeagueId)))
 								GROUP BY  B.LeagueId, B.BetType, B.WorkShift
 								UNION 
 								SELECT MAX(ModifiedDate) AS ModifiedDate, B.LeagueId, B.BetType, B.WorkShift
 								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)		
 								WHERE  B.ModifiedDate < @DateB
 									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
+									   AND (@IsExcludeLeagues = 0 OR (B.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = B.LeagueId)))
 								GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
 								) B
 						GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
@@ -167,6 +172,7 @@ BEGIN
 				AND P.CustId = @CustId
 				AND P.MatchId = @MatchId	
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)	
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 		GROUP BY  P.LeagueId, P.BetType, P.WorkShift, B.Benchmark
 
 		 

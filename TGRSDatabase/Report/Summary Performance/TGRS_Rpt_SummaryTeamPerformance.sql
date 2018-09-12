@@ -2,7 +2,8 @@
 	@ReportType	 	TINYINT = 1,
 	@FromDate	 	DATE,
 	@ToDate		 	DATE,
-	@ViewPermission SMALLINT
+	@ViewPermission SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20140520@Sophia
@@ -12,6 +13,8 @@ AS
   
  Revisions:   
    	- 20171024@Simon: Add ViewPermission param		
+	- 20180912@Simon: add league exclusion
+
  Param's Explanation:  
 	@ReportType = 1: by Date
 			 = 2: By Month
@@ -42,6 +45,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY T.TeamId, T.TeamName
 		ORDER BY Margin DESC
 	END
@@ -60,6 +64,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY T.TeamId, T.TeamName
 		ORDER BY Margin DESC 
 	END

@@ -1,8 +1,9 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryTraderPerformace]  
+﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTraderPerformace]  
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
 	@ToDate		 DATE,
-	@ViewPermission SMALLINT
+	@ViewPermission SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20140520@Sophia
@@ -13,6 +14,7 @@ AS
  Revisions:      
    	- 20171024@Simon: Add ViewPermission param	
 	- 20171205@Simon: get only Live data & Bettypes are not disabled
+	- 20180912@Simon: add league exclusion
 				
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -52,6 +54,7 @@ BEGIN
 					)
 				AND bt.[Disabled] = 0
 				AND P.IsLive = 1
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 			GROUP BY P.CustId
 			ORDER BY Margin DESC;
 
@@ -69,6 +72,7 @@ BEGIN
 					)
 				AND P.IsLive = 1
 				AND bt.[Disabled] = 0
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 			GROUP BY P.CustId
 			ORDER BY Margin ASC;
 			
@@ -84,6 +88,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
+				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = LeagueId)))
 			GROUP BY CustId
 			ORDER BY Margin DESC
 
@@ -96,6 +101,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
+				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = LeagueId)))
 			GROUP BY CustId
 			ORDER BY Margin ASC;
 		END;
