@@ -6,13 +6,14 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailBetType_MatchByTraderLeague]
-	@FromDate	DATE,
-	@ToDate		DATE,
-	@BetTypeBMFrom MONEY = NULL,
-	@BetTypeBMTo MONEY = NULL,
-	@Bettype	SMALLINT,
-	@LeagueId	INT,
-	@CustID	INT
+	@FromDate				DATE,
+	@ToDate					DATE,
+	@BetTypeBMFrom			MONEY = NULL,
+	@BetTypeBMTo			MONEY = NULL,
+	@Bettype				SMALLINT,
+	@LeagueId				INT,
+	@CustID					INT,
+	@IsExcludeLeagues		BIT = 1
 AS    
 /*  
  Created:	20140619@Tom.Vo
@@ -21,8 +22,10 @@ AS
  Original:  
   
  Revisions:      
-   	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number	
-	- 20141210@Sophia: Add condition Workshift
+   	- 20140728@Sophia:	Change Benchmark to percentage instead of decimal number	
+	- 20141210@Sophia:	Add condition Workshift
+	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
+
  Param's Explanation:  	
 	
 EXEC [TGRS_Rpt_DetailBetType_MatchByTraderLeague]  
@@ -37,29 +40,55 @@ EXEC [TGRS_Rpt_DetailBetType_MatchByTraderLeague]
 */  
  
 BEGIN 
-	 SET NOCOUNT ON  
+	SET NOCOUNT ON;
 	
-	SELECT P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate,
-			ISNULL(SUM(P.Stake),0) AS Turnover, 
-			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
-			ISNULL(SUM(BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100 /ISNULL(SUM(P.Stake),0)ELSE NULL END AS Margin		
-	 FROM	dbo.TraderPerformance P WITH (NOLOCK)	
-		LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
-			 ON BT.LeagueId = P.LeagueId
-				AND BT.BetType = P.BetType
-				AND BT.WorkShift = P.WorkShift
-		INNER JOIN dbo.Trader TR WITH (NOLOCK) 
-				ON TR.CustId= P.CustId	
-	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
-			AND P.Bettype = @Bettype
-			AND P.LeagueId = @LeagueId
-			AND P.CustId = @CustId
-			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
-			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
-	GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate 
-
-END
+	IF @IsExcludeLeagues = 0
+	BEGIN
+		SELECT P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate,
+				ISNULL(SUM(P.Stake),0) AS Turnover, 
+				ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
+				ISNULL(SUM(BetCount),0) as BetCount,
+				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100 /ISNULL(SUM(P.Stake),0)ELSE NULL END AS Margin		
+		FROM	dbo.TraderPerformance P WITH (NOLOCK)	
+			LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
+				 ON BT.LeagueId = P.LeagueId
+					AND BT.BetType = P.BetType
+					AND BT.WorkShift = P.WorkShift
+			INNER JOIN dbo.Trader TR WITH (NOLOCK) 
+					ON TR.CustId= P.CustId	
+		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+				AND P.Bettype = @Bettype
+				AND P.LeagueId = @LeagueId
+				AND P.CustId = @CustId
+				AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
+				AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
+		GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate;
+	END
+	ELSE
+	BEGIN
+		SELECT P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate,
+				ISNULL(SUM(P.Stake),0) AS Turnover, 
+				ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
+				ISNULL(SUM(BetCount),0) as BetCount,
+				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100 /ISNULL(SUM(P.Stake),0)ELSE NULL END AS Margin		
+		FROM	dbo.TraderPerformance P WITH (NOLOCK)	
+			LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
+				 ON BT.LeagueId = P.LeagueId
+					AND BT.BetType = P.BetType
+					AND BT.WorkShift = P.WorkShift
+			INNER JOIN dbo.Trader TR WITH (NOLOCK) 
+					ON TR.CustId= P.CustId	
+			LEFT JOIN dbo.LeagueExclusion AS le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+				AND P.Bettype = @Bettype
+				AND P.LeagueId = @LeagueId
+				AND le.LeagueId IS NULL
+				AND P.CustId = @CustId
+				AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
+				AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
+		GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate;
+	END;
+END;
 
 
 GO
