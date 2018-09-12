@@ -3,7 +3,8 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailTrader_Bettype]
 	@ToDate		DATE,
 	@CustId		INT,
 	@MatchId	INT,
-	@Bettypes	VARCHAR(200) =  '0'
+	@Bettypes	VARCHAR(200) =  '0',
+	@IsExcludeLeagues		BIT = 1
 AS    
 /*  
  Created:	20140725@Sophia
@@ -14,17 +15,16 @@ AS
  Revisions:      
 	- 20140918@Sophia: fix @MatchId
 	- 20141209@Sophia: Calculate Score	
+	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
    			
  Param's Explanation:  	
 
  Exam: 
 	EXEC TGRS_Rpt_DetailTrader_Bettype @FromDate = '2014-01-01', @ToDate= '2014-05-30'  ,@Bettypes = '8,-2', @CustID =52002, @matchID = 8994834
-	 
-  
 */  
  
 BEGIN 
-	 SET NOCOUNT ON  
+	 SET NOCOUNT ON;
 
 	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	 IF @Bettypes <> '0'
@@ -32,9 +32,8 @@ BEGIN
 		 SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
 	 ELSE 
 		 INSERT INTO @BettypeList
-		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
-		 
-		 	
+		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK);
+		 		 	
 	 SELECT P.BetType, TN.TypeName,
 			ISNULL(SUM(P.Stake),0) AS Turnover, 
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
@@ -53,10 +52,12 @@ BEGIN
 			AND P.CustId = @CustId
 			AND P.MatchId = @MatchId	
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 	GROUP BY P.BetType, TN.TypeName, P.WorkShift, ISNULL(B.Benchmark, 0)
-	ORDER BY Margin DESC
+	ORDER BY Margin DESC;
 
-END 
+END;
+
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_DetailTrader_Bettype] TO [bodbTGRSNet]
 GO

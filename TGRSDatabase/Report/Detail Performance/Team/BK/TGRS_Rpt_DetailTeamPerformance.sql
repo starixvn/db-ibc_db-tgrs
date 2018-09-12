@@ -1,14 +1,15 @@
 ﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailTeamPerformance]  
-	@FromDate	DATE,
-	@ToDate		DATE,
-	@TeamIds	VARCHAR(200) =  '0',
-	@TeamBMFrom MONEY = NULL,
-	@TeamBMTo	MONEY = NULL,
-	@Turnover	MONEY = NULL,
-	@WinLost	MONEY = NULL,
-	@MarginFrom	MONEY = NULL,
-	@MarginTo   MONEY = NULL,  
-	@Bettypes	VARCHAR(200) =  '0'
+	@FromDate				DATE,
+	@ToDate					DATE,
+	@TeamIds				VARCHAR(200) =  '0',
+	@TeamBMFrom				MONEY = NULL,
+	@TeamBMTo				MONEY = NULL,
+	@Turnover				MONEY = NULL,
+	@WinLost				MONEY = NULL,
+	@MarginFrom				MONEY = NULL,
+	@MarginTo				MONEY = NULL,  
+	@Bettypes				VARCHAR(200) =  '0',
+	@IsExcludeLeagues		BIT = 1
 AS    
 /*  
  Created:	20140523@Sophia
@@ -19,6 +20,8 @@ AS
  Revisions:      
    	  	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number				
 		- 20141205@Sophia: Calculate the Score 	
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
+
  Param's Explanation: 	
 	@TeamIds = '0' : All 			
 	@Bettypes = '0': All
@@ -29,9 +32,10 @@ AS
 */  
  
 BEGIN 
-	 SET NOCOUNT ON  
+	 SET NOCOUNT ON;
 	 
-	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
+	 DECLARE @BettypeList AS TABLE (bettype SMALLINT);
+
 	 IF @Bettypes <> '0'
 		 INSERT INTO @BettypeList
 		 SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
@@ -49,8 +53,7 @@ BEGIN
 	
 	DECLARE @Rpt TABLE (TeamId SMALLINT, TeamName NVARCHAR(50), TeamBenchmark MONEY, TraderCount INT, LeagueCount INT, MatchCount INT, Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY, Score MONEY)
 	DECLARE @AVGScore AS TABLE (TeamId SMALLINT, Score MONEY)
-	
-	
+		
 	INSERT INTO @Rpt (TeamId, TeamName, TeamBenchmark, TraderCount, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin)	 	
 	SELECT	P.TeamId, T.TeamName,
 			ISNULL(BT.Benchmark,0) * 100 AS TeamBenchmark,
@@ -70,7 +73,8 @@ BEGIN
 			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @TeamBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @TeamBMFrom END 
 			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @TeamBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @TeamBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-			AND P.TeamId IN (SELECT TeamId FROM @TeamList)			
+			AND P.TeamId IN (SELECT TeamId FROM @TeamList)	
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))		
 	GROUP BY P.TeamId, ISNULL(BT.Benchmark,0), T.TeamName
 	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
 			AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
@@ -89,12 +93,11 @@ BEGIN
 						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
 								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100 /ISNULL(SUM(P.Stake),0)
 								  ELSE 0 END 
-						ELSE @MarginTo END 
+						ELSE @MarginTo END;
 	
 
 	------------------------------
 	---Calculate Score 
-
 	INSERT INTO @AVGScore (TeamId, Score)
 	SELECT S.TeamId , AVG (S.Score) as Score
 	FROM (
@@ -109,26 +112,22 @@ BEGIN
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 				AND P.TeamId IN (SELECT TeamId FROM @TeamList)	
 				AND ISNULL(B.Benchmark,0) <> 0
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 			GROUP BY P.TeamId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
 		) S
-	GROUP BY S.TeamId
-
+	GROUP BY S.TeamId;
 
 	UPDATE  T 
 	SET		T.Score = S.Score
 	FROM	@Rpt T 
 	INNER JOIN @AVGScore S 
-		ON S.TeamId = T.TeamId
-
-
+		ON S.TeamId = T.TeamId;
 
 	------------------------------------------------------------
 	SELECT * FROM @Rpt 
-	ORDER BY Margin DESC, TeamName ASC
-	 
- 
+	ORDER BY Margin DESC, TeamName ASC;
+END;
 
-END 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_DetailTeamPerformance] TO [bodbTGRSNet]
 GO
