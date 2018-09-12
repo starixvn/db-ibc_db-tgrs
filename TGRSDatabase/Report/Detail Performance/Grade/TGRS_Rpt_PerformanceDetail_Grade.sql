@@ -1,4 +1,4 @@
-﻿CREATE PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]  
+﻿ALTER PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]  
 					@FromDate		DATE
 				,	@ToDate			DATE
 				,	@Turnover		MONEY			= NULL
@@ -6,6 +6,7 @@
 				,	@MarginFrom		MONEY			= NULL
 				,	@MarginTo		MONEY			= NULL
 				,	@Bettypes		VARCHAR(2000)	= '0'
+				,	@IsExcludeLeagues	BIT = 1
 AS
 /*  
 	Created:	20160217@Billy
@@ -18,6 +19,7 @@ AS
 		- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
 		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	Param's Explanation:  	
 	
@@ -84,6 +86,7 @@ BEGIN
 			ON	s.Spread = tp.Spread
 			AND	s.Rate = tm.Rate
 			AND tp.IsLive = 1
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 	GROUP BY	tp.CustId;
@@ -106,6 +109,7 @@ BEGIN
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 			AND tp.IsLive = 1
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 		GROUP BY	t.Grade
 	)
 	INSERT INTO @Grade 

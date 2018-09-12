@@ -1,9 +1,10 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
+﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
 	@TraderId 			INT,
 	@ReportType 		TINYINT = 2,
 	@FromDate 			DATETIME,
 	@ToDate 			DATETIME,
-	@ViewPermission		SMALLINT
+	@ViewPermission		SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS
 /*
 	Creator: Percy
@@ -14,6 +15,7 @@ AS
 	Revisions:
 		- 20171024@Simon: Add ViewPermission param
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	Param's Explanation:
 		@ReportType:
@@ -55,6 +57,7 @@ SET NOCOUNT ON;
 			(@ViewPermission = 0 OR bt.BettypeGroup = @ViewPermission)
 			AND t.IsLive = 1
 			AND bt.[Disabled] = 0
+			AND (@IsExcludeLeagues = 0 OR (t.LeagueId IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = t.LeagueId)))
 		GROUP BY d.WLDate
 	END
 	ELSE -- Report by date - month, month - month
@@ -84,6 +87,7 @@ SET NOCOUNT ON;
 			WHERE
 				@ViewPermission = 0
 				OR BettypeGroup = @ViewPermission
+				AND (@IsExcludeLeagues = 0 OR (s.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = s.LeagueId)))
 			GROUP BY d.WLDate
 		END
 		ELSE -- Report by date - month
@@ -109,6 +113,7 @@ SET NOCOUNT ON;
 							)
 						AND p.IsLive = 1
 						AND bt.[Disabled] = 0
+						AND (@IsExcludeLeagues = 0 OR (p.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = p.LeagueId)))
 					GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0)
 				) AS s
 				RIGHT JOIN @Date d ON s.EventDate = d.WLDate

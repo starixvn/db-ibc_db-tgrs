@@ -6,7 +6,8 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderGeneralInfo]
 	@ReportType 		TINYINT = 2,
 	@FromDate 			DATETIME,
 	@ToDate 			DATETIME,
-	@ViewPermission		SMALLINT
+	@ViewPermission		SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS
 /*
 	Creator: Percy
@@ -17,6 +18,7 @@ AS
 	Revisions:
 		- 20171024@Simon: Add ViewPermission param
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	Param's Explanation:
 		@ReportType:
@@ -49,6 +51,7 @@ BEGIN
 				)
 			AND P.IsLive = 1
 			AND bt.[Disabled] = 0
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 	END
 	ELSE -- by month
 	BEGIN
@@ -65,6 +68,7 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
+			AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = LeagueId)))
 	END
 END;
 GO

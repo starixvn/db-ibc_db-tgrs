@@ -1,12 +1,13 @@
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match    Script Date: 3/14/2016 3:58:14 AM ******/
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match    Script Date: 3/8/2016 2:46:20 PM ******/
 
-CREATE PROCEDURE dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match  	
+ALTER PROCEDURE dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match  	
 		@FromDate	DATE
 	,	@ToDate		DATE
 	,	@LeagueId	INT
 	,	@CustId		INT
 	,	@Bettypes	VARCHAR(2000) =  '0'
+	,	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
 	Created:	20160229@Aaron
@@ -16,6 +17,7 @@ AS
 	  			
 	Revision: 
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	Param's Explanation:  	
 	
@@ -48,6 +50,7 @@ BEGIN
 			AND P.CustId = @CustId
 			AND P.BetType IN (SELECT Bettype FROM @BettypeList)
 			AND P.IsLive = 1
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
 	ORDER BY Margin DESC, P.EventDate ASC;
 END;

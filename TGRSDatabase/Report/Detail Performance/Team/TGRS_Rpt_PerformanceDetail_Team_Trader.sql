@@ -1,8 +1,9 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader]
+﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader]
   @FromDate DATE,
   @ToDate   DATE,
   @TeamId   SMALLINT,
-  @Bettypes VARCHAR(2000) = '0'
+  @Bettypes VARCHAR(2000) = '0',
+  @IsExcludeLeagues	BIT = 1
 AS
 /*
 	Created:	20162803@Simon
@@ -13,6 +14,7 @@ AS
 	Revisions:
 	- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 	- 20171205@Simon: get only Live data & Bettypes are not disabled
+	- 20180912@Simon: add league exclusion
 
 	Param's Explanation:
 
@@ -91,6 +93,7 @@ BEGIN
 							FROM @BettypeList AS bl)
 		AND t.TeamId = @TeamId
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY tp.CustId;
 
 	SELECT

@@ -1,10 +1,11 @@
 ﻿
 
-CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
 	@ReportType	 TINYINT = 2,
 	@FromDate	 DATE,
 	@ToDate		 DATE,
-	@ViewPermission SMALLINT
+	@ViewPermission SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20140520@Sophia
@@ -16,6 +17,7 @@ AS
 	- 20140729@Sophia: Change the way to get MatchCount (from TraderPerformance)
    	- 20171024@Simon: Add ViewPermission param	
 	- 20171025@Long: Change the way to get MatchCount
+	- 20180912@Simon: add league exclusion
 		
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -47,6 +49,7 @@ BEGIN
 				)
 			AND tp.IsLive = 1
 			AND b.[Disabled] = 0
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	
 	IF @ReportType	= 2  ---by month 
 	BEGIN 
@@ -62,6 +65,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
+				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = LeagueId)))
 				
 	END
 	ELSE---- by date
@@ -77,5 +81,6 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 	END
 END
