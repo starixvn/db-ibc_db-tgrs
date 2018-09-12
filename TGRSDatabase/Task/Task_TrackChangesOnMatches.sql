@@ -1,11 +1,3 @@
-USE [bodb_TGRS]
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 ALTER PROCEDURE	[dbo].[Task_TrackChangesOnMatches]
 		@Debug					BIT = 0
 AS
