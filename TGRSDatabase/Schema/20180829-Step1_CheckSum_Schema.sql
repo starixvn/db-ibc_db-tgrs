@@ -103,7 +103,7 @@ GO
 			, BetCount INT NULL
 			, SumStake MONEY NULL
 			, SumVirtualRate FLOAT NULL
-			, SumModds SMALLMONEY NULL
+			, SumModds MONEY NULL
 			, SumWinlost MONEY NULL
 			, SumComm MONEY NULL
 			, SumActualStake MONEY NULL
