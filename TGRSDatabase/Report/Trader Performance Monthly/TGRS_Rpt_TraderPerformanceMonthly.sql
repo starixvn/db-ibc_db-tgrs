@@ -104,14 +104,14 @@ BEGIN
          FROM (
 				SELECT DISTINCT custid, bettype
 				FROM dbo.TraderPerformance_Yearly p1 WITH(NOLOCK)
-				WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = p1.LeagueId)))
+				WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = p1.LeagueId)))
 				) AS t1
          WHERE t1.custid = t.custid
          FOR XML PATH(''), TYPE)
         .value('.','NVARCHAR(MAX)'),1,2,' ') AS Products
 	FROM (SELECT DISTINCT custid, bettype
 		FROM dbo.TraderPerformance_Yearly p1 WITH(NOLOCK)
-		WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = p1.LeagueId)))) AS t
+		WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = p1.LeagueId)))) AS t
 	GROUP BY t.CustId;
 
 	UPDATE #tmpTrader
@@ -146,13 +146,13 @@ BEGIN
 		 INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
     	 WHERE tpm.CustId = tmc.CustId AND tpm.SportType = tmc.SportType  AND tpm.EventDate = tmc.EventDate 
 		 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
-		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tpm.LeagueId))) 
+		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tpm.LeagueId))) 
 		 GROUP BY tpm.CustId
 				) _tpm
 	WHERE tmc.EventDate BETWEEN @FirstHalfFromDate AND @FirstHalfToDate
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tmc.LeagueId)));
+		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)));
 
 	-- Sum for current year second-half
 	SELECT _tpm.TraderID
@@ -170,13 +170,13 @@ BEGIN
 		 INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
     	 WHERE tpm.CustId = tmc.CustId AND tpm.SportType = tmc.SportType  AND tpm.EventDate = tmc.EventDate 
 		 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
-		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tpm.LeagueId))) 
+		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tpm.LeagueId))) 
 		 GROUP BY tpm.CustId
 				) _tpm
 	WHERE tmc.EventDate BETWEEN @SecondHalfFromDate AND @SecondHalfToDate
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tmc.LeagueId)));
+		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)));
 
 	-- Sum for current & last year
 	SELECT _tpm.TraderID
@@ -196,13 +196,13 @@ BEGIN
 		 INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
     	 WHERE tpm.CustId = tmc.CustId AND tpm.SportType = tmc.SportType  AND tpm.[Year] = tmc.[Year] 
 		 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
-		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tpm.LeagueId))) 
+		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tpm.LeagueId))) 
 		 GROUP BY tpm.CustId, tpm.[Year]
 				) _tpm
 	WHERE _tpm.[Year] IN (@CurrentYear, @LastYear)
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tmc.LeagueId)));
+		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)));
 	
 	-- Sum for each month of current year
 	SELECT _tpm.TraderID

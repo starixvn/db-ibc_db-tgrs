@@ -58,7 +58,7 @@ BEGIN
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 						AND P.IsLive = 1
-						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = L.LeagueId)))
+						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = L.LeagueId)))
 					GROUP BY P.LeagueId , L.LeagueName 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)
@@ -84,7 +84,7 @@ BEGIN
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
 						AND P.IsLive = 1
-						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = L.LeagueId)))
+						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = L.LeagueId)))
 					GROUP BY P.LeagueId , L.LeagueName 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)

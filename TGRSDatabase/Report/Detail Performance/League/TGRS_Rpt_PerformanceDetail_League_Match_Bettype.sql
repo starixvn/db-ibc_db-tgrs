@@ -54,7 +54,7 @@ BEGIN
 		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.Bettype IN (SELECT Bettype FROM @BettypeList)		
 		AND tp.IsLive = 1
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY	tp.BetType, TN.TypeName		
 	ORDER BY	Margin DESC;
 END
