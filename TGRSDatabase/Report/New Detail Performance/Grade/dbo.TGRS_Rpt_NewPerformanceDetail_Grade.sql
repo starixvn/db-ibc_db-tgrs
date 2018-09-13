@@ -1,9 +1,8 @@
 ﻿
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Grade    Script Date: 1/17/2017 11:20:00 AM ******/
-
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade] 
-	 @FromDate DATE
-	,@ToDate DATE
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade] 
+		@FromDate				DATE
+	,	@ToDate					DATE
+	,	@IsExcludeLeagues		BIT = 1
 AS
 /*  
 	Created:	20170106@Aaron
@@ -12,8 +11,9 @@ AS
 	Original:  
 	 
 	Revisions:
-		- 20170316@Long: apply TO's Leftover
-		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20170316@Long:	apply TO's Leftover
+		- 20171205@Simon:	get only Live data & Bettypes are not disabled
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]  
 
 	Param's Explanation:  	
 	
@@ -26,22 +26,22 @@ BEGIN
 	SET NOCOUNT ON;
 
 	CREATE TABLE #ScoreDetail (
-		CustID INT
-		,WinLoss MONEY
-		,SumCategory MONEY
+			CustID			INT
+		,	WinLoss			MONEY
+		,	SumCategory		MONEY
 	);
 
 	DECLARE @Grade TABLE (
-		Grade TINYINT
-		,TraderCount INT
-		,LeagueCount INT
-		,MatchCount INT
-		,Turnover MONEY
-		,TurnoverJuice MONEY
-		,Juice MONEY
-		,WinLoss MONEY
-		,BetCount INT
-		,Score MONEY
+			Grade			TINYINT
+		,	TraderCount		INT
+		,	LeagueCount		INT
+		,	MatchCount		INT
+		,	Turnover		MONEY
+		,	TurnoverJuice	MONEY
+		,	Juice			MONEY
+		,	WinLoss			MONEY
+		,	BetCount		INT
+		,	Score			MONEY
 	);
 
 	INSERT INTO #ScoreDetail (
@@ -62,6 +62,7 @@ BEGIN
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY tp.CustId;
 
 	WITH GradeDetail
@@ -82,6 +83,7 @@ BEGIN
 			AND TN.MainDBBetType IN (1,3,7,8)
 			AND TN.[Disabled] = 0
 			AND tp.IsLive = 1
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 		GROUP BY t.Grade
 		)
 	INSERT INTO @Grade (

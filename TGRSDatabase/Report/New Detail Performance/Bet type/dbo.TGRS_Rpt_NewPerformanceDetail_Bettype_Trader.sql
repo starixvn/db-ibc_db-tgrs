@@ -1,11 +1,9 @@
 ﻿
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Bettype_Trader    Script Date: 1/17/2017 11:20:00 AM ******/
-
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_Trader    Script Date: 4/1/2016 8:22:17 AM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_Trader] 
-	 @FromDate DATE
-	,@ToDate DATE
-	,@Bettype SMALLINT
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_Trader] 
+		@FromDate				DATE
+	,	@ToDate					DATE
+	,	@Bettype				SMALLINT
+	,	@IsExcludeLeagues		BIT = 1
 AS
 /*  
  Created:	20170110@Aaron
@@ -14,8 +12,9 @@ AS
  Original:  
  
  Revisions:      	
-		- 20170316@Long: apply TO's Leftover
-		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20170316@Long:	apply TO's Leftover
+		- 20171205@Simon:	get only Live data & Bettypes are not disabled
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]  
  
  Param's Explanation:  	
 
@@ -72,9 +71,9 @@ BEGIN
 	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
 		AND s.Rate = tm.Rate
 	WHERE tp.BetType = @Bettype
-		AND tp.EventDate BETWEEN @FromDate
-			AND @ToDate
+		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY tp.CustId;
 
 	SELECT td.CustID
@@ -99,7 +98,7 @@ BEGIN
 		INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId;
 
 	DROP TABLE #TraderDetail;
-END
+END;
 
 /*
 GO
