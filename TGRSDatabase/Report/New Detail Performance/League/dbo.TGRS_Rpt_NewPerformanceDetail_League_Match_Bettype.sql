@@ -104,3 +104,4 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Match_Bettype] TO [bodbTGRSNet ]
 GO
 */
+/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

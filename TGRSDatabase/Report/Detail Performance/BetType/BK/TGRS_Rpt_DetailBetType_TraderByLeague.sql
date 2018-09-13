@@ -185,3 +185,4 @@ END;
 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_DetailBetType_TraderByLeague] TO [bodbTGRSNet]
+/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

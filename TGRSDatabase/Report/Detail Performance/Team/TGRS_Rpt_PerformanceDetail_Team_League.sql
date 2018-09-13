@@ -48,3 +48,4 @@ BEGIN
 	GROUP BY P.LeagueId, L.LeagueName
 	ORDER BY Margin DESC, LeagueName ASC;
 END;
+/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

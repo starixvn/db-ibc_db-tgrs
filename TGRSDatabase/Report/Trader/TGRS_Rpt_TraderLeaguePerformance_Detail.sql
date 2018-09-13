@@ -39,3 +39,4 @@ BEGIN
 	GROUP BY MatchId, HomeId, AwayId, EventDate
 	ORDER BY Margin DESC;
 END;
+/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

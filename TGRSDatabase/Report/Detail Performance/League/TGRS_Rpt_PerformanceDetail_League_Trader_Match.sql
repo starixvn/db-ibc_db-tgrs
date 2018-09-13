@@ -54,3 +54,4 @@ BEGIN
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
 	ORDER BY Margin DESC, P.EventDate ASC;
 END;
+/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
