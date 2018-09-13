@@ -1,4 +1,4 @@
-﻿
+
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
 	@ReportType	 TINYINT = 2,
@@ -84,4 +84,5 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
 	END
 END
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

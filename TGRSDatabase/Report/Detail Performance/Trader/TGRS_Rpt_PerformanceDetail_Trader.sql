@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Trader]  	
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Trader]  	
 	@Username   VARCHAR(30) = '',
 	@FromDate	DATE,
 	@ToDate		DATE,
@@ -127,4 +127,5 @@ BEGIN
 
 	DROP TABLE #TraderDetail;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

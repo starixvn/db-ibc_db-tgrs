@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team]  
 					@FromDate		DATE
 				,	@ToDate			DATE
 				,	@TeamIds		VARCHAR(200) =  '0'
@@ -166,4 +166,5 @@ BEGIN
 	
 	DROP TABLE #ScoreDetail;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

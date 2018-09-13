@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderWinlossTurnover]
 	@TraderId 			INT,
 	@ReportType 		TINYINT = 2,
 	@FromDate 			DATETIME,
@@ -125,4 +125,5 @@ GO
 
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderWinlossTurnover] TO [bodbTGRSNet]
 GO
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

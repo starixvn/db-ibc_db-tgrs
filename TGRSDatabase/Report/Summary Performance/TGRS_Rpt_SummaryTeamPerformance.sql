@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTeamPerformance]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTeamPerformance]  
 	@ReportType	 	TINYINT = 1,
 	@FromDate	 	DATE,
 	@ToDate		 	DATE,
@@ -75,4 +75,5 @@ GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryTeamPerformance] TO [bodbTGRSNet]
 GO
 
 
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

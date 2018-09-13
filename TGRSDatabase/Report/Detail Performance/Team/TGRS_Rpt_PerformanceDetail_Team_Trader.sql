@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader]
   @FromDate DATE,
   @ToDate   DATE,
   @TeamId   SMALLINT,
@@ -119,4 +119,5 @@ BEGIN
 
 	DROP TABLE #TraderDetail;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

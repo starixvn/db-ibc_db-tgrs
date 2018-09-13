@@ -1,4 +1,4 @@
-﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_League_Trader    Script Date: 4/1/2016 8:22:16 AM ******/
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_League_Trader    Script Date: 4/1/2016 8:22:16 AM ******/
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader]
   @FromDate		DATE,
   @ToDate		DATE,
@@ -111,4 +111,5 @@ BEGIN
 
 	DROP TABLE #TraderDetail;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

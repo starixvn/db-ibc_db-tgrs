@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderBettypePerformance]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderBettypePerformance]
 	@TraderId		INT,
 	@FromDate		DATETIME,
 	@ToDate			DATETIME,
@@ -52,4 +52,5 @@ GO
 
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderBettypePerformance] TO [bodbTGRSNet]
 GO
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
