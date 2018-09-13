@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader_Match]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League_Trader_Match]
       @FROMDate DATE
     , @ToDate   DATE
     , @CustId   INT
@@ -62,4 +62,5 @@ BEGIN
 	GROUP BY P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate
 	ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

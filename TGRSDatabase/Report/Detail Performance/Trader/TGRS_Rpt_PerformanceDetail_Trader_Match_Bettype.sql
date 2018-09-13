@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Trader_Match_Bettype]  	
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Trader_Match_Bettype]  	
 	@FromDate	DATE,
 	@ToDate		DATE,
 	@CustId		INT,
@@ -101,4 +101,5 @@ BEGIN
 
 	DROP TABLE #BettypeDetail;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

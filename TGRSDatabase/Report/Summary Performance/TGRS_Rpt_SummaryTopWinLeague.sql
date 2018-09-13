@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTopWinLeague]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTopWinLeague]  
 	@ReportType		TINYINT = 1,
 	@FromDate		DATE,
 	@ToDate			DATE,
@@ -69,4 +69,5 @@ GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryTopWinLeague] TO [bodbTGRSNet]
 GO
 
  
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

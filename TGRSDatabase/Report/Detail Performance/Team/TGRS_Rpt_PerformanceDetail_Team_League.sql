@@ -1,4 +1,4 @@
-﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_League    Script Date: 4/1/2016 8:22:16 AM ******/
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team_League    Script Date: 4/1/2016 8:22:16 AM ******/
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_League]
 	@FromDate	DATE,
 	@ToDate		DATE,
@@ -48,4 +48,5 @@ BEGIN
 	GROUP BY P.LeagueId, L.LeagueName
 	ORDER BY Margin DESC, LeagueName ASC;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

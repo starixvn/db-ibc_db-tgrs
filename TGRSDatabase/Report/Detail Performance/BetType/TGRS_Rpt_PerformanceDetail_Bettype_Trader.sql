@@ -1,4 +1,4 @@
-﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_Trader    Script Date: 4/1/2016 8:22:17 AM ******/
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_Trader    Script Date: 4/1/2016 8:22:17 AM ******/
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_Trader]  	
 	@FromDate		DATE,
 	@ToDate			DATE,			
@@ -100,4 +100,5 @@ GRANT EXECUTE ON [dbo].TGRS_Rpt_PerformanceDetail_Bettype_Trader TO [bodbTGRSNet
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_Trader] TO [bodbTGRSNet ]
 
 */
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

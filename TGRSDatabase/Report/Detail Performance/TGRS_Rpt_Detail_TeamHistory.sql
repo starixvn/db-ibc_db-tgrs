@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_Detail_TeamHistory]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_Detail_TeamHistory]  
 	@CustId					INT,
 	@Grade					TINYINT = 0,
 	@FromDate				DATE,
@@ -110,4 +110,5 @@ GRANT EXECUTE ON [dbo].[TGRS_Rpt_Detail_TeamHistory] TO [bodbTGRSNet]
 GO
 
  
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

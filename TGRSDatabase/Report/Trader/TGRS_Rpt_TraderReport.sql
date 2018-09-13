@@ -1,4 +1,4 @@
-﻿
+
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderReport]
 		@TraderName 		NVARCHAR(50)
 	,	@ReportType 		TINYINT = 1
@@ -150,4 +150,5 @@ BEGIN
 		END;
 	END;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

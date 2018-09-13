@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_Trader_Match] 
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_Trader_Match] 
 		@FromDate				DATE
 	,	@ToDate					DATE
 	,	@CustId					INT
@@ -56,4 +56,5 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[[TGRS_Rpt_NewPerformanceDetail_Grade_Trader_Match] TO [bodbTGRSNet ]
 GO
 */
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

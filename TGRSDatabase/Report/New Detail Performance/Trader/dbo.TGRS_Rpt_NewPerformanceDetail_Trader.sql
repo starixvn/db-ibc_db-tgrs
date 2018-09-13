@@ -1,4 +1,4 @@
-﻿
+
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Trader    Script Date: 1/17/2017 11:20:01 AM ******/
 
 /****** Object:  StoredProcedure [dbo].[TGRS_Rpt_NewPerformanceDetail_Trader]    Script Date: 01/06/2017 10:49:20 ******/
@@ -131,4 +131,5 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_Trader] TO [bodbTGRSNet]
 GO
 */
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

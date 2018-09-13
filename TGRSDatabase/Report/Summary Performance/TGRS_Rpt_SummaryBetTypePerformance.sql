@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryBetTypePerformance]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryBetTypePerformance]  
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
 	@ToDate		 DATE,
@@ -72,4 +72,5 @@ BEGIN
 
 
 END
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

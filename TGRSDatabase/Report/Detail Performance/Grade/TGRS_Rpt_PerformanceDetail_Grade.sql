@@ -1,4 +1,4 @@
-﻿ALTER PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]  
+ALTER PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]  
 					@FromDate		DATE
 				,	@ToDate			DATE
 				,	@Turnover		MONEY			= NULL
@@ -150,4 +150,5 @@ BEGIN
 	
 	DROP TABLE #ScoreDetail;
 END;
-/*<info serverAlias="DBTGRS - bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
