@@ -1,11 +1,8 @@
-﻿
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Grade_Trader_Match    Script Date: 1/17/2017 11:20:01 AM ******/
-
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Grade_Trader_Match    Script Date: 4/1/2016 8:22:16 AM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_Trader_Match] 
-	 @FromDate DATE
-	,@ToDate DATE
-	,@CustId INT
+﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_Trader_Match] 
+		@FromDate				DATE
+	,	@ToDate					DATE
+	,	@CustId					INT
+	,	@IsExcludeLeagues		BIT = 1
 AS
 /*  
 	Created:	20170109@Aaron
@@ -16,6 +13,7 @@ AS
 	Revisions:
 		- 20170316@Long: apply TO's Leftover
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]  
 		
 	Param's Explanation:  	
 	
@@ -43,6 +41,7 @@ BEGIN
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND P.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
 	GROUP BY P.MatchId
 		,P.LeagueId
 		,P.HomeId
