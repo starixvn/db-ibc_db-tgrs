@@ -43,7 +43,7 @@ BEGIN
 					ON	S.LeagueId = L.LeagueId
 		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate	
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)			  
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY L.LeagueId, L.LeagueName
 		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 	END
@@ -58,7 +58,7 @@ BEGIN
 					ON	S.LeagueId = L.LeagueId
 		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
 		GROUP BY L.LeagueId, L.LeagueName
 		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 

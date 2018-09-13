@@ -43,7 +43,7 @@ BEGIN
 		AND P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.IsLive = 1
 		AND P.BetChoice = bcm.BetChoice
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
 	GROUP BY bcm.TGRSBetChoice
 END;
 

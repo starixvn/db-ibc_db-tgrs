@@ -81,7 +81,7 @@ BEGIN
 		AND tp.BetType = @Bettype
 		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.IsLive = 1
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY tp.MatchId
 		,tp.LeagueId
 		,tp.HomeId

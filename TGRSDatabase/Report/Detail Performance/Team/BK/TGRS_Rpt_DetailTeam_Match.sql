@@ -42,7 +42,7 @@ BEGIN
 			AND P.TeamId = @TeamId
 			AND P.CustId = @CustId
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
 	GROUP BY P.MatchId, P.LeagueId,  P.HomeId, P.AwayId, P.EventDate
 	ORDER BY LeagueId ASC, Margin DESC, P.EventDate ASC;
 END;

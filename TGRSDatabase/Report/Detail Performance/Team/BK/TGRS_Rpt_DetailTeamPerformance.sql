@@ -74,7 +74,7 @@ BEGIN
 			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @TeamBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @TeamBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 			AND P.TeamId IN (SELECT TeamId FROM @TeamList)	
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))		
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))		
 	GROUP BY P.TeamId, ISNULL(BT.Benchmark,0), T.TeamName
 	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
 			AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
@@ -112,7 +112,7 @@ BEGIN
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 				AND P.TeamId IN (SELECT TeamId FROM @TeamList)	
 				AND ISNULL(B.Benchmark,0) <> 0
-				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = P.LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
 			GROUP BY P.TeamId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
 		) S
 	GROUP BY S.TeamId;
