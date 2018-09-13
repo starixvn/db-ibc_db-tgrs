@@ -3,10 +3,11 @@
 
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team    Script Date: 3/23/2016 11:22:29 PM ******/
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Team    Script Date: 3/22/2016 12:48:52 PM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Team] 
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Team] 
 	 @FromDate DATE
 	,@ToDate DATE
 	,@TeamIds VARCHAR(200) = '0'
+	,@IsExcludeLeagues	BIT = 1
 AS
 /*  
 	Created:	20170111@Aaron
@@ -17,6 +18,7 @@ AS
 	Revisions:
 		- 20170316@Long: apply TO's Leftover
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	Param's Explanation:  	
 	
@@ -80,6 +82,7 @@ BEGIN
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY tp.CustId;
 
 	WITH TeamDetail
@@ -105,6 +108,7 @@ BEGIN
 				)
 			AND TN.[Disabled] = 0
 			AND tp.IsLive = 1
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 		GROUP BY t.TeamId
 		)
 	INSERT INTO @Team (
