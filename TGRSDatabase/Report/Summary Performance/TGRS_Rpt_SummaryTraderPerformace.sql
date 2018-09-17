@@ -111,4 +111,5 @@ BEGIN
 	SELECT @TopMinMargin AS TopMinMargin, @TopMaxMargin AS TopMaxMargin, @BottomMinMargin AS BottomMinMargin, @BottomMaxMargin AS BottomMaxMargin;
 END;
 
+GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
