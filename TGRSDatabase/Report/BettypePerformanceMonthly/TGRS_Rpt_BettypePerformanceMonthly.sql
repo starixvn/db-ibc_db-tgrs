@@ -66,38 +66,19 @@ BEGIN
 			INNER JOIN dbo.BetType AS bt WITH (NOLOCK) ON tbt.BetType = bt.BetType;
 
 	--2: GET BettypePerformance
-	IF @IsExcludeLeagues = 0
-	BEGIN
-		INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
-		SELECT	sbt.BetType
-				, bt.BetTypeName
-				, MONTH(sbt.eventDate) AS MonthNo
-				, SUM(sbt.Stake) AS TurnOver
-				, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
-				, SUM(sbt.BetCount) AS BetCount
-				, SUM(sbt.MatchCount) AS MatchCount
-		FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
-				INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
-		WHERE	YEAR(sbt.EventDate) = @Year
-		GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
-	END
-	ELSE
-	BEGIN
-		INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
-		SELECT	sbt.BetType
-				, bt.BetTypeName
-				, MONTH(sbt.eventDate) AS MonthNo
-				, SUM(sbt.Stake) AS TurnOver
-				, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
-				, SUM(sbt.BetCount) AS BetCount
-				, SUM(sbt.MatchCount) AS MatchCount
-		FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
+	INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
+	SELECT	sbt.BetType
+			, bt.BetTypeName
+			, MONTH(sbt.eventDate) AS MonthNo
+			, SUM(sbt.Stake) AS TurnOver
+			, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
+			, SUM(sbt.BetCount) AS BetCount
+			, SUM(sbt.MatchCount) AS MatchCount
+	FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
 			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
-			LEFT JOIN dbo.LeagueExclusion AS le WITH(NOLOCK) ON sbt.LeagueId = le.LeagueId
-		WHERE	YEAR(sbt.EventDate) = @Year
-			AND le.LeagueId IS NULL
-		GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
-	END;
+	WHERE	YEAR(sbt.EventDate) = @Year
+		AND (@IsExcludeLeagues = 0 OR (sbt.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le)))
+	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
 	
 	---===========3. RETURN DATA===================================
 	--=============================================================
