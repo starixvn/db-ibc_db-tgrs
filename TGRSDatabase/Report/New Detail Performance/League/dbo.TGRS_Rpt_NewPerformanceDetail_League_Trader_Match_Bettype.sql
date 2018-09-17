@@ -107,4 +107,5 @@ GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Trader_Matc
 GO
 */
 
+GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
