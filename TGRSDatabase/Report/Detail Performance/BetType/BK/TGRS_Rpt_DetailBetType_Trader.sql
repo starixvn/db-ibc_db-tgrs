@@ -58,7 +58,7 @@ BEGIN
 		AND P.Bettype = @Bettype 
 		AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
 		AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le)))
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.BetType, P.CustId, TR.Username, TR.Grade, TR.TeamId;
 
 	---------------------------
@@ -110,7 +110,7 @@ BEGIN
 				AND ISNULL(B.Benchmark,0) <> 0
 				AND ISNULL(B.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(B.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
 				AND ISNULL(B.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(B.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
-				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le)))
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 			GROUP BY P.CustId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
 		) S
 	GROUP BY S.CustId;
