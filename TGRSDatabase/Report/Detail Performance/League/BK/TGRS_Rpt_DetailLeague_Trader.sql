@@ -50,7 +50,7 @@ BEGIN
 	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.LeagueId = @LeagueId
 		AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le)))
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.CustId, TR.Username, TR.Grade, TR.TeamId;
 
 	---------------------------
@@ -102,7 +102,7 @@ BEGIN
 				AND P.LeagueId = @LeagueId	
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)				
 				AND ISNULL(B.Benchmark,0) <> 0
-				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le)))
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 			GROUP BY P.CustId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
 		) S
 	GROUP BY S.CustId;

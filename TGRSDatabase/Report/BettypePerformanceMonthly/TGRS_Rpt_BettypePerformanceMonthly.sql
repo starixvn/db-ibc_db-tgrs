@@ -77,7 +77,7 @@ BEGIN
 	FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
 			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
 	WHERE	YEAR(sbt.EventDate) = @Year
-		AND (@IsExcludeLeagues = 0 OR (sbt.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le)))
+		AND (@IsExcludeLeagues = 0 OR (sbt.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
 	
 	---===========3. RETURN DATA===================================
