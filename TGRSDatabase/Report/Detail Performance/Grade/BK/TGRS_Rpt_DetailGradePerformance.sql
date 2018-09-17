@@ -37,113 +37,55 @@ BEGIN
 		INSERT INTO @BettypeList
 		SELECT Bettype FROM dbo.Bettype WITH (NOLOCK);
 
-	IF @IsExcludeLeagues = 0
-	BEGIN
-		INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin) 	
-		SELECT	P.Grade,
-				ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
-				ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount,  
-				ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
-				ISNULL(SUM(P.Stake),0) AS Turnover, 
-				ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
-				ISNULL(SUM(P.BetCount),0) as BetCount,
-				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin			 
-		FROM	dbo.TraderPerformance P WITH (NOLOCK)			     
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
-				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-		GROUP BY P.Grade
-		HAVING  (@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
-				AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
-				AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-						 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-						 ELSE 0 END 
-					>= CASE WHEN @MarginFrom IS NULL 
-							THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-									  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-									  ELSE 0 END 
-							ELSE @MarginFrom END 
-				AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-						 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-						 ELSE 0 END 
-					<= CASE WHEN @MarginTo IS NULL 
-							THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-									  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-									  ELSE 0 END 
-							ELSE @MarginTo END;	
-
-		INSERT INTO @AVGScore (Grade, Score)
-		SELECT S.Grade , AVG (S.Score) as Score
-		FROM (
-		SELECT P.Grade, P.LeagueId, P.BetType, P.WorkShift, 
-			(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
-		FROM	dbo.TraderPerformance P WITH (NOLOCK)		
-		INNER JOIN Benchmark_BetType B WITH (NOLOCK)		    
-			ON	P.LeagueId = B.LeagueId
-			AND P.Bettype = B.Bettype
-			AND P.WorkShift = B.WorkShift
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+	INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin) 	
+	SELECT	P.Grade,
+			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
+			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount,  
+			ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
+			ISNULL(SUM(P.Stake),0) AS Turnover, 
+			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
+			ISNULL(SUM(P.BetCount),0) as BetCount,
+			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin			 
+	FROM	dbo.TraderPerformance P WITH (NOLOCK)			     
+	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-			AND ISNULL(B.Benchmark,0) <> 0
-		GROUP BY P.Grade, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
-		) S
-		GROUP BY S.Grade;
-	END
-	ELSE
-	BEGIN
-		INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin) 	
-		SELECT	P.Grade,
-				ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
-				ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount,  
-				ISNULL(COUNT(DISTINCT P.MatchId),0) AS MatchCount, 
-				ISNULL(SUM(P.Stake),0) AS Turnover, 
-				ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
-				ISNULL(SUM(P.BetCount),0) as BetCount,
-				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin			 
-		FROM	dbo.TraderPerformance P WITH (NOLOCK)
-		LEFT JOIN dbo.LeagueExclusion AS le WITH(NOLOCK) ON P.LeagueId = le.LeagueId			     
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate		
-				AND le.LeagueId IS NULL	
-				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-		GROUP BY P.Grade
-		HAVING  (@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
-				AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
-				AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-						 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-						 ELSE 0 END 
-					>= CASE WHEN @MarginFrom IS NULL 
-							THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-									  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-									  ELSE 0 END 
-							ELSE @MarginFrom END 
-				AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-						 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-						 ELSE 0 END 
-					<= CASE WHEN @MarginTo IS NULL 
-							THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-									  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-									  ELSE 0 END 
-							ELSE @MarginTo END;	
+	GROUP BY P.Grade
+	HAVING  (@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
+			AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
+			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+						THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
+						ELSE 0 END 
+				>= CASE WHEN @MarginFrom IS NULL 
+						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+									THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
+									ELSE 0 END 
+						ELSE @MarginFrom END 
+			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+						THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
+						ELSE 0 END 
+				<= CASE WHEN @MarginTo IS NULL 
+						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
+									THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
+									ELSE 0 END 
+						ELSE @MarginTo END;	
 
-		INSERT INTO @AVGScore (Grade, Score)
-		SELECT S.Grade , AVG (S.Score) as Score
-		FROM (
-		SELECT P.Grade, P.LeagueId, P.BetType, P.WorkShift, 
-			(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
-		FROM	dbo.TraderPerformance P WITH (NOLOCK)		
-		INNER JOIN Benchmark_BetType B WITH (NOLOCK)		    
-			ON	P.LeagueId = B.LeagueId
-			AND P.Bettype = B.Bettype
-			AND P.WorkShift = B.WorkShift
-		LEFT JOIN dbo.LeagueExclusion AS le WITH(NOLOCK) ON P.LeagueId = le.LeagueId	
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate		
-			AND le.LeagueId IS NULL			
-			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-			AND ISNULL(B.Benchmark,0) <> 0
-		GROUP BY P.Grade, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
-		) S
-		GROUP BY S.Grade;
-	END;
-
+	INSERT INTO @AVGScore (Grade, Score)
+	SELECT S.Grade , AVG (S.Score) as Score
+	FROM (
+	SELECT P.Grade, P.LeagueId, P.BetType, P.WorkShift, 
+		(CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 AND ISNULL(B.Benchmark, 0) <> 0 THEN ((ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 50 / ISNULL(SUM(P.Stake),0) )/ ISNULL(B.Benchmark, 0) ELSE NULL END) AS Score
+	FROM	dbo.TraderPerformance P WITH (NOLOCK)		
+	INNER JOIN Benchmark_BetType B WITH (NOLOCK)		    
+		ON	P.LeagueId = B.LeagueId
+		AND P.Bettype = B.Bettype
+		AND P.WorkShift = B.WorkShift
+	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+		AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+		AND ISNULL(B.Benchmark,0) <> 0
+	GROUP BY P.Grade, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
+	) S
+	GROUP BY S.Grade;
+	
 	UPDATE  G 
 	SET		G.Score = S.Score
 	FROM	@Grade G 

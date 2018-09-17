@@ -31,38 +31,19 @@ BEGIN
 		 INSERT INTO @BettypeList
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 		 
-	IF @IsExcludeLeagues = 0
-	BEGIN	 	
-		SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
-			ISNULL(SUM(P.Stake),0) AS Turnover, 
-			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
-			ISNULL(SUM(BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
-		FROM	dbo.TraderPerformance P WITH (NOLOCK)		 
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
-			AND P.LeagueId = @LeagueId
-			AND P.CustId = @CustId
-			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-		GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
-		ORDER BY Margin DESC, P.EventDate ASC;
-	END
-	ELSE
-	BEGIN
-		SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
-			ISNULL(SUM(P.Stake),0) AS Turnover, 
-			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
-			ISNULL(SUM(BetCount),0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
-		FROM	dbo.TraderPerformance P WITH (NOLOCK)			
-		LEFT JOIN dbo.LeagueExclusion AS le WITH(NOLOCK) ON P.LeagueId = le.LeagueId	 
-		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
-			AND P.LeagueId = @LeagueId
-			AND le.LeagueId IS NULL
-			AND P.CustId = @CustId
-			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-		GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
-		ORDER BY Margin DESC, P.EventDate ASC;
-	END;
+	SELECT P.MatchId, P.HomeId, P.AwayId, P.EventDate,
+		ISNULL(SUM(P.Stake),0) AS Turnover, 
+		ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
+		ISNULL(SUM(BetCount),0) as BetCount,
+		CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
+	FROM	dbo.TraderPerformance P WITH (NOLOCK)		 
+	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
+		AND P.LeagueId = @LeagueId
+		AND P.CustId = @CustId
+		AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le)))
+	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate
+	ORDER BY Margin DESC, P.EventDate ASC;
 END;
 
 GO
