@@ -104,7 +104,7 @@ BEGIN
          FROM (
 				SELECT DISTINCT custid, bettype
 				FROM dbo.TraderPerformance_Yearly p1 WITH(NOLOCK)
-				WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = p1.LeagueId)))
+				WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 				) AS t1
          WHERE t1.custid = t.custid
          FOR XML PATH(''), TYPE)

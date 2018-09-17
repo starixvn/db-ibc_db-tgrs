@@ -86,7 +86,7 @@ BEGIN
 			ON	s.Spread = tp.Spread
 			AND	s.Rate = tm.Rate
 			AND tp.IsLive = 1
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tp.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 	GROUP BY	tp.CustId;
@@ -109,7 +109,7 @@ BEGIN
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 			AND tp.IsLive = 1
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tp.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY	t.Grade
 	)
 	INSERT INTO @Grade 

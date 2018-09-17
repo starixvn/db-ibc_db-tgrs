@@ -46,7 +46,7 @@ BEGIN
 			)
 		AND t.IsLive = 1
 		AND bt.[Disabled] = 0
-		AND (@IsExcludeLeagues = 0 OR (l.leagueid NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = l.leagueid)))
+		AND (@IsExcludeLeagues = 0 OR (l.leagueid NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY l.leagueid, l.leaguename
 	ORDER BY Margin DESC;
 END;

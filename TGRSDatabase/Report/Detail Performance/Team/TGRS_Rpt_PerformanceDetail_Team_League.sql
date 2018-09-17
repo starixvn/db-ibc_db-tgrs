@@ -44,7 +44,7 @@ BEGIN
 		AND P.EventDate BETWEEN @FromDate AND @ToDate
 		AND T.TeamId = @TeamId
 		AND P.IsLive = 1
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.LeagueId, L.LeagueName
 	ORDER BY Margin DESC, LeagueName ASC;
 END;
