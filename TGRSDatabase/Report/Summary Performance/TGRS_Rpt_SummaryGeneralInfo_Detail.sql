@@ -62,7 +62,7 @@ BEGIN
 				@ViewPermission = 0
 				OR bt.BettypeGroup = @ViewPermission
 			)
-		AND (@IsExcludeLeagues = 0 OR (bm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = bm.LeagueId)))
+		AND (@IsExcludeLeagues = 0 OR (bm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY bm.EventDate
 
 

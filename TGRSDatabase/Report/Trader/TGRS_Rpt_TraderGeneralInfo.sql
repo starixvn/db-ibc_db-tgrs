@@ -51,7 +51,7 @@ BEGIN
 				)
 			AND P.IsLive = 1
 			AND bt.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	END
 	ELSE -- by month
 	BEGIN

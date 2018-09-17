@@ -87,7 +87,7 @@ SET NOCOUNT ON;
 			WHERE
 				@ViewPermission = 0
 				OR BettypeGroup = @ViewPermission
-				AND (@IsExcludeLeagues = 0 OR (s.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = s.LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (s.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 			GROUP BY d.WLDate
 		END
 		ELSE -- Report by date - month

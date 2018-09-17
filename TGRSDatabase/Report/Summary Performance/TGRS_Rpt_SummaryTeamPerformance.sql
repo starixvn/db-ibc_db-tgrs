@@ -45,7 +45,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY T.TeamId, T.TeamName
 		ORDER BY Margin DESC
 	END
@@ -64,7 +64,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY T.TeamId, T.TeamName
 		ORDER BY Margin DESC 
 	END

@@ -45,7 +45,7 @@ BEGIN
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 					AND B.[Disabled] = 0
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 
@@ -64,7 +64,7 @@ BEGIN
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 					AND B.[Disabled] = 0
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 

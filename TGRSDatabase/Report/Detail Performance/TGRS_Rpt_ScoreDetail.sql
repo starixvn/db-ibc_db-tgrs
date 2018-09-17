@@ -143,7 +143,7 @@ BEGIN
 								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)		
 								WHERE  B.ModifiedDate < @DateB
 									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
-									   AND (@IsExcludeLeagues = 0 OR (B.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = B.LeagueId)))
+									   AND (@IsExcludeLeagues = 0 OR (B.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 								GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
 								) B
 						GROUP BY  B.LeagueId, B.BetType, B.WorkShift	

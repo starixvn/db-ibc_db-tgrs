@@ -52,7 +52,7 @@ BEGIN
 			AND P.CustId = @CustId
 			AND P.MatchId = @MatchId	
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.BetType, TN.TypeName, P.WorkShift, ISNULL(B.Benchmark, 0)
 	ORDER BY Margin DESC;
 

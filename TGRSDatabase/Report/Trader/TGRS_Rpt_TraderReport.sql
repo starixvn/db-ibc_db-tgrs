@@ -67,7 +67,7 @@ BEGIN
 			)
 		AND t.IsLive = 1
 		AND bt.[Disabled] = 0
-		AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = t.LeagueId)));
+		AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))));
   
 	-- Chart info
 	IF @ReportType = 1 -- Report by date - date, month - date  
