@@ -70,20 +70,22 @@ SELECT	t.CustId
 		FROM dbo.TraderTeam_History AS a WITH(NOLOCK)
 		WHERE a.CustId = t.CustId
 			AND a.EndDate < t.BeginDate
+			AND a.TeamId NOT IN (3,4,6,7,8,9,10,12)
 		ORDER BY a.BeginDate DESC), NULL) AS PrevT
 	,	ISNULL((SELECT TOP 1 ISNULL(b.TeamId,0) AS NextT
 		FROM dbo.TraderTeam_History AS b WITH(NOLOCK)
 		WHERE b.CustId = t.CustId
 			AND b.BeginDate > t.EndDate
+			AND b.TeamId NOT IN (3,4,6,7,8,9,10,12)
 		ORDER BY b.BeginDate ASC), NULL) AS NextT
 FROM dbo.TraderTeam_History AS t WITH(NOLOCK)
-WHERE t.TeamId in (3,4,6,7,8,9,10,12);
+WHERE t.TeamId IN (3,4,6,7,8,9,10,12);
 
 ---------------------------------------------------
 -- STEP 2: UPDATE THE DATA FROM TRADER PERFORMANCE
 UPDATE t WITH(ROWLOCK, UPDLOCK)
 SET t.TeamId = ISNULL(a.PrevTeam, a.NextTeam)
-FROM dbo.TraderPerformance AS t WITH(NOLOCK)
+FROM dbo.TraderPerformance AS t
 	INNER JOIN #tmpTraderTeams a WITH(NOLOCK) ON t.CustId = a.CustId
 		AND t.EventDate BETWEEN a.BeginDate AND a.EndDate;
 		
@@ -107,7 +109,7 @@ CROSS APPLY	(
 ) tally;
 
 WHILE	EXISTS (SELECT 1 FROM #tmpWinlostDate)
-BEGIN;
+BEGIN
 	SELECT	TOP(1)
 			@WinLostDate = d.winlostdate
 	FROM	#tmpWinlostDate AS d;
@@ -227,7 +229,7 @@ END;
 -- STEP 5: MIGRATE DATA FOR TraderTeam_History
 UPDATE t WITH(ROWLOCK, UPDLOCK)
 SET t.TeamId = ISNULL(a.PrevTeam, a.NextTeam)
-FROM dbo.TraderTeam_History AS t WITH(NOLOCK)
+FROM dbo.TraderTeam_History AS t
 	INNER JOIN #tmpTraderTeams a WITH(NOLOCK) ON t.CustId = a.CustId
 		AND t.BeginDate = a.BeginDate AND t.EndDate = a.EndDate;
 		
