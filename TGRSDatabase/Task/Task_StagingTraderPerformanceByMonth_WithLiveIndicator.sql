@@ -1,6 +1,6 @@
-USE [bodb_TGRS]
+
 GO
-/****** Object:  StoredProcedure [dbo].[Task_StagingTraderPerformanceByMonth_WithLiveIndicator]    Script Date: 1/10/2018 10:57:50 AM ******/
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON

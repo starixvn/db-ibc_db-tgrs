@@ -1,7 +1,7 @@
-USE [bodb_TGRS]
+
 GO
 
-/****** Object:  StoredProcedure [dbo].[TGRS_TargetedMargin_SelectAll]    Script Date: 03/29/2016 12:48:14 ******/
+
 SET ANSI_NULLS ON
 GO
 

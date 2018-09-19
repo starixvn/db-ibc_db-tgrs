@@ -1,7 +1,7 @@
 
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Trader_Match    Script Date: 1/17/2017 11:20:01 AM ******/
 
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_NewPerformanceDetail_Trader_Match]    Script Date: 01/06/2017 13:22:33 ******/
+
 ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Trader_Match] 
 	@FromDate DATE
 	,@ToDate DATE

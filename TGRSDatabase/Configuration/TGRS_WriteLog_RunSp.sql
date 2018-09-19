@@ -1,7 +1,7 @@
-﻿USE [bodb_TGRS]
+
 GO
 
-/****** Object:  StoredProcedure [dbo].[TGRS_WriteLog_RunSp]    Script Date: 5/21/2014 1:23:57 PM ******/
+
 SET ANSI_NULLS ON
 GO
 

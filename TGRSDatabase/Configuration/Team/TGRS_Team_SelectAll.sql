@@ -1,6 +1,6 @@
-﻿USE [bodb_TGRS]
+
 GO
-/****** Object:  StoredProcedure [dbo].[TGRS_Team_SelectAll]    Script Date: 5/9/2014 4:38:23 PM ******/
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
