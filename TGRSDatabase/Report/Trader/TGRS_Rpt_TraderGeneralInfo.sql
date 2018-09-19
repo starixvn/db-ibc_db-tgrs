@@ -1,4 +1,4 @@
-USE [bodb_TGRS]
+
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderGeneralInfo]

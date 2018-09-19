@@ -1,6 +1,6 @@
-USE [bodb_TGRS]
+
 GO
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_TraderPerformanceMonthly]    Script Date: 1/4/2018 1:37:34 PM ******/
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON

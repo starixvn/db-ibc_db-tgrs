@@ -1,4 +1,4 @@
-USE [bodb_TGRS]
+
 GO
 SET ANSI_NULLS ON
 GO

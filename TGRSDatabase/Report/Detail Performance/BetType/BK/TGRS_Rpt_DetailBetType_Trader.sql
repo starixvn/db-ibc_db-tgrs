@@ -1,6 +1,6 @@
-USE [bodb_TGRS]
+
 GO
-/****** Object:  StoredProcedure [dbo].[TGRS_Rpt_DetailBetType_Trader]    Script Date: 6/19/2014 9:44:42 AM ******/
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON

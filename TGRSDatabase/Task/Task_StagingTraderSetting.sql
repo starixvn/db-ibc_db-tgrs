@@ -1,7 +1,7 @@
-USE [bodb_TGRS]
+
 GO
 
-/****** Object:  StoredProcedure [dbo].[Task_StagingTraderSetting]    Script Date: 03/14/2016 15:42:22 ******/
+
 SET ANSI_NULLS ON
 GO
 
