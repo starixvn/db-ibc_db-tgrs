@@ -67,30 +67,29 @@ BEGIN
 	DECLARE	@winlostdate			DATETIME
 		;
 	
-	-------------- CHECK RUNNING JOB ---------------
-	DECLARE @IsRunningJob			BIT;
+	-- Check running job
+	DECLARE @IsRunningJob				BIT;
 	
 	IF (@GenerateFromDate IS NULL OR @GenerateToDate IS NULL)
 	BEGIN
 		SELECT @IsRunningJob = 1
 	END
-	------------------------------------------------
+	--
 
 	IF	OBJECT_ID('tempdb..#tmpDLSupportedBettypes') IS NOT NULL
 		DROP TABLE	#tmpDLSupportedBettypes;
 
 	CREATE TABLE	#tmpDLSupportedBettypes (
-			BetType			SMALLINT PRIMARY KEY
+			BetType					SMALLINT PRIMARY KEY
 	);
 	
 	IF	OBJECT_ID('tempdb..#tmpDLFilteredBettypes') IS NOT NULL
 		DROP TABLE	#tmpDLFilteredBettypes;
 
 	CREATE TABLE	#tmpDLFilteredBettypes (
-			BetType			SMALLINT PRIMARY KEY
+			BetType					SMALLINT PRIMARY KEY
 	);
-	
-	------------------------------------------------
+
 	IF @Bettypes <> '0'
 		BEGIN	
 			INSERT INTO #tmpDLFilteredBettypes(BetType)
@@ -108,8 +107,7 @@ BEGIN
 			FROM	dbo.BetType AS b WITH (NOLOCK)
 			WHERE	b.BetType < 0;
 		END
-	
-	--------------------------------------------------
+
 	INSERT INTO #tmpDLSupportedBettypes(BetType)
 	SELECT	DISTINCT b.bettype
 	FROM	dbo.BetType AS b WITH (NOLOCK)
@@ -133,7 +131,7 @@ BEGIN
 		,	(1.12  , 0.44  )
 		,	(1.15  , 0.52  )
 		;
-			
+				
 	IF	OBJECT_ID('tempdb..#tmpDLBUMBData') IS NOT NULL
 	BEGIN
 		DROP TABLE	#tmpDLBUMBData
@@ -540,7 +538,9 @@ BEGIN
 
 	IF	@IsGetDataFromBK = 1
 	BEGIN
-		-----------GET Scanned Match List: Completed Soccer Match
+		TRUNCATE TABLE #tmpDLTrader;
+		
+		-- GET Scanned Match List: Completed Soccer Match
 		TRUNCATE TABLE #tmpDLScannedMatches;
 		INSERT INTO #tmpDLScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType)
 		SELECT	m.matchId
@@ -587,17 +587,15 @@ BEGIN
 				AND	m.SportType = 1
 				AND m.EventStatus = 'completed'
 				AND	m.matchCode NOT LIKE '%hedge%';
-				
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
-
-		IF	@Debug = 1
-		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From BK - Insert #tmpDLTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-		END;		
-		-----------------------------------------------------------
-		TRUNCATE TABLE #tmpDLScannedMatches;
+		
+		-- REMOVE Scanned Match List: if existing any Ticket has not been settled (ruben <> 1)
+		DELETE	sm
+		FROM	#tmpDLScannedMatches AS sm WITH (ROWLOCK)
+		WHERE	sm.matchId  IN (	SELECT	TOP(1) b.matchId
+									FROM	bodb_Archive.dbo.bettrans_bk AS b WITH(NOLOCK) 
+									WHERE	b.matchId = sm.matchId
+											AND b.ruben <> 1);		
+		
 		INSERT INTO	#tmpDLTrader (CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)
 		SELECT	DISTINCT
 				[CustId]		= a.OperatorID
@@ -625,10 +623,11 @@ BEGIN
 				ON	td_T.CustID = a.OperatorID
 				AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
 		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
-				AND	a.OperatorType < 3;
+			AND	a.OperatorType < 3
 		
 		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
+			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+			;
 
 		IF	@Debug = 1
 		BEGIN
@@ -885,7 +884,7 @@ BEGIN
 				RAISERROR('From BK - Insert #tmpDLStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
+			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 			SELECT	[CustId]			= t.CustId
@@ -919,7 +918,7 @@ BEGIN
 				RAISERROR('From BK - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		
-			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
+			DELETE dbo.TraderPerformance_BetChoice	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, BetCount)
 			SELECT		[CustId]			= t.CustId
@@ -1019,8 +1018,16 @@ BEGIN
 				AND	m.SportType = 1
 				AND m.EventStatus = 'completed'
 				AND	m.matchCode NOT LIKE '%hedge%';
-				
-		INSERT INTO TracePerformanceScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType, fromSP, CapturedDate  )
+		
+		-- REMOVE Scanned Match List: if existing any Ticket has not been settled (ruben <> 1)
+		DELETE	sm
+		FROM	#tmpDLScannedMatches AS sm WITH (ROWLOCK)
+		WHERE	sm.matchId  IN (	SELECT	TOP(1) b.matchId
+									FROM	bodb02.dbo.bettrans14 AS b WITH(NOLOCK) 
+									WHERE	b.matchId = sm.matchId
+											AND b.ruben <> 1);		
+		
+		INSERT INTO dbo.TracePerformanceScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType, fromSP, CapturedDate )
 		SELECT	MatchId
 				, EventDate
 				, KickOffTime
@@ -1037,8 +1044,7 @@ BEGIN
 				, @CapturedDate
 		FROM	#tmpDLScannedMatches WITH (NOLOCK);		
 		
-		INSERT INTO TraceScannedMatchesInfo(MatchId, EventDate, Bettype, LiveIndicator, BetCount
-				, SumActualStake, SumComm, SumModds, SumStake, SumVirtualRate, SumWinlost, FromSP, CapturedDate)
+		INSERT INTO dbo.TraceScannedMatchesInfo(MatchId, EventDate, Bettype, LiveIndicator, BetCount, SumActualStake, SumComm, SumModds, SumStake, SumVirtualRate, SumWinlost, fromSP, CapturedDate)
 		SELECT m.MatchId
 				, m.EventDate
 				, b.Bettype
@@ -1050,8 +1056,8 @@ BEGIN
 				 , SumStake = SUM(b.Stake)
 				 , SumVirtualRate = SUM(b.VirtualRate)
 				 , SumWinlost = SUM(b.winlost)
-				 , FromSP = @FromSP
-				 , CapturedDate = @CapturedDate 
+				 , @FromSP
+				 , @CapturedDate
 		FROM	#tmpDLScannedMatches m WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.bettrans14 b WITH (NOLOCK) ON b.matchid = b.matchid
 		GROUP BY  m.MatchId,  m.EventDate,  b.Bettype, b.LiveIndicator
@@ -1095,7 +1101,7 @@ BEGIN
 			RAISERROR('From 14 - Insert #tmpDLTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
-		INSERT INTO TracePerformanceTrader(CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, fromSP, CapturedDate)
+		INSERT INTO dbo.TracePerformanceTrader(CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, fromSP, CapturedDate)
 		SELECT CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, @fromSP, @CapturedDate
 		FROM	#tmpDLTrader WITH (NOLOCK);
 		
@@ -1348,7 +1354,7 @@ BEGIN
 				RAISERROR('From 14 - Insert #tmpDLStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
+			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 			SELECT	[CustId]			= t.CustId
@@ -1382,9 +1388,9 @@ BEGIN
 				RAISERROR('From 14 - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		
-			DELETE [dbo].[TraderPerformance_BetChoice]	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
+			DELETE dbo.TraderPerformance_BetChoice	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
-			INSERT INTO	dbo.[TraderPerformance_BetChoice] (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, BetCount)
+			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, BetCount)
 			SELECT		[CustId]			= t.CustId
 					,	[MatchId]			= t.matchId
 					,	[EventDate]			= t.EventDate
@@ -1492,7 +1498,7 @@ BEGIN
 											AND b.ruben <> 1);		
 		
 		----Captured Data for Tunning
-		INSERT INTO TracePerformanceScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType, fromSP, CapturedDate  )
+		INSERT INTO dbo.TracePerformanceScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType, fromSP, CapturedDate)
 		SELECT	MatchId
 				, EventDate
 				, KickOffTime
@@ -1510,8 +1516,7 @@ BEGIN
 		FROM	#tmpDLScannedMatches WITH (NOLOCK);		
 		
 		----Captured Data for Tunning
-		INSERT INTO TraceScannedMatchesInfo(MatchId, EventDate, Bettype, LiveIndicator, BetCount
-					, SumActualStake, SumComm, SumModds, SumStake, SumVirtualRate, SumWinlost, FromSP, CapturedDate)
+		INSERT INTO dbo.TraceScannedMatchesInfo(MatchId, EventDate, Bettype, LiveIndicator, BetCount, SumActualStake, SumComm, SumModds, SumStake, SumVirtualRate, SumWinlost, fromSP, CapturedDate)
 		SELECT m.MatchId
 				, m.EventDate
 				, b.Bettype
@@ -1523,8 +1528,8 @@ BEGIN
 				 , SumStake = SUM(b.Stake)
 				 , SumVirtualRate = SUM(b.VirtualRate)
 				 , SumWinlost = SUM(b.winlost)
-				 , FromSP = @FromSP
-				 , CapturedDate = @CapturedDate 
+				 , @FromSP
+				 , @CapturedDate
 		FROM	#tmpDLScannedMatches m WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.bettrans b WITH (NOLOCK) ON b.matchid = b.matchid
 		GROUP BY  m.MatchId,  m.EventDate,  b.Bettype, b.LiveIndicator
@@ -1568,7 +1573,7 @@ BEGIN
 			RAISERROR('From Origin - Insert #tmpDLTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		----Captured Data for Tunning
-		INSERT INTO TracePerformanceTrader(CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, fromSP, CapturedDate)
+		INSERT INTO dbo.TracePerformanceTrader(CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, fromSP, CapturedDate)
 		SELECT CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, @fromSP, @CapturedDate
 		FROM	#tmpDLTrader WITH (NOLOCK);
 		
@@ -1821,7 +1826,7 @@ BEGIN
 				RAISERROR('From Origin - Insert #tmpDLStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE [dbo].[TraderPerformance] WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
+			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, Stake, WinLost, Comm, BetCount, Spread)
 			SELECT	[CustId]			= t.CustId
