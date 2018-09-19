@@ -146,7 +146,7 @@ BEGIN
 	END;
 
 	---INSERT DIFFERENCE RECORDS
-	INSERT INTO TrackChangedMatch(MatchId, EventDate,  SportType, BetType, OldCapturedDate, OldTraderID, OldBetCount, OldTurnover, OldWinLost
+	INSERT INTO dbo.TrackChangedMatch(MatchId, EventDate,  SportType, BetType, OldCapturedDate, OldTraderID, OldBetCount, OldTurnover, OldWinLost
 					, NewCapturedDate, NewTraderID, NewBetCount, NewTurnover, NewWinLost, IsNotified)
 	SELECT	ISNULL(o.MatchId, n.MatchId)
 			, ISNULL(o.EventDate, n.EventDate)
@@ -183,7 +183,7 @@ BEGIN
 	END;
 
 	------------------DELETE OLD TRACE DATA-------------------
-	----ALL Match BEFORE 14 days
+	----DELETE ALL Match BEFORE 14 days
 	DELETE	tpt
 	FROM	dbo.TracePerformanceTrader as tpt WITH (ROWLOCK)
 	WHERE	DATEDIFF(DAY, tpt.CapturedDate, @NewCapturedDate) > 14;
@@ -196,7 +196,7 @@ BEGIN
 	FROM	dbo.TraceScannedMatchesInfo as tsmi WITH (ROWLOCK)
 	WHERE	DATEDIFF(DAY, tsmi.CapturedDate, @NewCapturedDate) > 14;
 	
-	----All Matches NOT IN ChangedData
+	----DELETE All Match NOT IN TrackChangedMatch
 	DELETE	tpt
 	FROM	dbo.TracePerformanceTrader as tpt WITH (ROWLOCK)
 			LEFT JOIN dbo.TrackChangedMatch tcm WITH(NOLOCK) on tpt.MatchId = tcm.MatchId
