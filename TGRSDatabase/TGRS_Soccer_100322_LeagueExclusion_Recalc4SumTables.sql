@@ -54,15 +54,18 @@ CROSS APPLY	(
 	FROM		(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10(n)
 	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100(n)
 	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)
+	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10000(n)
+	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100000(n)
 ) tally;
-
-TRUNCATE TABLE [dbo].[SummaryByTeam_Daily];
 
 WHILE	EXISTS (SELECT 1 FROM #tmpWinlostDate)
 BEGIN;
 	SELECT	TOP(1)
 			@WinLostDate = d.winlostdate
 	FROM	#tmpWinlostDate AS d;
+
+	DELETE [dbo].[SummaryByTeam_Daily]
+	WHERE [EventDate] = @WinLostDate;
 
 	INSERT INTO [dbo].[SummaryByTeam_Daily]
 	(
