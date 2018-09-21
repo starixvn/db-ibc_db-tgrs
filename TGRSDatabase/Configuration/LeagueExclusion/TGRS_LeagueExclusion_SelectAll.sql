@@ -14,7 +14,7 @@ AS
 	Original:
   
 	Revisions:
-		- yyyymmdd@xx.xx:	desc
+		- 20180921@Long:	Adding meta data for SP
    		
 	Param's Explanation:
 
@@ -32,10 +32,9 @@ BEGIN
 	ORDER BY l.leaguename ASC;
 END;
 
-/* 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_LeagueExclusion_SelectAll] TO [bodbTGRSNet]
 GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_LeagueExclusion_SelectAll] TO [bodbTGRSNet]
 GO
-*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
