@@ -39,6 +39,7 @@ AS
 		- 20180817@Casey.Huynh: Fix Issue get Bettype. Add SpecialBettype for FillterBettrans Instead of Trader [Redmine ID:89493]
 		- 20180924@Long:	Remove code to check for ruben value in _bk & 14 table
 		- 20180924Casey.Huynh: Update condition get data to table "TraceScannedMatchesInfo"
+		- 20180924@Long:	Compare to pick the max value of (MoveBetDate -3) vs BalanceUpDate
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -361,7 +362,9 @@ BEGIN
 
 		IF @BeforeMoveBetsDay = 1
 		BEGIN
-			SELECT @GenerateFromDate = @MoveBetsDay - 3; --@BalanceUpDay;
+			SELECT @GenerateFromDate =	CASE WHEN (@MoveBetsDay - 3) > @BalanceUpDay 
+											THEN (@MoveBetsDay - 3) 
+										ELSE @BalanceUpDay END;
 		END
 		ELSE
 		BEGIN
