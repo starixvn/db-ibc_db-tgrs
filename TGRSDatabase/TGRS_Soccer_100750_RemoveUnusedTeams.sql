@@ -105,7 +105,9 @@ CROSS APPLY	(
 			[EventDate] = DATEADD(DAY, ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) - 1, @FromDate)
 	FROM		(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10(n)
 	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100(n)
-	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)
+	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)	
+	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10000(n)
+	CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100000(n)
 ) tally;
 
 WHILE	EXISTS (SELECT 1 FROM #tmpWinlostDate)
@@ -234,3 +236,11 @@ FROM dbo.TraderTeam_History AS t
 		AND t.BeginDate = a.BeginDate AND t.EndDate = a.EndDate;
 		
 RAISERROR('Done for TraderTeam_History', 0, 0, 1, 1) WITH NOWAIT;
+
+---------------------------------------------------
+-- STEP 6: REMOVE TEAMS FROM TEAM TABLE
+DELETE	t
+FROM	dbo.Team AS t
+WHERE	t.TeamId IN (3,4,6,7,8,9,10,12);
+		
+RAISERROR('Done for Team Removal', 0, 0, 1, 1) WITH NOWAIT;

@@ -37,6 +37,7 @@ AS
 		- 20180822@John.Ngo: Missing data of 124, 125 bettype #tmpDL100251
 		- 20180713@Long.Luu: Manage for case changing the status of match before bettrans [Redmine ID: 97987]
 		- 20180817@Casey.Huynh: Fix Issue get Bettype. Add SpecialBettype for FillterBettrans Instead of Trader [Redmine ID:89493]
+		- 20180924@Long:	Remove code to check for ruben value in _bk & 14 table
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -588,14 +589,6 @@ BEGIN
 				AND m.EventStatus = 'completed'
 				AND	m.matchCode NOT LIKE '%hedge%';
 		
-		-- REMOVE Scanned Match List: if existing any Ticket has not been settled (ruben <> 1)
-		DELETE	sm
-		FROM	#tmpDLScannedMatches AS sm WITH (ROWLOCK)
-		WHERE	sm.matchId  IN (	SELECT	TOP(1) b.matchId
-									FROM	bodb_Archive.dbo.bettrans_bk AS b WITH(NOLOCK) 
-									WHERE	b.matchId = sm.matchId
-											AND b.ruben <> 1);		
-		
 		INSERT INTO	#tmpDLTrader (CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)
 		SELECT	DISTINCT
 				[CustId]		= a.OperatorID
@@ -1018,14 +1011,6 @@ BEGIN
 				AND	m.SportType = 1
 				AND m.EventStatus = 'completed'
 				AND	m.matchCode NOT LIKE '%hedge%';
-		
-		-- REMOVE Scanned Match List: if existing any Ticket has not been settled (ruben <> 1)
-		DELETE	sm
-		FROM	#tmpDLScannedMatches AS sm WITH (ROWLOCK)
-		WHERE	sm.matchId  IN (	SELECT	TOP(1) b.matchId
-									FROM	bodb02.dbo.bettrans14 AS b WITH(NOLOCK) 
-									WHERE	b.matchId = sm.matchId
-											AND b.ruben <> 1);		
 		
 		INSERT INTO dbo.TracePerformanceScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType, fromSP, CapturedDate )
 		SELECT	MatchId

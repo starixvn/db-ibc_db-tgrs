@@ -20,8 +20,8 @@ AS
 		- 20180822@John.Ngo: Missing data of 124, 125 bettype #100251
 		- 20180823@Long.Luu: Manage for case changing the status of match before bettrans [Redmine ID: 97987]
 		- 20180824@Casey.Huynh: Fix Issue get Bettype. Add SpecialBettype for FillterBettrans Instead of Trader [Redmine ID:89493]
-		- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
-   		
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
+   		- 20180924@Long:	Fix bug for updating juice value only for Live data
 
 	Param's Explanation:
 		
@@ -1372,7 +1372,8 @@ BEGIN
 		INNER JOIN	#tmpRTResults AS t WITH (NOLOCK)
 				ON	t.MatchId = tp.matchid
 				AND	t.BetType = tp.bettype
-		WHERE	tp.EventDate = t.EventDate;
+		WHERE	tp.EventDate = t.EventDate
+				AND tp.IsLive = 1;
 	
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
