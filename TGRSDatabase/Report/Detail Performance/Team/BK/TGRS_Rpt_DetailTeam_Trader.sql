@@ -1,8 +1,9 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailTeam_Trader]  	
-	@FromDate	DATE,
-	@ToDate		DATE,
-	@TeamId		SMALLINT,
-	@Bettypes	VARCHAR(200) =  '0'
+ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailTeam_Trader]  	
+	@FromDate				DATE,
+	@ToDate					DATE,
+	@TeamId					SMALLINT,
+	@Bettypes				VARCHAR(200) =  '0',
+	@IsExcludeLeagues		BIT = 1
 AS    
 /*  
  Created:	20140523@Sophia
@@ -16,29 +17,24 @@ AS
 
  Exam: 
 	EXEC TGRS_Rpt_DetailTeam_Trader @FromDate = '2014-01-01', @ToDate= '2014-05-31', @TeamId = 13, @Bettypes = '0'
-	
-  
 */  
  
 BEGIN 
-	 SET NOCOUNT ON  
+	 SET NOCOUNT ON;
 
 	 DECLARE @Trader AS TABLE (CustId INT, Username VARCHAR(30), Grade TINYINT, LeagueCount INT, MatchCount INT, 
 							   Turnover MONEY, WinLost MONEY, BetCount INT, Margin MONEY,
-							   NoOfGradeChanged INT, Score MONEY)
+							   NoOfGradeChanged INT, Score MONEY);
+	 DECLARE @AVGScore AS TABLE (CustId INT, Score MONEY);
+	 DECLARE @BettypeList AS TABLE (bettype SMALLINT);
 
-	 DECLARE @AVGScore AS TABLE (CustId INT, Score MONEY)
-
-
-	 DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	 IF @Bettypes <> '0'
 		 INSERT INTO @BettypeList
 		 SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
 	 ELSE 
 		 INSERT INTO @BettypeList
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
-	
-		 
+			 
 	 INSERT INTO @Trader (CustId, Username, Grade, LeagueCount, MatchCount, Turnover, WinLost, BetCount, Margin)
 	 SELECT P.CustId, TR.Username,TR.Grade, 
 			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount,  
@@ -47,17 +43,16 @@ BEGIN
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM (BetCount),0) as BetCount,
 			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
-		
 	 FROM	dbo.TraderPerformance P WITH (NOLOCK)	
 		INNER JOIN dbo.Trader TR WITH (NOLOCK) 
 				ON TR.CustId= P.CustId	
 	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 			AND P.TeamId = @TeamId
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
-	GROUP BY P.CustId, TR.Username, TR.Grade
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+	GROUP BY P.CustId, TR.Username, TR.Grade;
 	
-	---------------------------
- 
+	--------------------------- 
 	UPDATE  T
 	SET		NoOfGradeChanged = ISNULL(GH.NoOfGradeChanged,0) 
 	FROM	@Trader T
@@ -70,12 +65,10 @@ BEGIN
 							)
 				GROUP BY T.CustId
 				) GH 
-			ON GH.CustId = T.CustId
-	 
+			ON GH.CustId = T.CustId;	 
 	
 	 ------------------------------
 	---Calculate Score 
-
 	INSERT INTO @AVGScore (CustId, Score)
 	SELECT S.CustId , AVG (S.Score) as Score
 	FROM (
@@ -90,27 +83,28 @@ BEGIN
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)	
 				AND P.TeamId = @TeamId
 				AND ISNULL(B.Benchmark,0) <> 0
+				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 			GROUP BY P.CustId, P.LeagueId, P.BetType, P.WorkShift, B.Benchmark 
 		) S
-	GROUP BY S.CustId
-
+	GROUP BY S.CustId;
 
 	UPDATE  T 
 	SET		T.Score = S.Score
 	FROM	@Trader T 
 	INNER JOIN @AVGScore S 
-		ON S.CustId = T.CustId
+		ON S.CustId = T.CustId;
 	 
 	 ---------------Get Data-------------------
-
 	 SELECT * 
 	 FROM @Trader
-	 ORDER BY Margin DESC, Username ASC
- 
+	 ORDER BY Margin DESC, Username ASC;
+END;
 
-
-END 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_DetailTeam_Trader] TO [bodbTGRSNet]
 GO
 
+
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

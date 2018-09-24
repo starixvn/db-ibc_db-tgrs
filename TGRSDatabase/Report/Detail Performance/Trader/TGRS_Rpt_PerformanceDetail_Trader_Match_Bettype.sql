@@ -1,9 +1,10 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Trader_Match_Bettype]  	
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Trader_Match_Bettype]  	
 	@FromDate	DATE,
 	@ToDate		DATE,
 	@CustId		INT,
 	@MatchId	INT,
-	@Bettypes	VARCHAR(2000) =  '0'
+	@Bettypes	VARCHAR(2000) =  '0',
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20161503@Aaron
@@ -15,6 +16,7 @@ AS
 		- 20162103@Simon: restore orgirinal temp table code
 		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
  Param's Explanation:  	
 	
@@ -84,6 +86,7 @@ BEGIN
 		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.BetType IN (SELECT bettype FROM @BettypeList)
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
 	GROUP BY	tp.BetType, TN.TypeName;
 
 	SELECT	bd.BetType
@@ -98,3 +101,6 @@ BEGIN
 
 	DROP TABLE #BettypeDetail;
 END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

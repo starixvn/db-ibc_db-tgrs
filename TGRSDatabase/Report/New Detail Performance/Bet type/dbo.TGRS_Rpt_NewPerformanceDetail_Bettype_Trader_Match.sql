@@ -1,12 +1,10 @@
-﻿
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Bettype_Trader_Match    Script Date: 1/17/2017 11:20:00 AM ******/
 
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_Trader_Match    Script Date: 4/1/2016 8:22:17 AM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_Trader_Match] 
-	 @FromDate DATE
-	,@ToDate DATE
-	,@CustId INT
-	,@Bettype SMALLINT
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_Trader_Match] 
+		@FromDate				DATE
+	,	@ToDate					DATE
+	,	@CustId					INT
+	,	@Bettype				SMALLINT
+	,	@IsExcludeLeagues		BIT = 1
 AS
 /*  
 	Created:	20170110@Aaron
@@ -15,8 +13,9 @@ AS
 	Original:      
 	  		
 	Revisions:
-		- 20170316@Long: apply TO's Leftover
-		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20170316@Long:	apply TO's Leftover
+		- 20171205@Simon:	get only Live data & Bettypes are not disabled
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]  
 		
 	Param's Explanation:  	
 	
@@ -28,33 +27,33 @@ BEGIN
 	SET NOCOUNT ON;
 
 	CREATE TABLE #TraderDetail (
-		MatchId INT
-		,LeagueId INT
-		,HomeId INT
-		,AwayId INT
-		,EventDate DATETIME
-		,Turnover MONEY
-		,TurnoverJuice MONEY
-		,Juice MONEY
-		,WinLoss MONEY
-		,WinLossScore MONEY
-		,BetCount INT
-		,SumCategory MONEY
+			MatchId			INT
+		,	LeagueId		INT
+		,	HomeId			INT
+		,	AwayId			INT
+		,	EventDate		DATETIME
+		,	Turnover		MONEY
+		,	TurnoverJuice	MONEY
+		,	Juice			MONEY
+		,	WinLoss			MONEY
+		,	WinLossScore	MONEY
+		,	BetCount		INT
+		,	SumCategory		MONEY
 	);
 
 	INSERT INTO #TraderDetail (
-		MatchId
-		,LeagueId
-		,HomeId
-		,AwayId
-		,EventDate
-		,Turnover
-		,TurnoverJuice
-		,Juice
-		,WinLoss
-		,WinLossScore
-		,BetCount
-		,SumCategory
+			MatchId
+		,	LeagueId
+		,	HomeId
+		,	AwayId
+		,	EventDate
+		,	Turnover
+		,	TurnoverJuice
+		,	Juice
+		,	WinLoss
+		,	WinLossScore
+		,	BetCount
+		,	SumCategory
 	)
 	SELECT tp.MatchId
 		,tp.LeagueId
@@ -80,9 +79,9 @@ BEGIN
 		AND s.Rate = tm.Rate
 	WHERE tp.CustId = @CustId
 		AND tp.BetType = @Bettype
-		AND tp.EventDate BETWEEN @FromDate
-			AND @ToDate
+		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY tp.MatchId
 		,tp.LeagueId
 		,tp.HomeId
@@ -117,3 +116,6 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_Trader_Match] TO [bodbTGRSNet ]
 GO
 */
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

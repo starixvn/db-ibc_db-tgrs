@@ -1,11 +1,12 @@
-﻿
+
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_League_Match    Script Date: 1/17/2017 11:20:01 AM ******/
 
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League_Match    Script Date: 4/1/2016 8:22:17 AM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Match] 
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Match] 
 	 @FromDate DATE
 	,@ToDate DATE
 	,@LeagueId INT
+	,@IsExcludeLeagues	BIT = 1
 AS
 /*  
 	Created:	20170106@Aaron
@@ -16,6 +17,7 @@ AS
 	Revisions:         	
 		- 20170316@Long: apply TO's Leftover
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 		
 	Param's ExplanatiON:  	
 	
@@ -42,6 +44,7 @@ BEGIN
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND P.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.MatchId
 		,P.HomeId
 		,P.AwayId
@@ -55,3 +58,6 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Match] TO [bodbTGRSNet ]
 GO
 */
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

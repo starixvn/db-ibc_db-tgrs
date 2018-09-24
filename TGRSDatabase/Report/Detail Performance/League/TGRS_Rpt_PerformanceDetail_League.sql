@@ -1,5 +1,5 @@
 /****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League    Script Date: 2/24/2016 2:51:26 PM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League]  	
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League]  	
 	@FromDate		DATE,
 	@ToDate			DATE,
 	@LeagueName		NVARCHAR(100)= '',
@@ -7,7 +7,8 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League]
 	@WinLoss		MONEY = NULL,
 	@MarginFrom		MONEY = NULL,
 	@MarginTo		MONEY = NULL,
-	@Bettypes		VARCHAR(2000) =  '0'
+	@Bettypes		VARCHAR(2000) =  '0',
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20160216@Long.Luu
@@ -18,6 +19,7 @@ AS
  Revisions:      	
  	- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 	- 20171205@Simon: get only Live data & Bettypes are not disabled
+	- 20180912@Simon: add league exclusion
 
  Param's Explanation:  	
 
@@ -56,6 +58,7 @@ BEGIN
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 						AND P.IsLive = 1
+						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 					GROUP BY P.LeagueId , L.LeagueName 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)
@@ -81,6 +84,7 @@ BEGIN
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
 						AND P.IsLive = 1
+						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 					GROUP BY P.LeagueId , L.LeagueName 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)
@@ -90,3 +94,6 @@ BEGIN
 			ORDER BY Margin DESC, P.LeagueName ASC;
 		END;
 END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

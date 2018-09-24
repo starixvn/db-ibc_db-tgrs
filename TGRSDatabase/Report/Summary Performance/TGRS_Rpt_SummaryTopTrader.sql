@@ -1,10 +1,11 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryTopTrader]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTopTrader]  
 	@Top		 TINYINT = 10,
 	@IsBottom	 BIT = 0,
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
 	@ToDate		 DATE,
-	@ViewPermission SMALLINT
+	@ViewPermission SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
 	 Created:	20140520@Sophia
@@ -16,6 +17,7 @@ AS
    		- 20171024@Simon: Add ViewPermission param		
 		- 20171025@Long: Change the way to get MatchCount
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	 Param's Explanation:  
 		@ReportType = 1: by Date
@@ -93,6 +95,7 @@ BEGIN
 			)
 		AND tp.IsLive = 1
 		AND bt.[Disabled] = 0
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY tp.CustId;
 
 	IF @ReportType	= 1 --- by date
@@ -115,6 +118,7 @@ BEGIN
 				)
 			AND P.IsLive = 1
 			AND bt.[Disabled] = 0
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade;
 	END
 	ELSE  --- by month-year
@@ -135,6 +139,7 @@ BEGIN
 					@ViewPermission = 0
 					OR P.BettypeGroup = @ViewPermission
 				)
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount;	
 	END
 
@@ -203,3 +208,6 @@ BEGIN
 			END
 	 END 
 END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

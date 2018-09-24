@@ -1,12 +1,10 @@
-﻿
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Grade_League_Trader    Script Date: 1/17/2017 11:20:00 AM ******/
 
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Grade_League_Trader    Script Date: 4/1/2016 8:22:16 AM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_League_Trader] 
-	 @FromDate DATE
-	,@ToDate DATE
-	,@Grade INT
-	,@LeagueId INT
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_League_Trader] 
+		@FromDate				DATE
+	,	@ToDate					DATE
+	,	@Grade					INT
+	,	@LeagueId				INT
+	,	@IsExcludeLeagues		BIT = 1
 AS
 /*  
 	Created:	20170109@Aaron
@@ -15,8 +13,9 @@ AS
 	Original:  
 	 
 	Revisions:
-		- 20170316@Long: apply TO's Leftover
-		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20170316@Long:	apply TO's Leftover
+		- 20171205@Simon:	get only Live data & Bettypes are not disabled
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]  
 	  			
 	Param's Explanation:  	
 	
@@ -78,6 +77,7 @@ BEGIN
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY tp.CustId;
 
 	SELECT td.CustID
@@ -110,3 +110,6 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_League_Trader] TO [bodbTGRSNet ]
 GO
 */
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

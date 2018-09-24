@@ -1,8 +1,9 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_TraderBettypePerformance]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderBettypePerformance]
 	@TraderId		INT,
 	@FromDate		DATETIME,
 	@ToDate			DATETIME,
-	@ViewPermission SMALLINT
+	@ViewPermission SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS
 /*
 	Creator: Percy
@@ -14,6 +15,7 @@ AS
 		- 20160531@Percy: Return new field betcount [RedmineID: #58484]
 		- 20171024@Simon: Add ViewPermission param
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180912@Simon: add league exclusion
 
 	Param's Explanation:
 		@ViewPermission = 0: all bet types
@@ -42,6 +44,7 @@ BEGIN
 			)
 		AND t.IsLive = 1
 		AND b.[Disabled] = 0
+		AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY b.BetType, b.TypeName, b.OrderId
 	ORDER BY Margin DESC, b.OrderId;
 END;
@@ -49,3 +52,6 @@ GO
 
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderBettypePerformance] TO [bodbTGRSNet]
 GO
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

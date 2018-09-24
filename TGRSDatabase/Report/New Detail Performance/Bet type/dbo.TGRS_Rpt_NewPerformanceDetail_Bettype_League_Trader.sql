@@ -1,13 +1,10 @@
-﻿
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_Bettype_League_Trader    Script Date: 1/17/2017 11:20:00 AM ******/
 
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_League_Trader    Script Date: 3/23/2016 11:22:33 PM ******/
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_League_Trader    Script Date: 3/22/2016 12:48:53 PM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_League_Trader] 
-	 @FromDate DATE
-	,@ToDate DATE
-	,@LeagueId INT
-	,@Bettype SMALLINT
+ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_League_Trader] 
+		@FromDate				DATE
+	,	@ToDate					DATE
+	,	@LeagueId				INT
+	,	@Bettype				SMALLINT
+	,	@IsExcludeLeagues		BIT = 1
 AS
 /*  
  Created:	20170110@Aaron
@@ -18,6 +15,7 @@ AS
  Revisions:      	
 		- 20170316@Long: apply TO's Leftover
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]  
  
  Param's Explanation:  	
 
@@ -29,28 +27,28 @@ BEGIN
 	SET NOCOUNT ON;
 
 	CREATE TABLE #TraderDetail (
-		CustID INT
-		,TeamId INT
-		,MatchCount INT
-		,Turnover MONEY
-		,TurnoverJuice MONEY
-		,Juice MONEY
-		,WinLoss MONEY
-		,WinLossScore MONEY
-		,BetCount INT
-		,SumCategory MONEY
+			CustID			INT
+		,	TeamId			INT
+		,	MatchCount		INT
+		,	Turnover		MONEY
+		,	TurnoverJuice	MONEY
+		,	Juice			MONEY
+		,	WinLoss			MONEY
+		,	WinLossScore	MONEY
+		,	BetCount		INT
+		,	SumCategory		MONEY
 	);
 
 	INSERT INTO #TraderDetail (
-		CustID
-		,MatchCount
-		,Turnover
-		,TurnoverJuice
-		,Juice
-		,WinLoss
-		,WinLossScore
-		,BetCount
-		,SumCategory
+			CustID
+		,	MatchCount
+		,	Turnover
+		,	TurnoverJuice
+		,	Juice
+		,	WinLoss
+		,	WinLossScore
+		,	BetCount
+		,	SumCategory
 	)
 	SELECT tp.CustId AS CustId
 		,COUNT(DISTINCT tp.MatchId) AS MatchCount
@@ -74,6 +72,7 @@ BEGIN
 		AND tp.BetType = @Bettype
 		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY tp.CustId;
 
 	SELECT td.CustID
@@ -97,7 +96,7 @@ BEGIN
 		INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId;
 
 	DROP TABLE #TraderDetail;
-END
+END;
 
 /*
 GO
@@ -106,3 +105,6 @@ GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_Bettype_League_Trader] TO [bodbTGRSNet ]
 GO
 */
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

@@ -1,4 +1,4 @@
-USE [bodb_TGRS]
+
 GO
 ALTER PROCEDURE	[dbo].[Task_StagingOSJuice]
 					@Debug				BIT = 0

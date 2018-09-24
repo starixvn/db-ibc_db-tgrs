@@ -1,8 +1,9 @@
-﻿/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_League    Script Date: 3/22/2016 12:48:53 PM ******/
-CREATE PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League]  	
+/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_League    Script Date: 3/22/2016 12:48:53 PM ******/
+ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League]  	
 	@FromDate		DATE,
 	@ToDate			DATE,		
-	@Bettype		SMALLINT
+	@Bettype		SMALLINT,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20160315@Thai.Tran
@@ -12,6 +13,7 @@ AS
  
  Revisions:      	
 	- 20171205@Simon: get only Live data & Bettypes are not disabled
+	- 20180912@Simon: add league exclusion
 
  Param's Explanation:  	
 
@@ -37,9 +39,13 @@ BEGIN
 	WHERE	P.Bettype = @Bettype
 		AND P.EventDate BETWEEN @FromDate AND @ToDate					
 		AND P.IsLive = 1
+		AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.LeagueId, L.LeagueName 	
 	ORDER BY Margin DESC, LeagueName ASC;				 		
 END;
 
 --GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League] TO [bodbTGRSNet]
 --GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League] TO [bodbTGRSNet ]
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

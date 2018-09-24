@@ -1,8 +1,9 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Rpt_SummaryBetTypePerformance]  
+ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryBetTypePerformance]  
 	@ReportType	 TINYINT = 1,
 	@FromDate	 DATE,
 	@ToDate		 DATE,
-	@ViewPermission TINYINT = 0
+	@ViewPermission TINYINT = 0,
+	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
  Created:	20140520@Sophia
@@ -13,6 +14,7 @@ AS
  Revisions:      
 	-20141219@Sophia: Order by Margin DESC
 	-20171025@Harvey: add @ViewPermission param for data permission
+	- 20180912@Simon: add league exclusion
    			
  Param's Explanation:  
  	@ReportType = 1: by Date
@@ -43,6 +45,7 @@ BEGIN
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 					AND B.[Disabled] = 0
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 
@@ -61,6 +64,7 @@ BEGIN
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 					AND B.[Disabled] = 0
+					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY B.BetType, B.TypeName, B.OrderId
 		ORDER BY Margin DESC, B.OrderId
 
@@ -68,3 +72,6 @@ BEGIN
 
 
 END
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

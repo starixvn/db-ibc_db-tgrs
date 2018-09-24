@@ -1,4 +1,4 @@
-USE [bodb_TGRS]
+
 GO
 SET ANSI_NULLS ON
 GO
@@ -6,8 +6,9 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_BettypePerformanceMonthly] 
-	@Year	INT
-	,@BetTypes NVARCHAR(MAX)
+		@Year				INT
+	,	@BetTypes			NVARCHAR(MAX)
+	,	@IsExcludeLeagues	BIT = 0
 AS
 /*
 	Created: 20180719@CaseyHuynh
@@ -16,6 +17,7 @@ AS
 	Original:
 
 	Revisions:
+		- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
 
 	Param's Explanation (filtered by):
 */
@@ -63,7 +65,7 @@ BEGIN
 	FROM	#tmpBettype AS tbt WITH (ROWLOCK)
 			INNER JOIN dbo.BetType AS bt WITH (NOLOCK) ON tbt.BetType = bt.BetType;
 
-		--2: GET BettypePerformance
+	--2: GET BettypePerformance
 	INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
 	SELECT	sbt.BetType
 			, bt.BetTypeName
@@ -74,7 +76,8 @@ BEGIN
 			, SUM(sbt.MatchCount) AS MatchCount
 	FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
 			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
-	WHERE	YEAR(sbt.EventDate) = @Year			
+	WHERE	YEAR(sbt.EventDate) = @Year
+		AND (@IsExcludeLeagues = 0 OR (sbt.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
 	
 	---===========3. RETURN DATA===================================
@@ -133,3 +136,6 @@ GRANT EXECUTE ON [dbo].[TGRS_Rpt_BettypePerformanceMonthly] TO [bodbTGRSNet]
 GO
 GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_BettypePerformanceMonthly] TO [bodbTGRSNet]
 GO
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

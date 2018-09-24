@@ -1,13 +1,14 @@
-﻿ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailBetTypePerformance]
-	@FromDate	 DATE,
-	@ToDate		 DATE,
-	@BetTypeBMFrom MONEY = NULL,
-	@BetTypeBMTo MONEY = NULL,
-	@Turnover	MONEY = NULL,
-	@WinLost	MONEY = NULL,
-	@MarginFrom	MONEY = NULL,
-	@MarginTo   MONEY = NULL,
-	@Bettypes	VARCHAR(200) =  '0'
+ALTER PROCEDURE [dbo].[TGRS_Rpt_DetailBetTypePerformance]
+	@FromDate				DATE,
+	@ToDate					DATE,
+	@BetTypeBMFrom			MONEY = NULL,
+	@BetTypeBMTo			MONEY = NULL,
+	@Turnover				MONEY = NULL,
+	@WinLost				MONEY = NULL,
+	@MarginFrom				MONEY = NULL,
+	@MarginTo				MONEY = NULL,
+	@Bettypes				VARCHAR(2000) =  '0',
+	@IsExcludeLeagues		BIT = 1
 AS    
 /*  
  Created:	20140523@Sophia
@@ -16,7 +17,8 @@ AS
  Original:  
   
  Revisions: 
-	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		     
+	- 20140728@Sophia:	Change Benchmark to percentage instead of decimal number		   
+	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]  
    			
  Param's Explanation:  	
 
@@ -36,8 +38,7 @@ BEGIN
 		 INSERT INTO @BettypeList
 		 SELECT Bettype FROM dbo.Bettype WITH (NOLOCK)
 		 
-		 	
-	 SELECT	P.BetType, 
+	SELECT	P.BetType, 
 			TN.TypeName,
 			ISNULL(COUNT(DISTINCT P.CustId),0) AS TraderCount, 
 			ISNULL(COUNT(DISTINCT P.LeagueId),0) AS LeagueCount, 
@@ -46,41 +47,45 @@ BEGIN
 			ISNULL(SUM(P.WinLost),0) - ISNULL(SUM (P.Comm),0) AS WinLost, 
 			ISNULL(SUM(P.BetCount),0) AS BetCount,
 			CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin	
-	 FROM	dbo.TraderPerformance P WITH (NOLOCK)
-	 LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
-			 ON BT.LeagueId = P.LeagueId
+		FROM	dbo.TraderPerformance P WITH (NOLOCK)
+		LEFT JOIN dbo.Benchmark_BetType BT WITH (NOLOCK)
+				ON BT.LeagueId = P.LeagueId
 				AND BT.BetType = P.BetType
 				AND BT.WorkShift = P.WorkShift
-	 LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON
-			  TN.BetType = P.BetType
-	 WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
+		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON
+				TN.BetType = P.BetType
+		WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 			AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
 			AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
 			AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.BetType,TN.TypeName
 	HAVING	(@Turnover IS NULL OR ISNULL(SUM(P.Stake),0) >= ISNULL(@Turnover,0))
 			AND (@WinLost IS NULL OR ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) >= ISNULL(@WinLost,0))
 			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-					 ELSE 0 END 
+						THEN (ISNULL(SUM(P.WinLost),0)- ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
+						ELSE 0 END 
 				>= CASE WHEN @MarginFrom IS NULL 
 						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-							 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-							 ELSE 0 END 
+								THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
+								ELSE 0 END 
 						ELSE @MarginFrom END 
 			AND CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-					 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
-					 ELSE 0 END 
+						THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0)
+						ELSE 0 END 
 				<= CASE WHEN @MarginTo IS NULL 
 						THEN CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 
-								  THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0) 
-								  ELSE 0 END 
+									THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) *100 /ISNULL(SUM(P.Stake),0) 
+									ELSE 0 END 
 						ELSE @MarginTo END 
-	ORDER BY Margin DESC, P.Bettype ASC 
-
-END 
+	ORDER BY Margin DESC, P.Bettype ASC ;
+END;
 
 GO
 GRANT EXECUTE ON [dbo].[TGRS_Rpt_DetailBetTypePerformance] TO [bodbTGRSNet]
 GO
 
+
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
