@@ -38,6 +38,7 @@ AS
 		- 20180713@Long.Luu: Manage for case changing the status of match before bettrans [Redmine ID: 97987]
 		- 20180817@Casey.Huynh: Fix Issue get Bettype. Add SpecialBettype for FillterBettrans Instead of Trader [Redmine ID:89493]
 		- 20180924@Long:	Remove code to check for ruben value in _bk & 14 table
+		- 20180924Casey.Huynh: Update condition get data to table "TraceScannedMatchesInfo"
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -1044,7 +1045,7 @@ BEGIN
 				 , @FromSP
 				 , @CapturedDate
 		FROM	#tmpDLScannedMatches m WITH (NOLOCK)
-				INNER JOIN bodb02.dbo.bettrans14 b WITH (NOLOCK) ON b.matchid = b.matchid
+				INNER JOIN bodb02.dbo.bettrans14 b WITH (NOLOCK) ON b.matchid = m.matchid
 		GROUP BY  m.MatchId,  m.EventDate,  b.Bettype, b.LiveIndicator
 		
 		INSERT INTO	#tmpDLTrader (CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)
@@ -1516,7 +1517,7 @@ BEGIN
 				 , @FromSP
 				 , @CapturedDate
 		FROM	#tmpDLScannedMatches m WITH (NOLOCK)
-				INNER JOIN bodb02.dbo.bettrans b WITH (NOLOCK) ON b.matchid = b.matchid
+				INNER JOIN bodb02.dbo.bettrans b WITH (NOLOCK) ON b.matchid = m.matchid
 		GROUP BY  m.MatchId,  m.EventDate,  b.Bettype, b.LiveIndicator
 		
 		INSERT INTO	#tmpDLTrader (CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)

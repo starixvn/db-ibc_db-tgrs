@@ -22,7 +22,7 @@ AS
 		- 20180824@Casey.Huynh: Fix Issue get Bettype. Add SpecialBettype for FillterBettrans Instead of Trader [Redmine ID:89493]
 		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
    		- 20180924@Long:	Fix bug for updating juice value only for Live data
-
+		- 20180924Casey.Huynh: Update condition get data to table "TraceScannedMatchesInfo"
 	Param's Explanation:
 		
 	Exam:
@@ -365,7 +365,7 @@ BEGIN
 				 , FromSP = @FromSP
 				 , CapturedDate = @CapturedDate 
 		FROM	#tmpRTScannedMatches m WITH (NOLOCK)
-				INNER JOIN bodb02.dbo.bettrans b WITH (NOLOCK) ON b.matchid = b.matchid
+				INNER JOIN bodb02.dbo.bettrans b WITH (NOLOCK) ON b.matchid = m.matchid
 		GROUP BY  m.MatchId,  m.EventDate,  b.Bettype, b.LiveIndicator;		
 		
 		----------------------------------------------------
