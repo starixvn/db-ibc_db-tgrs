@@ -1,15 +1,15 @@
-
+SET QUOTED_IDENTIFIER ON 
 GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
+SET ANSI_NULLS ON 
 GO
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderPerformanceMonthly]  	
-	@Bettype		INT = -1,
-	@TraderName		VARCHAR(30) = '',
-	@LiveStatus		INT = -1,
+	@Bettype			INT = -1,
+	@TraderName			VARCHAR(30) = '',
+	@LiveStatus			INT = 1,
+	@Year				INT = 2017,
+	@Shift				INT = -1,
+	@Grade				INT = -1,
 	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
@@ -20,25 +20,27 @@ AS
  
 	Revisions:      	
 			- 20171129@LongLuu: Create New
+			- 20180226@Aaron: #90868 - improve UX and support more data
 			- 20180912@Simon: add league exclusion
  
 	Param's Explanation:  	
 			- @Bettype: -1 all bettype, x specific bettype
 			- @LiveStatus: -1 all status, 1 live, 0 non-live
 	Exam: 
-	  		EXEC  TGRS_Rpt_TraderPerformanceMonthly @Bettype = -1, @TraderName = '', @LiveStatus = -1
+	  		EXEC  TGRS_Rpt_TraderPerformanceMonthly @Bettype = -1, @TraderName = '', @LiveStatus = -1, @Year = 2018 , @Shift = -1,
+	@Grade = -1
   
 */  
  
 BEGIN 
 	SET NOCOUNT ON;
 
-	DECLARE @CurrentYear			INT = YEAR(GETDATE());
+	DECLARE @CurrentYear			INT = @Year;
 	DECLARE @LastYear				INT = @CurrentYear - 1;
-	DECLARE @FirstHalfFromDate		DATE = DATEADD(yy, DATEDIFF(yy, 0, GETDATE()), 0);
-	DECLARE @FirstHalfToDate		DATE = CAST(CAST(@CurrentYear AS VARCHAR) + '-06-01' AS DATE);
-	DECLARE @SecondHalfFromDate		DATE = DATEADD(mm, 1, @FirstHalfToDate);
-	DECLARE @SecondHalfToDate		DATE = DATEADD(yy, DATEDIFF(yy, 0, GETDATE()) + 1, -1);
+	DECLARE @FirstHalfFromDate		DATE = CAST(CAST(@CurrentYear AS VARCHAR) + '-01-01' AS DATE);
+	DECLARE @FirstHalfToDate		DATE = CAST(CAST(@CurrentYear AS VARCHAR) + '-06-30' AS DATE);
+	DECLARE @SecondHalfFromDate		DATE = CAST(CAST(@CurrentYear AS VARCHAR) + '-07-01' AS DATE);
+	DECLARE @SecondHalfToDate		DATE = CAST(CAST(@CurrentYear AS VARCHAR) + '-12-31' AS DATE);
 	
 	IF	OBJECT_ID('tempdb..#tmpTrader') IS NOT NULL
 	BEGIN;
@@ -90,10 +92,12 @@ BEGIN
 		,	s.ShiftName
 		,	t.Remark
 	FROM dbo.Trader t WITH(NOLOCK)
-		INNER JOIN Team tm ON t.TeamId = tm.TeamId
-		INNER JOIN [Shift] s ON t.[Shift] = s.ShiftId
+		INNER JOIN Team tm WITH(NOLOCK) ON t.TeamId = tm.TeamId
+		INNER JOIN [Shift] s WITH(NOLOCK) ON t.[Shift] = s.ShiftId
 	WHERE t.[Shift] IS NOT NULL
-		AND (@TraderName IS NULL OR t.Username LIKE '%' + @TraderName + '%')
+		AND	(ISNULL(@TraderName, '') = '' OR t.Username LIKE '%' + @TraderName + '%')
+		AND (ISNULL(@Shift, -1) = -1 OR t.Shift = @Shift)
+		AND (ISNULL(@Grade, -1) = -1 OR t.Grade = @Grade)
 			
 	INSERT INTO #tmpTraderProduct(
 			TraderID
@@ -101,8 +105,7 @@ BEGIN
 	)
 	SELECT  t.CustId
        ,STUFF((SELECT ', ' + CAST(t1.bettype AS VARCHAR(10)) [text()]
-         FROM (
-				SELECT DISTINCT custid, bettype
+         FROM (SELECT DISTINCT custid, bettype
 				FROM dbo.TraderPerformance_Yearly p1 WITH(NOLOCK)
 				WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 				) AS t1
@@ -111,7 +114,8 @@ BEGIN
         .value('.','NVARCHAR(MAX)'),1,2,' ') AS Products
 	FROM (SELECT DISTINCT custid, bettype
 		FROM dbo.TraderPerformance_Yearly p1 WITH(NOLOCK)
-		WHERE (@IsExcludeLeagues = 0 OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = p1.LeagueId)))) AS t
+		WHERE (@IsExcludeLeagues = 0 
+			OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = p1.LeagueId)))) AS t
 	GROUP BY t.CustId;
 
 	UPDATE #tmpTrader
@@ -132,10 +136,10 @@ BEGIN
 
 	-- Sum for current year first-half
 	SELECT _tpm.TraderID
-		,  _tpm.Turnover
-		,  _tpm.WinLoss
-		,  _tpm.BetCount
-		,  tmc.MatchCount AS MatchCount
+		,  SUM(_tpm.Turnover) AS Turnover
+		,  SUM(_tpm.WinLoss) AS WinLoss
+		,  SUM(_tpm.BetCount) AS BetCount
+		,  SUM(tmc.MatchCount) AS MatchCount
 	FROM dbo.TraderMatchCount_Monthly tmc WITH(NOLOCK) 
 	CROSS APPLY (
 		 SELECT tpm.CustId AS TraderID
@@ -152,14 +156,15 @@ BEGIN
 	WHERE tmc.EventDate BETWEEN @FirstHalfFromDate AND @FirstHalfToDate
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)));
+		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)))
+	GROUP BY _tpm.TraderID;
 
 	-- Sum for current year second-half
 	SELECT _tpm.TraderID
-		,  _tpm.Turnover
-		,  _tpm.WinLoss
-		,  _tpm.BetCount
-		,  tmc.MatchCount AS MatchCount
+		,  SUM(_tpm.Turnover) AS Turnover
+		,  SUM(_tpm.WinLoss) AS WinLoss
+		,  SUM(_tpm.BetCount) AS BetCount
+		,  SUM(tmc.MatchCount) AS MatchCount
 	FROM dbo.TraderMatchCount_Monthly tmc WITH(NOLOCK) 
 	CROSS APPLY (
 		 SELECT tpm.CustId AS TraderID
@@ -176,7 +181,8 @@ BEGIN
 	WHERE tmc.EventDate BETWEEN @SecondHalfFromDate AND @SecondHalfToDate
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)));
+		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)))
+	GROUP BY _tpm.TraderID;
 
 	-- Sum for current & last year
 	SELECT _tpm.TraderID
@@ -225,7 +231,7 @@ BEGIN
 		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = tpm.LeagueId)))
 		 GROUP BY tpm.CustId, tpm.EventDate
 				) _tpm
-	WHERE YEAR(tmc.EventDate) = @CurrentYear
+	WHERE tmc.EventDate BETWEEN @FirstHalfFromDate AND @SecondHalfToDate
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
 		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = tmc.LeagueId)));
