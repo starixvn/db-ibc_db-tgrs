@@ -16,7 +16,7 @@ AS
   
 	Revisions:
 		- 20180921@Long:	Adding meta data for SP
-		- 20181009@Long:	Remove checking for Actived Leagues [Redmine ID: 102935]
+		- 20181009@Long:	Remove checking for Active status of Leagues [Redmine ID: 102935]
    		
 	Param's Explanation:
 
