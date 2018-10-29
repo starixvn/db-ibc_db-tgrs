@@ -16,6 +16,7 @@ AS
   
 	Revisions:
 		- 20180921@Long:	Adding meta data for SP
+		- 20181009@Long:	Remove checking for Active status of Leagues [Redmine ID: 102935]
    		
 	Param's Explanation:
 
@@ -30,8 +31,7 @@ BEGIN
 		,	[IsExcluded]	= CASE WHEN e.LeagueId IS NULL THEN 0 ELSE 1 END 
 	FROM bodb02.dbo.league AS l WITH(NOLOCK)
 		LEFT JOIN dbo.LeagueExclusion AS e WITH(NOLOCK) ON l.leagueid = e.LeagueId
-	WHERE l.IsActive = 1
-		AND e.LeagueId IS NULL
+	WHERE e.LeagueId IS NULL
 		AND (@LeagueName = '' OR l.leaguename LIKE '%' + @LeagueName + '%')
 	ORDER BY (CASE WHEN e.LeagueId IS NULL THEN 0 ELSE 1 END) DESC
 		,	l.leaguename ASC;
