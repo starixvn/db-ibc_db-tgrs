@@ -22,6 +22,7 @@ AS
 			- 20171129@LongLuu: Create New
 			- 20180226@Aaron: #90868 - improve UX and support more data
 			- 20180912@Simon: add league exclusion
+			- 20181114@Long: fix issue of summing data [Redmine ID: #104753]
  
 	Param's Explanation:  	
 			- @Bettype: -1 all bettype, x specific bettype
@@ -135,54 +136,34 @@ BEGIN
 	WHERE Product IS NOT NULL;
 
 	-- Sum for current year first-half
-	SELECT _tpm.TraderID
-		,  SUM(_tpm.Turnover) AS Turnover
-		,  SUM(_tpm.WinLoss) AS WinLoss
-		,  SUM(_tpm.BetCount) AS BetCount
-		,  SUM(tmc.MatchCount) AS MatchCount
-	FROM dbo.TraderMatchCount_Monthly tmc WITH(NOLOCK) 
-	CROSS APPLY (
-		 SELECT tpm.CustId AS TraderID
-			   ,SUM(tpm.Turnover) AS Turnover
-			   ,SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
-		       ,SUM(tpm.BetCount) AS BetCount
-         FROM dbo.TraderPerformance_Monthly tpm WITH (NOLOCK)
-		 INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
-    	 WHERE tpm.CustId = tmc.CustId AND tpm.SportType = tmc.SportType  AND tpm.EventDate = tmc.EventDate 
-		 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
-		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tpm.LeagueId))) 
-		 GROUP BY tpm.CustId
-				) _tpm
-	WHERE tmc.EventDate BETWEEN @FirstHalfFromDate AND @FirstHalfToDate
-		AND tmc.BetType = @Bettype
-		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)))
-	GROUP BY _tpm.TraderID;
+	SELECT	tpm.CustId AS TraderID
+		,	SUM(tpm.Turnover) AS Turnover
+		,	SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
+		,	SUM(tpm.BetCount) AS BetCount
+		,	SUM(tmc.MatchCount) AS MatchCount
+	FROM dbo.TraderPerformance_Monthly tpm WITH (NOLOCK)
+		INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
+		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId AND tpm.SportType = tmc.SportType  AND tpm.EventDate = tmc.EventDate 
+			AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive and tpm.LeagueId = tmc.LeagueId
+    WHERE tpm.EventDate BETWEEN @FirstHalfFromDate AND @FirstHalfToDate
+		AND tpm.BetType = @Bettype AND tpm.IsLive = @LiveStatus
+		AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK)))) 
+	GROUP BY tpm.CustId;
 
 	-- Sum for current year second-half
-	SELECT _tpm.TraderID
-		,  SUM(_tpm.Turnover) AS Turnover
-		,  SUM(_tpm.WinLoss) AS WinLoss
-		,  SUM(_tpm.BetCount) AS BetCount
-		,  SUM(tmc.MatchCount) AS MatchCount
-	FROM dbo.TraderMatchCount_Monthly tmc WITH(NOLOCK) 
-	CROSS APPLY (
-		 SELECT tpm.CustId AS TraderID
-			   ,SUM(tpm.Turnover) AS Turnover
-			   ,SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
-		       ,SUM(tpm.BetCount) AS BetCount
-         FROM dbo.TraderPerformance_Monthly tpm WITH (NOLOCK)
-		 INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
-    	 WHERE tpm.CustId = tmc.CustId AND tpm.SportType = tmc.SportType  AND tpm.EventDate = tmc.EventDate 
-		 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
-		 AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tpm.LeagueId))) 
-		 GROUP BY tpm.CustId
-				) _tpm
-	WHERE tmc.EventDate BETWEEN @SecondHalfFromDate AND @SecondHalfToDate
-		AND tmc.BetType = @Bettype
-		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)))
-	GROUP BY _tpm.TraderID;
+	SELECT	tpm.CustId AS TraderID
+		,	SUM(tpm.Turnover) AS Turnover
+		,	SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
+		,	SUM(tpm.BetCount) AS BetCount
+		,	SUM(tmc.MatchCount) AS MatchCount
+	FROM dbo.TraderPerformance_Monthly tpm WITH (NOLOCK)
+		INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
+		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId AND tpm.SportType = tmc.SportType  AND tpm.EventDate = tmc.EventDate 
+			AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive and tpm.LeagueId = tmc.LeagueId
+    WHERE tpm.EventDate BETWEEN @SecondHalfFromDate AND @SecondHalfToDate
+		AND tpm.BetType = @Bettype AND tpm.IsLive = @LiveStatus
+		AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK)))) 
+	GROUP BY tpm.CustId;
 
 	-- Sum for current & last year
 	SELECT _tpm.TraderID
