@@ -1,8 +1,12 @@
-
+SET QUOTED_IDENTIFIER ON 
+GO
+SET ANSI_NULLS ON 
 GO
 ALTER PROCEDURE	[dbo].[Task_StagingOSJuice]
-					@Debug				BIT = 0
-				,	@BeforeMoveBetsDay	BIT = 1
+		@Debug					BIT = 0
+	,	@BeforeMoveBetsDay		BIT = 1	
+	,	@GenerateFromDate		SMALLDATETIME = NULL
+	,	@GenerateToDate			SMALLDATETIME = NULL
 AS
 /*  
 	Created:	20170329@Long.Luu
@@ -12,6 +16,7 @@ AS
   
 	Revisions:
 		- 20170712@Billy:	Change from 200000 rows batch to 100 matchs batch - [Redmine: #79615]
+		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
    		
 	Param's Explanation:
 		
@@ -515,3 +520,6 @@ BEGIN
 			AND	t.BetType = tp.BettypeId
 	WHERE	tp.EventDate = t.EventDate;
 END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

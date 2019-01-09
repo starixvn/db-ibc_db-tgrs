@@ -40,6 +40,7 @@ AS
 		- 20180924@Long:	Remove code to check for ruben value in _bk & 14 table
 		- 20180924Casey.Huynh: Update condition get data to table "TraceScannedMatchesInfo"
 		- 20180924@Long:	Compare to pick the max value of (MoveBetDate -3) vs BalanceUpDate
+		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -173,7 +174,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmpDLScannedMatches (
-			MatchId			INT NOT NULL
+			  MatchId		INT NOT NULL
 			, EventDate		DATETIME
 			, KickOffTime	DATETIME
 			, WorkShift		TINYINT
@@ -236,6 +237,7 @@ BEGIN
 
 	CREATE TABLE	#tmpDLFilteredBettransByBatch (
 			transid				BIGINT
+		,	custid				INT
 		,	matchid				INT
 		,	WorkShift			INT
 		,	winlostdate			SMALLDATETIME
@@ -266,6 +268,10 @@ BEGIN
 		,	MatchId				ASC
 		,	BetType				ASC
 	);
+
+	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLFilteredBettransByBatchIdx ON #tmpDLFilteredBettransByBatch (
+			custid				ASC
+	);
 	
 		IF	OBJECT_ID('tempdb..#tmpDLFilteredBettransByBatch_Distinct') IS NOT NULL
 	BEGIN
@@ -274,6 +280,7 @@ BEGIN
 
 	CREATE TABLE	#tmpDLFilteredBettransByBatch_Distinct (
 			transid				BIGINT
+		,	custid				INT
 		,	matchid				INT
 		,	WorkShift			INT
 		,	winlostdate			SMALLDATETIME
@@ -305,6 +312,10 @@ BEGIN
 		,	BetType				ASC
 	);
 
+	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLFilteredBettransByBatch_DistinctIdx ON #tmpDLFilteredBettransByBatch_Distinct (
+			custid				ASC
+	);
+
 	IF	OBJECT_ID('tempdb..#tmpDLStagingTraderPerformance') IS NOT NULL
 	BEGIN
 		DROP TABLE	#tmpDLStagingTraderPerformance;
@@ -312,6 +323,7 @@ BEGIN
 
 	CREATE TABLE	#tmpDLStagingTraderPerformance (
 			CustId				INT
+		,	MemberCustId		INT
 		,	WorkShift			TINYINT
 		,	MatchId				INT
 		,	MatchCode			VARCHAR(100)
@@ -340,6 +352,10 @@ BEGIN
 			CustId				ASC
 		,	EventDate			ASC
 	); 
+
+	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLStagingTraderPerformanceIdx ON #tmpDLStagingTraderPerformance (
+			MemberCustId		ASC
+	);
 
 	-- Initialize date range
 	DECLARE @IsGetDataFromOrigin	BIT = 0
@@ -679,10 +695,11 @@ BEGIN
 			FROM	#tmpDLwinlostdate AS d;
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
-			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice)
 			SELECT	[transid]			= b.transid
+				,	[custid]			= b.custid
 				,	[matchid]			= b.matchId
 				,	[workshift]			= m.WorkShift
 				,	[specialType]		= m.SpecialType
@@ -752,16 +769,17 @@ BEGIN
 			END;
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
-			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice)
-			SELECT	DISTINCT transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			SELECT	DISTINCT transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice
 			FROM	#tmpDLFilteredBettransByBatch WITH(NOLOCK)
 			
-			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator, BetChoice)
+			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator, BetChoice)
 			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+				,	[MemberCustId]		= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.matchId
 				,	[MatchCode]			= b.matchCode
@@ -848,6 +866,7 @@ BEGIN
 				) AS ca
 			WHERE	b.winlostdate = @winlostdate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+					,	b.custid
 					,	ISNULL(b.WorkShift, 1)
 					,	b.matchId
 					,	b.matchCode
@@ -900,11 +919,13 @@ BEGIN
 				,	[Stake]				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 				,	[WinLost]			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 				,	[Comm]				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
-				,	[BetCount]			= SUM(t.BetCount)
+				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
-			FROM	#tmpDLStagingTraderPerformance AS t WHERE	t.EventDate = @winlostdate
+			FROM	#tmpDLStagingTraderPerformance AS t
+			LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
+			WHERE	t.EventDate = @winlostdate
 			GROUP BY t.CustId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
-				
+
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
@@ -929,8 +950,10 @@ BEGIN
 					,	[Stake]				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 					,	[WinLost]			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 					,	[Comm]				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
-					,	[BetCount]			= SUM(t.BetCount)
-			FROM	#tmpDLStagingTraderPerformance AS t WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
+					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
+			FROM	#tmpDLStagingTraderPerformance AS t 
+			LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
+			WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
 			GROUP BY t.CustId, t.matchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1049,6 +1072,7 @@ BEGIN
 				 , @CapturedDate
 		FROM	#tmpDLScannedMatches m WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.bettrans14 b WITH (NOLOCK) ON b.matchid = m.matchid
+		WHERE b.winlostdate BETWEEN @FromDate14 AND @ToDate14
 		GROUP BY  m.MatchId,  m.EventDate,  b.Bettype, b.LiveIndicator
 		
 		INSERT INTO	#tmpDLTrader (CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)
@@ -1141,10 +1165,11 @@ BEGIN
 			FROM	#tmpDLwinlostdate AS d;
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
-			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice)
 			SELECT	[transid]			= b.transid
+				,	[custid]			= b.custid
 				,	[matchid]			= b.matchId
 				,	[workshift]			= m.WorkShift
 				,	[specialType]		= m.SpecialType
@@ -1214,16 +1239,17 @@ BEGIN
 			END;
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
-			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice)
-			SELECT	DISTINCT transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			SELECT	DISTINCT transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice
 			FROM	#tmpDLFilteredBettransByBatch WITH(NOLOCK);
 			
-			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator, BetChoice)
+			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator, BetChoice)
 			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+				,	[MemberCustId]		= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.matchId
 				,	[MatchCode]			= b.matchCode
@@ -1310,6 +1336,7 @@ BEGIN
 				) AS ca
 			WHERE	b.winlostdate = @winlostdate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+					,	b.custid
 					,	ISNULL(b.WorkShift, 1)
 					,	b.matchId
 					,	b.matchCode
@@ -1362,9 +1389,11 @@ BEGIN
 				,	[Stake]				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 				,	[WinLost]			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 				,	[Comm]				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
-				,	[BetCount]			= SUM(t.BetCount)
+				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
-			FROM	#tmpDLStagingTraderPerformance AS t WHERE	t.EventDate = @winlostdate
+			FROM	#tmpDLStagingTraderPerformance AS t 
+					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
+			WHERE	t.EventDate = @winlostdate
 			GROUP BY t.CustId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1391,8 +1420,10 @@ BEGIN
 					,	[Stake]				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 					,	[WinLost]			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 					,	[Comm]				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
-					,	[BetCount]			= SUM(t.BetCount)
-			FROM	#tmpDLStagingTraderPerformance AS t WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
+					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
+			FROM	#tmpDLStagingTraderPerformance AS t
+					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
+			WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
 			GROUP BY t.CustId, t.matchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1521,6 +1552,7 @@ BEGIN
 				 , @CapturedDate
 		FROM	#tmpDLScannedMatches m WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.bettrans b WITH (NOLOCK) ON b.matchid = m.matchid
+		WHERE	b.winlostdate BETWEEN @FromDateOrigin AND @ToDateOrigin
 		GROUP BY  m.MatchId,  m.EventDate,  b.Bettype, b.LiveIndicator
 		
 		INSERT INTO	#tmpDLTrader (CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)
@@ -1613,10 +1645,11 @@ BEGIN
 			FROM	#tmpDLwinlostdate AS d;
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
-			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice)
 			SELECT	[transid]			= b.transid
+				,	[custid]			= b.custid
 				,	[matchid]			= b.matchid
 				,	[workshift]			= m.WorkShift
 				,	[specialType]		= m.SpecialType
@@ -1686,16 +1719,17 @@ BEGIN
 			END;
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
-			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice)
-			SELECT	DISTINCT transid, matchid, workshift, specialType, winlostdate, bettype, modds, 
+			SELECT	DISTINCT transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
 						LeagueId, HomeId, AwayId, LiveIndicator, BetChoice
 			FROM	#tmpDLFilteredBettransByBatch WITH(NOLOCK)
 			
-			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator, BetChoice)
+			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, LiveIndicator, BetChoice)
 			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+				,	[MemberCustId]		= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.MatchId
 				,	[MatchCode]			= b.MatchCode
@@ -1782,6 +1816,7 @@ BEGIN
 				) AS ca
 			WHERE	b.winlostdate = @winlostdate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+					,	b.custid
 					,	ISNULL(b.WorkShift, 1)
 					,	b.MatchId
 					,	b.MatchCode
@@ -1834,9 +1869,11 @@ BEGIN
 				,	[Stake]				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 				,	[WinLost]			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 				,	[Comm]				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
-				,	[BetCount]			= SUM(t.BetCount)
+				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
-			FROM	#tmpDLStagingTraderPerformance AS t WHERE	t.EventDate = @winlostdate
+			FROM	#tmpDLStagingTraderPerformance AS t 
+					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
+			WHERE	t.EventDate = @winlostdate
 			GROUP BY t.CustId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1863,8 +1900,10 @@ BEGIN
 					,	[Stake]				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT))
 					,	[WinLost]			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.virtualrate)
 					,	[Comm]				= SUM((Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.virtualrate)
-					,	[BetCount]			= SUM(t.BetCount)
-			FROM	#tmpDLStagingTraderPerformance AS t WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
+					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
+			FROM	#tmpDLStagingTraderPerformance AS t 
+					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
+			WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
 			GROUP BY t.CustId, t.MatchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
