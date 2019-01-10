@@ -26,6 +26,8 @@ AS
 	Exam:
 	 
 */
+BEGIN
+	SET NOCOUNT ON;
 
 	-- Common variables
 	DECLARE	@Begin					DATETIME = GETDATE()
@@ -782,7 +784,7 @@ AS
 		LEFT JOIN	dbo.OSBettype AS b WITH (NOLOCK)
 				ON	a.bettype = b.AssignmentBetType
 				AND	a.OperatorType = b.OperatorType
-		WHERE	m.EventDate BETWEEN @MoveBetsDay + 1 AND	@Yesterday
+		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 			AND	m.EventStatus = 'completed'
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%'
@@ -969,6 +971,7 @@ AS
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 		END;
 	END;
+END;
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
