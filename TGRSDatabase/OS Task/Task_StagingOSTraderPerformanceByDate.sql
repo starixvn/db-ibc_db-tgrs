@@ -1,11 +1,7 @@
-
 SET QUOTED_IDENTIFIER ON 
 GO
 SET ANSI_NULLS ON 
 GO
-
-/****** Object:  Stored Procedure dbo.Task_StagingOSTraderPerformanceByDate    Script Date: 3/7/2017 3:10:47 PM ******/
-
 
 CREATE PROCEDURE	[dbo].[Task_StagingOSTraderPerformanceByDate]
 	@Date DATE = NULL
@@ -17,47 +13,14 @@ AS
 	Original:  
   
 	Revisions:
-				- 20170227@Aaron: Added MatchCount 
+				- 20170227@Aaron: Added MatchCount
+				- 20190108@John:  Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
    			
-	Param's Explanation:  
-	
-	Exam: 
-
+	Param's Explanation:
+	Exam:
 */
 
 SET NOCOUNT ON;
-
-	DELETE [bodb_TGRS].[dbo].OSDataTGRS	WHERE EventDate = @Date;
-
-	INSERT INTO [dbo].OSDataTGRS
-           ([TraderId]
-		   ,[MatchId]
-		   ,[MatchCode]
-           ,[EventDate]
-           ,[SportId]
-           ,[BettypeId]
-           ,[LeagueId]
-           ,[Turnover]
-           ,[WinLoss]
-           ,[Comm]
-           ,[BetCount]
-           ,[Target]
-           )
- 
-	SELECT [TraderId]
-		   ,[MatchId]
-		   ,[MatchCode]
-           ,[EventDate]
-           ,[SportId]
-           ,[BettypeId]
-           ,[LeagueId]
-           ,[Turnover]
-           ,[WinLoss]
-           ,[Comm]
-           ,[BetCount]
-		   ,[Target]
-    FROM [dbo].OSStagingDataTGRS WITH(NOLOCK)
-    WHERE EventDate = @Date;
 
 	DELETE [bodb_TGRS].[dbo].OSSummaryByTrader_Daily WHERE EventDate = @Date;
 
@@ -86,7 +49,7 @@ SET NOCOUNT ON;
            ,SUM([BetCount])
 		   ,COUNT(DISTINCT MatchId)
 		   ,[Target]
-    FROM [dbo].OSStagingDataTGRS WITH(NOLOCK)
+    FROM [dbo].OSDataTGRS WITH(NOLOCK)
     WHERE EventDate = @Date
 	GROUP BY [TraderId]
 		   ,[EventDate]
@@ -95,14 +58,5 @@ SET NOCOUNT ON;
            ,[LeagueId]
 		   ,[Target];
 
-
-
 GO
-
-SET QUOTED_IDENTIFIER OFF 
-GO
-SET ANSI_NULLS ON 
-GO
-
-
-GO 
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

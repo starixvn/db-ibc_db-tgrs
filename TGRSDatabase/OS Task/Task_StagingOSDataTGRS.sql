@@ -225,16 +225,7 @@ BEGIN
 	-- No input date range: Default job run
 	IF (@IsRunningJob = 1)
 	BEGIN
-		-- TRUNCATE TABLE	dbo.OSStagingDataTGRS;
-
-		IF	OBJECT_ID('tempdb..#tmpStaging_EventDate') IS NOT NULL
-		BEGIN
-			DROP TABLE	#tmpStaging_EventDate;
-		END;
-
-		CREATE TABLE	#tmpStaging_EventDate (
-							winlostdate DATE
-						);
+		TRUNCATE TABLE dbo.OSStaging_EventDate;
 
 		SELECT @GenerateToDate = @Yesterday;
 
@@ -420,7 +411,7 @@ BEGIN
 		-- No input date range: Default job run
 		IF (@IsRunningJob = 1)
 		BEGIN
-			INSERT INTO #tmpStaging_EventDate (winlostdate)
+			INSERT INTO dbo.OSStaging_EventDate(EventDate)
 			SELECT winlostdate FROM #tmpBettransDate
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -430,7 +421,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #tmpStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From BK - Insert OSStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
 
@@ -507,9 +498,9 @@ BEGIN
 				RAISERROR('From BK - Insert #tmpStagingOSTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE dbo.OSStagingDataTGRS WHERE EventDate = @winlostdate;
+			DELETE dbo.OSDataTGRS WHERE EventDate = @winlostdate;
 
-			INSERT INTO	dbo.OSStagingDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
+			INSERT INTO	dbo.OSDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
 			SELECT	[TraderId]		= t.CustId
 				,	[MatchId]		= m.MatchId
 				,	[MatchCode]		= m.matchcode
@@ -540,7 +531,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert OSStagingDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From BK - Insert OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			-- Remove batched-data (bettrans & date) from source
@@ -626,7 +617,7 @@ BEGIN
 		-- No input date range: Default job run
 		IF (@IsRunningJob = 1)
 		BEGIN
-			INSERT INTO #tmpStaging_EventDate (winlostdate)
+			INSERT INTO dbo.OSStaging_EventDate(EventDate)
 			SELECT winlostdate FROM #tmpBettransDate
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -636,7 +627,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #tmpStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From 14 - Insert OSStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
 
@@ -713,9 +704,9 @@ BEGIN
 				RAISERROR('From 14 - Insert #tmpStagingOSTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE dbo.OSStagingDataTGRS WHERE EventDate = @winlostdate;
+			DELETE dbo.OSDataTGRS WHERE EventDate = @winlostdate;
 
-			INSERT INTO	dbo.OSStagingDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
+			INSERT INTO	dbo.OSDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
 			SELECT	[TraderId]		= t.CustId
 				,	[MatchId]		= m.MatchId
 				,	[MatchCode]		= m.matchcode
@@ -746,7 +737,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert OSStagingDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From 14 - Insert OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			-- Remove batched-data (bettrans & date) from source
@@ -834,7 +825,7 @@ BEGIN
 		-- No input date range: Default job run
 		IF (@IsRunningJob = 1)
 		BEGIN
-			INSERT INTO #tmpStaging_EventDate (winlostdate)
+			INSERT INTO dbo.OSStaging_EventDate(EventDate)
 			SELECT winlostdate FROM #tmpBettransDate
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -844,7 +835,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert #tmpStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From Origin - Insert OSStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
 
@@ -922,9 +913,9 @@ BEGIN
 				RAISERROR('From Origin - Insert #tmpStagingOSTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			DELETE dbo.OSStagingDataTGRS WHERE EventDate = @winlostdate;
+			DELETE dbo.OSDataTGRS WHERE EventDate = @winlostdate;
 
-			INSERT INTO dbo.OSStagingDataTGRS (TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
+			INSERT INTO dbo.OSDataTGRS(TraderId, MatchId, MatchCode, EventDate, SportId, LeagueId, BettypeId, Turnover, WinLoss, Comm, BetCount, Target)
 			SELECT	[TraderId]		= t.CustId
 				,	[MatchId]		= m.MatchId
 				,	[MatchCode]		= m.matchcode
@@ -955,7 +946,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert OSStagingDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From Origin - Insert OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			-- Remove batched-data (bettrans & date) from source

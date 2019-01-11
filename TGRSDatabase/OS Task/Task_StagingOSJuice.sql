@@ -272,16 +272,6 @@ BEGIN
 	-- No input date range: Default job run
 	IF (@IsRunningJob = 1)
 	BEGIN
-		-- TRUNCATE TABLE	dbo.OSStagingDataTGRS;
-
-		IF	OBJECT_ID('tempdb..#tmpStaging_EventDate') IS NOT NULL
-		BEGIN
-			DROP TABLE	#tmpStaging_EventDate;
-		END;
-
-		CREATE TABLE	#tmpStaging_EventDate (
-							winlostdate DATE
-						);
 
 		SELECT @GenerateToDate = @Yesterday;
 
@@ -457,23 +447,6 @@ BEGIN
 		BEGIN
 			-- Force the output to appear immediately --
 			RAISERROR('From BK - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-		END;
-
-		-- No input date range: Default job run
-		IF (@IsRunningJob = 1)
-		BEGIN
-			INSERT INTO #tmpStaging_EventDate (winlostdate)
-			SELECT winlostdate FROM #tmpBettransDate
-
-			SELECT	@RowCount	= @@ROWCOUNT
-				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-				;
-
-			IF	@Debug = 1
-			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #tmpStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-			END;
 		END;
 
 		INSERT INTO #tmpFilteredBettrans
@@ -656,23 +629,6 @@ BEGIN
 			RAISERROR('From 14 - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		-- No input date range: Default job run
-		IF (@IsRunningJob = 1)
-		BEGIN
-			INSERT INTO #tmpStaging_EventDate (winlostdate)
-			SELECT winlostdate FROM #tmpBettransDate
-
-			SELECT	@RowCount	= @@ROWCOUNT
-				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-				;
-
-			IF	@Debug = 1
-			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #tmpStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-			END;
-		END;
-
 		INSERT INTO #tmpFilteredBettrans
 				(transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
 		SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
@@ -853,23 +809,6 @@ BEGIN
 		BEGIN
 			-- Force the output to appear immediately --
 			RAISERROR('From Origin - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-		END;
-
-		-- No input date range: Default job run
-		IF (@IsRunningJob = 1)
-		BEGIN
-			INSERT INTO #tmpStaging_EventDate (winlostdate)
-			SELECT winlostdate FROM #tmpBettransDate
-
-			SELECT	@RowCount	= @@ROWCOUNT
-				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-				;
-
-			IF	@Debug = 1
-			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert #tmpStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-			END;
 		END;
 
 		INSERT INTO #tmpFilteredBettrans
@@ -1075,7 +1014,7 @@ BEGIN
 	SET		tp.Juice = t.Juice
 		,	tp.StakeMYR = t.StakeMYBeforeComm
 		,	tp.StakeMYRJuice = t.StakeMYRJuice
-	FROM		dbo.OSStagingDataTGRS AS tp WITH (ROWLOCK, UPDLOCK)
+	FROM		dbo.OSDataTGRS AS tp WITH (ROWLOCK, UPDLOCK)
 	INNER JOIN	#tmpResults AS t WITH (NOLOCK)
 			ON	t.MatchId = tp.MatchId
 			AND	t.BetType = tp.BettypeId
@@ -1088,7 +1027,7 @@ BEGIN
 	IF	@Debug = 1
 	BEGIN;
 		-- Force the output to appear immediately --
-		RAISERROR('Update Juice for OSStagingDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		RAISERROR('Update Juice for OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 	END;
 	
 END;
