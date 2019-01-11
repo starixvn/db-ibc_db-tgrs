@@ -1,12 +1,12 @@
-
-SET QUOTED_IDENTIFIER ON 
-GO
-SET ANSI_NULLS ON 
+USE [bodb_TGRS]
 GO
 
-/****** Object:  Stored Procedure dbo.Task_StagingOSTraderPerformanceMonthly    Script Date: 3/7/2017 3:10:47 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 
-CREATE PROCEDURE	[dbo].[Task_StagingOSTraderPerformanceMonthly]
+ALTER PROCEDURE	[dbo].[Task_StagingOSTraderPerformanceMonthly]
 	@Month DATE = NULL
 AS
 /*
@@ -16,7 +16,8 @@ AS
 	Original:  
   
 	Revisions:
-				- 20170227@Aaron: Added MatchCount, EventDate; removed Rptyear, RptMonth
+				- 20170227@Aaron: Added MatchCount, EventDate; removed Rptyear, RptMonth				
+				- 20170404@Long: Apply Juice
    			
 	Param's Explanation:  
 	
@@ -48,6 +49,9 @@ SET NOCOUNT ON;
            ,[Target]
 		   ,[MatchCount]
 		   ,[EventDate]
+           ,[StakeMYR]
+           ,[Juice]
+           ,[StakeMYRJuice]
 		  )
 	SELECT [TraderId]
            ,[SportId]
@@ -60,6 +64,9 @@ SET NOCOUNT ON;
 		   ,[Target]
 		   ,COUNT(DISTINCT MatchId)
 		   ,@Month AS [EventDate]
+		   ,SUM([StakeMYR])
+		   ,SUM([Juice])
+		   ,SUM([StakeMYRJuice])
 	 FROM [dbo].OSDataTGRS WITH(NOLOCK)
 	 WHERE EventDate BETWEEN @StartDate AND @EndDate
 	 GROUP BY [TraderId]
@@ -80,6 +87,9 @@ SET NOCOUNT ON;
            ,[Target]
 		   ,[MatchCount]
 		   ,[EventDate]
+           ,[StakeMYR]
+           ,[Juice]
+           ,[StakeMYRJuice]
 		  )
 	SELECT  [SportId]
            ,[LeagueId]
@@ -90,19 +100,11 @@ SET NOCOUNT ON;
 		   ,[Target]
 		   ,COUNT(DISTINCT MatchId)
 		   ,@Month AS [EventDate]
+		   ,SUM([StakeMYR])
+		   ,SUM([Juice])
+		   ,SUM([StakeMYRJuice])
 	 FROM [dbo].OSDataTGRS WITH(NOLOCK)
 	 WHERE EventDate BETWEEN @StartDate AND @EndDate
 	 GROUP BY [SportId]
            ,[LeagueId]
 		   ,[Target]
-
-
-GO
-
-SET QUOTED_IDENTIFIER OFF 
-GO
-SET ANSI_NULLS ON 
-GO
-
-
-GO 

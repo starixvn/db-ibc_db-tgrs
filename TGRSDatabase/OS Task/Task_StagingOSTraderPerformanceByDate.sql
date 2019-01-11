@@ -3,7 +3,7 @@ GO
 SET ANSI_NULLS ON 
 GO
 
-CREATE PROCEDURE	[dbo].[Task_StagingOSTraderPerformanceByDate]
+ALTER PROCEDURE	[dbo].[Task_StagingOSTraderPerformanceByDate]
 	@Date DATE = NULL
 AS
 /*
@@ -13,16 +13,20 @@ AS
 	Original:  
   
 	Revisions:
-				- 20170227@Aaron: Added MatchCount
+				- 20170227@Aaron: Added MatchCount 
+				- 20170404@Long: Apply Juice
+				- 20170706@Billy: Fix bug duplicated data - [Redmine: #79615]
 				- 20190108@John:  Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
    			
-	Param's Explanation:
-	Exam:
+	Param's Explanation:  
+	
+	Exam: 
+
 */
 
 SET NOCOUNT ON;
-
-	DELETE [bodb_TGRS].[dbo].OSSummaryByTrader_Daily WHERE EventDate = @Date;
+	    
+	DELETE [dbo].OSSummaryByTrader_Daily WHERE EventDate = @Date;
 
 	INSERT INTO [dbo].OSSummaryByTrader_Daily
            ([TraderId]
@@ -36,6 +40,9 @@ SET NOCOUNT ON;
            ,[BetCount]
 		   ,[MatchCount]
            ,[Target]
+           ,[StakeMYR]
+           ,[Juice]
+           ,[StakeMYRJuice]
            )
  
 	SELECT [TraderId]
@@ -49,6 +56,9 @@ SET NOCOUNT ON;
            ,SUM([BetCount])
 		   ,COUNT(DISTINCT MatchId)
 		   ,[Target]
+		   ,SUM([StakeMYR])
+		   ,SUM([Juice])
+		   ,SUM([StakeMYRJuice])
     FROM [dbo].OSDataTGRS WITH(NOLOCK)
     WHERE EventDate = @Date
 	GROUP BY [TraderId]
