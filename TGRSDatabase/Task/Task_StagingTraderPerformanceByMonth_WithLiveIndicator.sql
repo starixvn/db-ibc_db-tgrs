@@ -20,6 +20,7 @@ AS
  Revisions:      
 	- 20171127@Long: Create new
 	- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
+	- 20190111@Long: Change the way to sum Monthly & Yearly for bettypes [Redmine ID: 107602]
    			
  Param's Explanation:  
 	 
@@ -130,23 +131,6 @@ BEGIN;
 		FROM dbo.[TraderPerformance] tp WITH(NOLOCK)
 			INNER JOIN dbo.BetType bt WITH (NOLOCK) ON tp.Bettype = bt.Bettype
 		WHERE tp.EventDate BETWEEN @DataStartDate AND @CurrentMonthEndDate;
-
-		-- Rearrange bettype
-		UPDATE #tmpTraderPerformance
-		SET Bettype = 1
-		WHERE Bettype = 7;
-
-		UPDATE #tmpTraderPerformance
-		SET Bettype = 3
-		WHERE Bettype = 8;
-
-		UPDATE #tmpTraderPerformance
-		SET Bettype = 5
-		WHERE Bettype = 15;
-
-		UPDATE #tmpTraderPerformance
-		SET Bettype = 0 -- Other Bettypes
-		WHERE Bettype NOT IN (1, 3, 7, 8, 5, 15);
 
 		-- Insert data for TraderPerformance Monthly
 		DELETE [dbo].[TraderPerformance_Monthly]	
@@ -675,23 +659,6 @@ BEGIN;
 			FROM dbo.[TraderPerformance] tp WITH(NOLOCK)
 				INNER JOIN dbo.BetType bt WITH (NOLOCK) ON tp.Bettype = bt.Bettype
 			WHERE tp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate;
-
-			-- Rearrange bettype
-			UPDATE #tmpTraderPerformance
-			SET Bettype = 1
-			WHERE Bettype = 7;
-
-			UPDATE #tmpTraderPerformance
-			SET Bettype = 3
-			WHERE Bettype = 8;
-
-			UPDATE #tmpTraderPerformance
-			SET Bettype = 5
-			WHERE Bettype = 15;
-
-			UPDATE #tmpTraderPerformance
-			SET Bettype = 0 -- Other Bettypes
-			WHERE Bettype NOT IN (1, 3, 7, 8, 5, 15);
 
 			-- Insert data for TraderPerformance Monthly
 			DELETE [dbo].[TraderPerformance_Monthly]	
