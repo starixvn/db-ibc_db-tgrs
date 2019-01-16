@@ -16,6 +16,7 @@ AS
 		- 20171024@Simon: Add ViewPermission param
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		- 20180912@Simon: add league exclusion
+		- 20190116@John:  Daily chart does not display on Trader Report [Redmine ID: 108008]
 
 	Param's Explanation:
 		@ReportType:
@@ -57,7 +58,7 @@ SET NOCOUNT ON;
 			(@ViewPermission = 0 OR bt.BettypeGroup = @ViewPermission)
 			AND t.IsLive = 1
 			AND bt.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (t.LeagueId IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = t.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY d.WLDate
 	END
 	ELSE -- Report by date - month, month - month
@@ -121,10 +122,6 @@ SET NOCOUNT ON;
 		END
 	END
 END
-GO
-
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderWinlossTurnover] TO [bodbTGRSNet]
-GO
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

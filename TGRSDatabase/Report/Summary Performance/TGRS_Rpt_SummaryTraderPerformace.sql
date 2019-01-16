@@ -15,6 +15,7 @@ AS
    	- 20171024@Simon: Add ViewPermission param	
 	- 20171205@Simon: get only Live data & Bettypes are not disabled
 	- 20180912@Simon: add league exclusion
+	- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
 				
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -88,7 +89,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 			GROUP BY CustId
 			ORDER BY Margin DESC
 
@@ -101,7 +102,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 			GROUP BY CustId
 			ORDER BY Margin ASC;
 		END;

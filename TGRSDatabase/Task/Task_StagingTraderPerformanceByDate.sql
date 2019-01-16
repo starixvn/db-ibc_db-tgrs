@@ -1,11 +1,3 @@
-
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 ALTER PROCEDURE	[dbo].[Task_StagingTraderPerformanceByDate]
 	@Date DATE = NULL
 AS
@@ -21,7 +13,7 @@ AS
 		- 20171025@Long:	Sum by BettypeGroup (Major, PH)
 		- 20171127@Long:	Support Live Status
 		- 20180119@John.Ngo: Update Logic generating data [Redmine: #87861]
-		- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
+		- 20190116@John: Support excluding Leagues from report [Redmine ID: #108008]
    			
 	Param's Explanation:  
 	
@@ -151,3 +143,6 @@ BEGIN;
 		,	s.[WorkShift]
 		,	g.[BettypeGroup];
 END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

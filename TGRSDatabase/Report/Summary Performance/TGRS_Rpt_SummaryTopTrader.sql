@@ -18,6 +18,7 @@ AS
 		- 20171025@Long: Change the way to get MatchCount
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		- 20180912@Simon: add league exclusion
+		- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
 
 	 Param's Explanation:  
 		@ReportType = 1: by Date
@@ -118,7 +119,7 @@ BEGIN
 				)
 			AND P.IsLive = 1
 			AND bt.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade;
 	END
 	ELSE  --- by month-year
@@ -139,7 +140,7 @@ BEGIN
 					@ViewPermission = 0
 					OR P.BettypeGroup = @ViewPermission
 				)
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = P.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount;	
 	END
 
