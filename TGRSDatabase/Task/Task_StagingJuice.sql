@@ -3,8 +3,7 @@ GO
 SET ANSI_NULLS ON 
 GO
 
-/****** Object:  Stored Procedure dbo.Task_StagingJuice    Script Date: 1/5/2018 5:04:21 PM ******/
-CREATE PROCEDURE	[dbo].[Task_StagingJuice_xtest]
+ALTER PROCEDURE [dbo].[Task_StagingJuice]
 		@Debug					BIT = 0
 	,	@BeforeMoveBetsDay		BIT = 1	
 	,	@GenerateFromDate		SMALLDATETIME = NULL
@@ -27,6 +26,7 @@ AS
 		- 20180103@Long:	Support code for generating historical data
 		- 20180105@Aaron:   Fix date range. Note: BU & MB are in bettrans14
 		- 20180423@John:    Update date range [Redmine: #89493]
+		- 20190116@John:    Fix date range for generating historical data [Redmine: #108008]
    		
 	Param's Explanation:
 		
@@ -250,7 +250,9 @@ BEGIN;
 
 		IF @BeforeMoveBetsDay = 1
 		BEGIN
-			SELECT @GenerateFromDate = @MoveBetsDay - 3; --@BalanceUpDay;
+			SELECT @GenerateFromDate =	CASE WHEN (@MoveBetsDay - 3) > @BalanceUpDay 
+											THEN (@MoveBetsDay - 3) 
+										ELSE @BalanceUpDay END;
 		END
 		ELSE
 		BEGIN
@@ -262,47 +264,50 @@ BEGIN;
 	IF @GenerateToDate < @GenerateFromDate
 	BEGIN
 		IF @Debug = 1
-		BEGIN;
-			SELECT	@Msg = 'GenerateToDate < GenerateFromDate: No exceptable!';
+		BEGIN
+			SELECT	@Msg = 'GenerateToDate < GenerateFromDate: Unacceptable!';
 
 			-- Force the output to appear immediately --
 			RAISERROR(@Msg, 0, 0) WITH NOWAIT;
 		END;
 
 		RETURN;
-	END
+	END;
 
 	IF @GenerateFromDate < @BalanceUpDay
 	BEGIN
 		SELECT @IsGetDataFromBK = 1
 	END
-
-	IF @GenerateFromDate <= @MoveBetsDay
+	ELSE IF @GenerateFromDate <= @MoveBetsDay
 	BEGIN
 		SELECT @IsGetDataFrom14 = 1
 	END
-
-	IF @GenerateFromDate > @MoveBetsDay
+	ELSE IF @GenerateFromDate > @MoveBetsDay
 	BEGIN
 		SELECT @IsGetDataFromOrigin = 1
-	END
+	END;
 
 	IF @GenerateToDate < @BalanceUpDay
 	BEGIN
 		SELECT @IsGetDataFromBK = 1
 	END
-
-	IF @GenerateToDate <= @MoveBetsDay
+	ELSE IF @GenerateToDate <= @MoveBetsDay
 	BEGIN
 		SELECT @IsGetDataFrom14 = 1
 	END
-
-	IF @GenerateToDate > @MoveBetsDay
+	ELSE IF @GenerateToDate > @MoveBetsDay
 	BEGIN
 		SELECT @IsGetDataFromOrigin = 1
-	END
+	END;
 
-	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1
+	IF @GenerateFromDate < @BalanceUpDay AND @GenerateToDate > @MoveBetsDay
+	BEGIN
+		SELECT @IsGetDataFromBK = 1
+		SELECT @IsGetDataFrom14 = 1
+		SELECT @IsGetDataFromOrigin = 1
+	END;
+
+	IF @IsGetDataFromBK = 1 AND @IsGetDataFromOrigin = 1
 	BEGIN
 		SELECT	@FromDateOrigin = @MoveBetsDay + 1
 				,	@ToDateOrigin = @GenerateToDate
@@ -310,7 +315,7 @@ BEGIN;
 				,	@ToDate14 = @MoveBetsDay
 				,	@FromDateBK = @GenerateFromDate 
 				,	@ToDateBK = @BalanceUpDay - 1;
-	END
+	END;
 
 	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 0
 	BEGIN
@@ -318,7 +323,7 @@ BEGIN;
 				,	@ToDate14 = @GenerateToDate
 				,	@FromDateBK = @GenerateFromDate 
 				,	@ToDateBK = @BalanceUpDay - 1;
-	END
+	END;
 
 	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1
 	BEGIN
@@ -326,25 +331,25 @@ BEGIN;
 				,	@ToDateOrigin = @GenerateToDate
 				,	@FromDate14 = @GenerateFromDate
 				,	@ToDate14 = @MoveBetsDay
-	END
+	END;
 
 	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 0 AND @IsGetDataFromOrigin = 0
 	BEGIN
 		SELECT	@FromDateBK = @GenerateFromDate 
 				,	@ToDateBK = @GenerateToDate;
-	END
+	END;
 
 	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 0
 	BEGIN
 		SELECT	@FromDate14 = @GenerateFromDate
 				,	@ToDate14 = @GenerateToDate
-	END
+	END;
 
 	IF @IsGetDataFromBK = 0 AND @IsGetDataFrom14 = 0 AND @IsGetDataFromOrigin = 1
 	BEGIN
 		SELECT	@FromDateOrigin = @GenerateFromDate
 				,	@ToDateOrigin = @GenerateToDate
-	END
+	END;
 
 	IF @IsGetDataFromBK = 1 AND @IsGetDataFrom14 = 1 AND @IsGetDataFromOrigin = 1
 	BEGIN
@@ -1288,11 +1293,4 @@ BEGIN;
 END;
 
 GO
-
-SET QUOTED_IDENTIFIER OFF 
-GO
-SET ANSI_NULLS ON 
-GO
-
-
-GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

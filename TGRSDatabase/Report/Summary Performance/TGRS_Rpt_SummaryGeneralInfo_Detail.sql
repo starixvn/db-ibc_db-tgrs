@@ -15,6 +15,7 @@ AS
 	- 20171024@Simon: Add ViewPermission param 
 	- 20171025@Long: change the way to get MatchCount
 	- 20180912@Simon: add league exclusion
+	- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
    			
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -27,7 +28,6 @@ AS
 
  Exam: 
 	EXEC TGRS_Rpt_SummaryGeneralInfo_Detail @FromDate = '2014-05-01', @ToDate = '2014-12-01',  @ReportType = 2
-	
 	EXEC TGRS_Rpt_SummaryGeneralInfo_Detail @FromDate = '2014-05-01', @ToDate = '2014-12-01',  @ReportType = 1
 
 */  
@@ -81,7 +81,7 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
-			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY S.EventDate, m.MatchCount
 	END	
 	ELSE 
@@ -98,16 +98,11 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
-			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = S.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY S.EventDate, m.MatchCount
 	END 
 
 END 
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryGeneralInfo_Detail] TO [bodbTGRSNet]
-GO
-
-
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

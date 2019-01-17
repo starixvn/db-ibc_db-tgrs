@@ -1,5 +1,3 @@
-
-
 ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryGeneralInfo]  
 	@ReportType	 TINYINT = 2,
 	@FromDate	 DATE,
@@ -18,6 +16,7 @@ AS
    	- 20171024@Simon: Add ViewPermission param	
 	- 20171025@Long: Change the way to get MatchCount
 	- 20180912@Simon: add league exclusion
+	- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
 		
  Param's Explanation:  
 	@ReportType = 1: by Date
@@ -49,7 +48,7 @@ BEGIN
 				)
 			AND tp.IsLive = 1
 			AND b.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = tp.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WITH(NOLOCK))))
 	
 	IF @ReportType	= 2  ---by month 
 	BEGIN 
@@ -65,7 +64,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WITH(NOLOCK))))
 				
 	END
 	ELSE---- by date
@@ -81,7 +80,7 @@ BEGIN
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WHERE le.LeagueId = S.LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WITH(NOLOCK))))
 	END
 END
 

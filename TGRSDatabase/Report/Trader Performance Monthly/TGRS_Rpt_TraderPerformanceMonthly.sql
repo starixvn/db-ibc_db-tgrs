@@ -25,6 +25,7 @@ AS
 			- 20180912@Simon: add league exclusion
 			- 20181114@Long: fix issue of summing data [Redmine ID: #104753]
 			- 20181129@Long: support filter by league [Redmine ID: #105513]
+			- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
  
 	Param's Explanation:  	
 			- @Bettype: -1 all bettype, x specific bettype
@@ -141,7 +142,7 @@ BEGIN
 	SELECT DISTINCT custid, bettype
 	FROM dbo.TraderPerformance_Yearly p1 WITH(NOLOCK)
 	WHERE (@IsExcludeLeagues = 0 
-		OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = p1.LeagueId)))
+		OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		AND (@LeagueName = '' OR (p1.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK))));
 
 	INSERT INTO #tmpTraderProduct(
@@ -222,7 +223,7 @@ BEGIN
 	WHERE tpm.[Year] IN (@CurrentYear, @LastYear)
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)))		
+		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))		
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
 	GROUP BY tpm.CustId, tpm.Year;
 
@@ -241,7 +242,7 @@ BEGIN
 	WHERE tpm.EventDate BETWEEN @FirstHalfFromDate AND @SecondHalfToDate
 		AND tmc.BetType = @Bettype
 		AND tmc.IsLive = @LiveStatus
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = tmc.LeagueId)))
+		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
 	GROUP BY tpm.CustId, tpm.EventDate;
 END;
