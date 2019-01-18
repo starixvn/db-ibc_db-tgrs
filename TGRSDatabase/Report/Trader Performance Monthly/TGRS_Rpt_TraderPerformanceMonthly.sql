@@ -26,6 +26,7 @@ AS
 			- 20181114@Long: fix issue of summing data [Redmine ID: #104753]
 			- 20181129@Long: support filter by league [Redmine ID: #105513]
 			- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
+			- 20190118@Long: Extend the size of data type [Redmine ID: #108154]
  
 	Param's Explanation:  	
 			- @Bettype: -1 all bettype, x specific bettype
@@ -54,7 +55,7 @@ BEGIN
 	CREATE TABLE	#tmpTrader (
 			TraderID		INT
 		,	TraderName		VARCHAR(30)
-		,	Product			VARCHAR(100)
+		,	Product			VARCHAR(MAX)
 		,	Grade			TINYINT
 		,	TeamName		NVARCHAR(50)
 		,	ShiftName		NVARCHAR(50)
@@ -73,7 +74,7 @@ BEGIN
 
 	CREATE TABLE	#tmpTraderProduct (
 			TraderID		INT
-		,	Product			VARCHAR(100)
+		,	Product			VARCHAR(MAX)
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpTraderProductIdx ON #tmpTraderProduct (
