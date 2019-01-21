@@ -17,6 +17,7 @@ AS
 	Revisions:
 		- 20170712@Billy:	Change from 200000 rows batch to 100 matchs batch - [Redmine: #79615]
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
+		- 20190121@John:	Enhance performance for BK [Redmine ID: 107809]
    		
 	Param's Explanation:
 		
@@ -140,41 +141,6 @@ BEGIN
 					);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
-								winlostdate	ASC
-							,	matchid		ASC
-							,	bettype		ASC
-							);
-	
-	IF	OBJECT_ID('tempdb..#tmpFilteredBettrans') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpFilteredBettrans;
-	END;
-
-	CREATE TABLE	#tmpFilteredBettrans (
-						transid				BIGINT
-					,	matchid				INT
-					,	winlostdate			SMALLDATETIME
-					,	bettype				SMALLINT
-					,	modds				SMALLMONEY
-					,	stake				MONEY
-					,	actual_stake		MONEY
-					,	virtualrate			FLOAT
-					,	winlost				MONEY
-					,	awinlost			MONEY
-					,	mwinlost			MONEY
-					,	swinlost			MONEY
-					,	tpositiontaking		SMALLMONEY
-					,	srecommend			INT
-					,	scomm				MONEY
-					,	betteam				VARCHAR(10)
-					,	livehomescore		SMALLINT
-					,	liveawayscore		SMALLINT
-					,	odds				SMALLMONEY
-					,	hdp1				SMALLMONEY
-					,	hdp2				SMALLMONEY
-					);
-
-	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransIdx ON #tmpFilteredBettrans (
 								winlostdate	ASC
 							,	matchid		ASC
 							,	bettype		ASC
@@ -448,17 +414,6 @@ BEGIN
 			-- Force the output to appear immediately --
 			RAISERROR('From BK - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
-
-		INSERT INTO #tmpFilteredBettrans
-				(transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
-		SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
-		FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
-		WHERE	b.winlostdate BETWEEN @FromDateBK AND @ToDateBK
-			AND	b.statusID IN (112, 113)
-			AND	b.currency NOT IN (20, 27, 28)
-			AND	b.liveindicator = 1
-			AND	b.bettype IN (1, 3, 7, 8, 2, 12)
-		;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
@@ -470,8 +425,12 @@ BEGIN
 			INSERT INTO	#tmpFilteredBettransByBatch
 				(	  transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
 			SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
-			FROM	#tmpFilteredBettrans AS b WITH (NOLOCK)
-			WHERE	b.winlostdate = @WinLostDate;
+			FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
+			WHERE	b.winlostdate = @winlostdate
+					AND	b.statusID IN (112, 113)
+					AND	b.currency NOT IN (20, 27, 28)
+					AND	b.liveindicator = 1
+					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -554,11 +513,7 @@ BEGIN
 				RAISERROR('From BK - Insert tmpOSDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			-- Remove batched-data (bettrans & date) from source
-			DELETE
-			FROM	#tmpFilteredBettrans
-			WHERE	winlostdate = @winlostdate;
-
+			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
 			WHERE	winlostdate = @winlostdate;
@@ -628,17 +583,6 @@ BEGIN
 			-- Force the output to appear immediately --
 			RAISERROR('From 14 - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
-
-		INSERT INTO #tmpFilteredBettrans
-				(transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
-		SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
-		FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
-		WHERE	b.winlostdate BETWEEN @FromDate14 AND @ToDate14
-			AND	b.statusID IN (112, 113)
-			AND	b.currency NOT IN (20, 27, 28)
-			AND	b.liveindicator = 1
-			AND	b.bettype IN (1, 3, 7, 8, 2, 12)
-		;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
@@ -650,8 +594,12 @@ BEGIN
 			INSERT INTO	#tmpFilteredBettransByBatch
 					(transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
 			SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
-			FROM	#tmpFilteredBettrans AS b WITH (NOLOCK)
-			WHERE	b.winlostdate = @WinLostDate;
+			FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
+			WHERE	b.winlostdate = @WinLostDate
+					AND	b.statusID IN (112, 113)
+					AND	b.currency NOT IN (20, 27, 28)
+					AND	b.liveindicator = 1
+					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -734,11 +682,7 @@ BEGIN
 				RAISERROR('From 14 - Insert tmpOSDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			-- Remove batched-data (bettrans & date) from source
-			DELETE
-			FROM	#tmpFilteredBettrans
-			WHERE	winlostdate = @winlostdate;
-
+			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
 			WHERE	winlostdate = @winlostdate;
@@ -810,17 +754,6 @@ BEGIN
 			-- Force the output to appear immediately --
 			RAISERROR('From Origin - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
-
-		INSERT INTO #tmpFilteredBettrans
-			(	  transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
-		SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
-		FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
-		WHERE	b.winlostdate BETWEEN @FromDateOrigin AND @ToDateOrigin
-			AND	b.statusID IN (112, 113)
-			AND	b.currency NOT IN (20, 27, 28)
-			AND	b.liveindicator = 1
-			AND	b.bettype IN (1, 3, 7, 8, 2, 12)
-		;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
@@ -832,8 +765,12 @@ BEGIN
 			INSERT INTO	#tmpFilteredBettransByBatch
 					(transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
 			SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
-			FROM	#tmpFilteredBettrans AS b WITH (NOLOCK)
-			WHERE	b.winlostdate = @WinLostDate;
+			FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
+			WHERE	b.winlostdate = @WinLostDate
+					AND	b.statusID IN (112, 113)
+					AND	b.currency NOT IN (20, 27, 28)
+					AND	b.liveindicator = 1
+					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -916,11 +853,7 @@ BEGIN
 				RAISERROR('From Origin - Insert tmpOSDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			-- Remove batched-data (bettrans & date) from source
-			DELETE
-			FROM	#tmpFilteredBettrans
-			WHERE	winlostdate = @winlostdate;
-
+			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
 			WHERE	winlostdate = @winlostdate;

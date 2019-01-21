@@ -21,6 +21,7 @@ AS
    		- 20170711@Billy:	Remove delete OSStagingDataTGRS part to update Juice for next step - [Redmine: #79615]
 		- 20180928@Long:	Support more bettypes - [Redmine: #83185]
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
+		- 20190121@John:	Enhance performance for BK [Redmine ID: 107809]
 	Param's Explanation:
 		
 	Exam:
@@ -146,39 +147,6 @@ BEGIN
 	
 	CREATE NONCLUSTERED INDEX	#NCIX_tmpFilteredBettrans14ByBatchIdx ON #tmpFilteredBettransByBatch (
 					    custid				ASC
-	);
-	
-	IF	OBJECT_ID('tempdb..#tmpFilteredBettrans') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpFilteredBettrans;
-	END;
-
-		CREATE TABLE	#tmpFilteredBettrans (
-						transid				BIGINT
-					,	custid				INT
-					,	matchid				INT
-					,	winlostdate			SMALLDATETIME
-					,	bettype				SMALLINT
-					,	modds				SMALLMONEY
-					,	stake				MONEY
-					,	actual_stake		MONEY
-					,	virtualrate			FLOAT
-					,	winlost				MONEY
-					,	awinlost			MONEY
-					,	mwinlost			MONEY
-					,	swinlost			MONEY
-					,	tpositiontaking		SMALLMONEY
-					,	srecommend			INT
-					,	scomm				MONEY
-					);
-
-	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransIdx ON #tmpFilteredBettrans (
-								winlostdate	ASC
-							,	matchid		ASC
-							,	bettype		ASC
-							);
-	CREATE NONCLUSTERED INDEX	#NCIX_tmpFilteredBettransIdx ON #tmpFilteredBettrans (
-								custid		ASC
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpStagingOSTraderPerformance') IS NOT NULL
@@ -424,16 +392,6 @@ BEGIN
 				RAISERROR('From BK - Insert OSStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
-
-		INSERT INTO #tmpFilteredBettrans
-			(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
-		SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
-		FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
-		WHERE	b.winlostdate BETWEEN @FromDateBK AND @ToDateBK
-			AND	b.statusID IN (112, 113)
-			AND	b.Currency NOT IN (20, 27, 28)
-			AND	b.LiveIndicator = 1
-		;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
@@ -443,10 +401,13 @@ BEGIN
 			
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 			INSERT INTO #tmpFilteredBettransByBatch 
-				(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
+					(transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
 			SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
-			FROM	#tmpFilteredBettrans AS b WITH (NOLOCK)
-			WHERE	b.winlostdate = @WinLostDate;
+			FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
+			WHERE	b.winlostdate = @WinLostDate
+					AND	b.statusID IN (112, 113)
+					AND	b.Currency NOT IN (20, 27, 28)
+					AND	b.LiveIndicator = 1;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -534,11 +495,7 @@ BEGIN
 				RAISERROR('From BK - Insert OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			-- Remove batched-data (bettrans & date) from source
-			DELETE
-			FROM	#tmpFilteredBettrans
-			WHERE	winlostdate = @winlostdate;
-
+			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
 			WHERE	winlostdate = @winlostdate;
@@ -630,16 +587,6 @@ BEGIN
 				RAISERROR('From 14 - Insert OSStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
-
-		INSERT INTO #tmpFilteredBettrans
-			(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
-		SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
-		FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
-		WHERE	b.winlostdate BETWEEN @FromDate14 AND @ToDate14
-			AND	b.statusID IN (112, 113)
-			AND	b.Currency NOT IN (20, 27, 28)
-			AND	b.LiveIndicator = 1
-		;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
@@ -651,8 +598,11 @@ BEGIN
 			INSERT INTO #tmpFilteredBettransByBatch 
 				(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
 			SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
-			FROM	#tmpFilteredBettrans AS b WITH (NOLOCK)
-			WHERE	b.winlostdate = @WinLostDate;
+			FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
+			WHERE	b.winlostdate = @WinLostDate
+					AND	b.statusID IN (112, 113)
+					AND	b.Currency NOT IN (20, 27, 28)
+					AND	b.LiveIndicator = 1;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -740,11 +690,7 @@ BEGIN
 				RAISERROR('From 14 - Insert OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			-- Remove batched-data (bettrans & date) from source
-			DELETE
-			FROM	#tmpFilteredBettrans
-			WHERE	winlostdate = @winlostdate;
-
+			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
 			WHERE	winlostdate = @winlostdate;
@@ -838,17 +784,6 @@ BEGIN
 				RAISERROR('From Origin - Insert OSStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
-
-		INSERT INTO #tmpFilteredBettrans
-			(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
-		SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
-		FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
-		WHERE	b.winlostdate BETWEEN @FromDateOrigin AND @ToDateOrigin
-			AND	b.statusID IN (112, 113)
-			AND	b.ruben = 1
-			AND	b.Currency NOT IN (20, 27, 28)
-			AND	b.LiveIndicator = 1
-		;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
@@ -860,8 +795,12 @@ BEGIN
 			INSERT INTO #tmpFilteredBettransByBatch 
 				(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
 			SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
-			FROM	#tmpFilteredBettrans AS b WITH (NOLOCK)
-			WHERE	b.winlostdate = @WinLostDate;
+			FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
+			WHERE	b.winlostdate = @WinLostDate
+					AND	b.statusID IN (112, 113)
+					AND	b.ruben = 1
+					AND	b.Currency NOT IN (20, 27, 28)
+					AND	b.LiveIndicator = 1;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -949,11 +888,7 @@ BEGIN
 				RAISERROR('From Origin - Insert OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			-- Remove batched-data (bettrans & date) from source
-			DELETE
-			FROM	#tmpFilteredBettrans
-			WHERE	winlostdate = @winlostdate;
-
+			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
 			WHERE	winlostdate = @winlostdate;
