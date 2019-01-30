@@ -92,7 +92,7 @@ BEGIN
 			AND (@ViewPermission = 0 OR bt.BettypeGroup = @ViewPermission)  
 			AND t.IsLive = 1  
 			AND bt.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = t.LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY d.WLDate;
 	END  
 	ELSE -- Report by date - month, month - month  
@@ -119,7 +119,7 @@ BEGIN
 				RIGHT JOIN #tmpWinlossDate AS d WITH(NOLOCK) ON s.Eventdate = d.WLDate
 			WHERE s.CustId = @TraderId  
 				AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
-				AND (@IsExcludeLeagues = 0 OR (s.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = s.LeagueId)))
+				AND (@IsExcludeLeagues = 0 OR (s.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 			GROUP BY d.WLDate;
 		END  
 		ELSE -- Report by date - month  
@@ -142,7 +142,7 @@ BEGIN
 						)  
 						AND t.IsLive = 1  
 						AND bt.[Disabled] = 0  
-						AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = t.LeagueId)))
+						AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 					GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, t.EventDate), 0)  
 				) AS s  
 				RIGHT JOIN #tmpWinlossDate AS d WITH(NOLOCK) ON s.EventDate = d.WLDate  

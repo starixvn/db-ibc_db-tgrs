@@ -17,6 +17,7 @@ AS
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		- 20180912@Simon: add league exclusion
 		- 20190116@John:  Daily chart does not display on Trader Report [Redmine ID: 108008]
+		- 20190129@John:  Fix bug for League Exclusion [Redmine ID: 107809]
 
 	Param's Explanation:
 		@ReportType:
@@ -114,7 +115,7 @@ SET NOCOUNT ON;
 							)
 						AND p.IsLive = 1
 						AND bt.[Disabled] = 0
-						AND (@IsExcludeLeagues = 0 OR (p.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = p.LeagueId)))
+						AND (@IsExcludeLeagues = 0 OR (p.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 					GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0)
 				) AS s
 				RIGHT JOIN @Date d ON s.EventDate = d.WLDate

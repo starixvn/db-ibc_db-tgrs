@@ -1,6 +1,3 @@
-
-GO
-
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderGeneralInfo]
 	@TraderId 			INT,
 	@ReportType 		TINYINT = 2,
@@ -19,6 +16,7 @@ AS
 		- 20171024@Simon: Add ViewPermission param
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		- 20180912@Simon: add league exclusion
+		- 20190129@John:  Fix bug for League Exclusion [Redmine ID: 107809]
 
 	Param's Explanation:
 		@ReportType:
@@ -68,13 +66,9 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
-			AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK) WHERE le.LeagueId = LeagueId)))
+			AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	END
 END;
-GO
-
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_TraderGeneralInfo] TO [bodbTGRSNet]
-GO
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
