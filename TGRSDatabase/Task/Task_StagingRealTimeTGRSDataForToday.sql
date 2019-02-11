@@ -24,6 +24,7 @@ AS
    		- 20180924@Long:	Fix bug for updating juice value only for Live data
 		- 20180924Casey.Huynh: Update condition get data to table "TraceScannedMatchesInfo"
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
+		- 20190128@John: Fix Null value for Grade & Team [Redmine ID: 107809]
 	Param's Explanation:
 		
 	Exam:
@@ -37,7 +38,7 @@ BEGIN
 	DECLARE	@Begin					DATETIME	= GETDATE()
 		,	@RowCount				INT
 		,	@Duration				INT
-		,	@Today					SMALLDATETIME
+		,	@Today					SMALLDATETIME = GETDATE()
 		,	@FromSP					BIT = 0
 		,	@CapturedDate			DATETIME = GETDATE();
 
