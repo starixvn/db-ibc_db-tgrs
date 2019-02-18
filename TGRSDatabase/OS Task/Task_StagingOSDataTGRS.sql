@@ -22,6 +22,7 @@ AS
 		- 20180928@Long:	Support more bettypes - [Redmine: #83185]
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
 		- 20190121@John:	Enhance performance for BK [Redmine ID: 107809]
+		- 20190218@Harvey:	Get more OS bettypes - [Redmine ID: 109005]
 	Param's Explanation:
 		
 	Exam:
@@ -58,10 +59,36 @@ BEGIN
 		DROP TABLE	#tmpDLBUMBData
 	END;
 
+	IF	OBJECT_ID('tempdb..#tmpDLAllBettypes') IS NOT NULL
+		DROP TABLE	#tmpDLAllBettypes;
+
+	CREATE TABLE	#tmpDLAllBettypes (
+			BetType					SMALLINT PRIMARY KEY
+		,	AssignmentBetType		INT
+		,	OperatorType			INT
+	);
+
 	CREATE TABLE	#tmpDLBUMBData (
 			BUDay	SMALLDATETIME
 		,	MBDay	SMALLDATETIME
 	);
+
+	INSERT INTO #tmpDLAllBettypes(BetType)
+	SELECT	DISTINCT m.bettype
+	FROM	bodb02.dbo.SportBettypeMatrix AS m WITH(NOLOCK)
+	WHERE	m.sporttype <> 1
+		AND	m.bettype IS NOT NULL
+	UNION
+	SELECT	DISTINCT b.BettypeId
+	FROM	dbo.OSBettype AS b WITH (NOLOCK)
+	WHERE	b.BettypeId < 0;
+
+	UPDATE abt
+	SET abt.AssignmentBetType = b.AssignmentBettype,
+		abt.OperatorType = b.OperatorType
+	FROM #tmpDLAllBettypes AS abt
+		INNER JOIN dbo.OSBettype b ON abt.BetType = b.BettypeId
+
 
 	INSERT INTO #tmpDLBUMBData(BUDay,MBDay)
 	EXECUTE bodb02.dbo.Age_SelBalanceUpDay;
@@ -328,7 +355,7 @@ BEGIN
 		FROM		bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
-		LEFT JOIN	dbo.OSBettype AS b WITH (NOLOCK)
+		LEFT JOIN	#tmpDLAllBettypes AS b WITH (NOLOCK)
 				ON	a.bettype = b.AssignmentBetType
 				AND	a.OperatorType = b.OperatorType
 		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
@@ -523,7 +550,7 @@ BEGIN
 		FROM		bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
-		LEFT JOIN	dbo.OSBettype AS b WITH (NOLOCK)
+		LEFT JOIN	#tmpDLAllBettypes AS b WITH (NOLOCK)
 				ON	a.bettype = b.AssignmentBetType
 				AND	a.OperatorType = b.OperatorType
 		WHERE	m.EventDate BETWEEN @BalanceUpDay AND @MoveBetsDay
@@ -718,7 +745,7 @@ BEGIN
 		FROM		bodb02.dbo.Dot_admin_Assignment_Operator AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
-		LEFT JOIN	dbo.OSBettype AS b WITH (NOLOCK)
+		LEFT JOIN	#tmpDLAllBettypes AS b WITH (NOLOCK)
 				ON	a.bettype = b.AssignmentBetType
 				AND	a.OperatorType = b.OperatorType
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
