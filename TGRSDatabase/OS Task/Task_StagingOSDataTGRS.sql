@@ -26,7 +26,8 @@ AS
 	Param's Explanation:
 		
 	Exam:
-	 
+	
+	exec [Task_StagingOSDataTGRS] 1,1,'20190101','20190102' 
 */
 BEGIN
 	SET NOCOUNT ON;
@@ -59,18 +60,27 @@ BEGIN
 		DROP TABLE	#tmpDLBUMBData
 	END;
 
+	CREATE TABLE	#tmpDLBUMBData (
+			BUDay	SMALLDATETIME
+		,	MBDay	SMALLDATETIME
+	);
+
+	INSERT INTO #tmpDLBUMBData(BUDay,MBDay)
+	EXECUTE bodb02.dbo.Age_SelBalanceUpDay;
+
 	IF	OBJECT_ID('tempdb..#tmpDLAllBettypes') IS NOT NULL
 		DROP TABLE	#tmpDLAllBettypes;
 
 	CREATE TABLE	#tmpDLAllBettypes (
-			BetType					SMALLINT PRIMARY KEY
-		,	AssignmentBetType		INT
-		,	OperatorType			INT
+			BetType					SMALLINT
+		,	AssignmentBetType		SMALLINT
+		,	OperatorType			SMALLINT
+		,	MainDBBettype			SMALLINT
 	);
-
-	CREATE TABLE	#tmpDLBUMBData (
-			BUDay	SMALLDATETIME
-		,	MBDay	SMALLDATETIME
+	
+	CREATE CLUSTERED INDEX	#CIX_tmpDLAllBettypes_AssignmentBetType_OperatorType ON #tmpDLAllBettypes (
+		AssignmentBetType	ASC,
+		OperatorType		ASC
 	);
 
 	INSERT INTO #tmpDLAllBettypes(BetType)
@@ -85,13 +95,10 @@ BEGIN
 
 	UPDATE abt
 	SET abt.AssignmentBetType = b.AssignmentBettype,
-		abt.OperatorType = b.OperatorType
+		abt.OperatorType = b.OperatorType,
+		abt.MainDBBettype = b.MainDBBettype
 	FROM #tmpDLAllBettypes AS abt
-		INNER JOIN dbo.OSBettype b ON abt.BetType = b.BettypeId
-
-
-	INSERT INTO #tmpDLBUMBData(BUDay,MBDay)
-	EXECUTE bodb02.dbo.Age_SelBalanceUpDay;
+		INNER JOIN dbo.OSBettype b WITH (NOLOCK) ON abt.BetType = b.BettypeId
 
 	SELECT	TOP(1)
 			@BalanceUpDay	= BUDay
