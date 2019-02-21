@@ -27,7 +27,7 @@ AS
 		
 	Exam:
 	
-	exec [Task_StagingOSDataTGRS] 1,1,'20190101','20190102' 
+	exec [Task_StagingOSDataTGRS] 1,1,'20190212','20190213' 
 */
 BEGIN
 	SET NOCOUNT ON;
@@ -369,10 +369,9 @@ BEGIN
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
-			AND	(a.bettype < 31 
-				OR a.bettype BETWEEN 121 AND 999 
+			AND (a.bettype < 999 
 				OR a.bettype BETWEEN 1301 AND 1399
-				OR a.bettype BETWEEN 9001 AND 9074)
+				OR a.bettype BETWEEN 9001 AND 9086)
 			AND	a.bettype NOT BETWEEN 801 AND 806 -- metric gaming
 			AND	a.bettype NOT IN (901, 902, 903) -- bettrade
 		;
@@ -564,10 +563,9 @@ BEGIN
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
-			AND	(a.bettype < 31 
-				OR a.bettype BETWEEN 121 AND 999 
+			AND (a.bettype < 999 
 				OR a.bettype BETWEEN 1301 AND 1399
-				OR a.bettype BETWEEN 9001 AND 9074)
+				OR a.bettype BETWEEN 9001 AND 9086)
 			AND	a.bettype NOT BETWEEN 801 AND 806 -- metric gaming
 			AND	a.bettype NOT IN (901, 902, 903) -- bettrade
 		;
@@ -760,10 +758,9 @@ BEGIN
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
-			AND	(a.bettype < 31 
-				OR a.bettype BETWEEN 121 AND 999 
+			AND (a.bettype < 999 
 				OR a.bettype BETWEEN 1301 AND 1399
-				OR a.bettype BETWEEN 9001 AND 9074)
+				OR a.bettype BETWEEN 9001 AND 9086)
 			AND	a.bettype NOT BETWEEN 801
 			AND	806 -- metric gaming
 			AND	a.bettype NOT IN (901, 902, 903) -- bettrade
