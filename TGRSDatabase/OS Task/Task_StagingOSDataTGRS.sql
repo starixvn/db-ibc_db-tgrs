@@ -22,10 +22,12 @@ AS
 		- 20180928@Long:	Support more bettypes - [Redmine: #83185]
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
 		- 20190121@John:	Enhance performance for BK [Redmine ID: 107809]
+		- 20190218@Harvey:	Get more OS bettypes - [Redmine ID: 109005]
 	Param's Explanation:
 		
 	Exam:
-	 
+	
+	exec [Task_StagingOSDataTGRS] 1,1,'20190212','20190213' 
 */
 BEGIN
 	SET NOCOUNT ON;
@@ -65,6 +67,38 @@ BEGIN
 
 	INSERT INTO #tmpDLBUMBData(BUDay,MBDay)
 	EXECUTE bodb02.dbo.Age_SelBalanceUpDay;
+
+	IF	OBJECT_ID('tempdb..#tmpDLAllBettypes') IS NOT NULL
+		DROP TABLE	#tmpDLAllBettypes;
+
+	CREATE TABLE	#tmpDLAllBettypes (
+			BetType					SMALLINT
+		,	AssignmentBetType		SMALLINT
+		,	OperatorType			SMALLINT
+		,	MainDBBettype			SMALLINT
+	);
+	
+	CREATE CLUSTERED INDEX	#CIX_tmpDLAllBettypes_AssignmentBetType_OperatorType ON #tmpDLAllBettypes (
+		AssignmentBetType	ASC,
+		OperatorType		ASC
+	);
+
+	INSERT INTO #tmpDLAllBettypes(BetType)
+	SELECT	DISTINCT m.bettype
+	FROM	bodb02.dbo.SportBettypeMatrix AS m WITH(NOLOCK)
+	WHERE	m.sporttype <> 1
+		AND	m.bettype IS NOT NULL
+	UNION
+	SELECT	DISTINCT b.BettypeId
+	FROM	dbo.OSBettype AS b WITH (NOLOCK)
+	WHERE	b.BettypeId < 0;
+
+	UPDATE abt
+	SET abt.AssignmentBetType = b.AssignmentBettype,
+		abt.OperatorType = b.OperatorType,
+		abt.MainDBBettype = b.MainDBBettype
+	FROM #tmpDLAllBettypes AS abt
+		INNER JOIN dbo.OSBettype b WITH (NOLOCK) ON abt.BetType = b.BettypeId
 
 	SELECT	TOP(1)
 			@BalanceUpDay	= BUDay
@@ -328,17 +362,16 @@ BEGIN
 		FROM		bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
-		LEFT JOIN	dbo.OSBettype AS b WITH (NOLOCK)
+		LEFT JOIN	#tmpDLAllBettypes AS b WITH (NOLOCK)
 				ON	a.bettype = b.AssignmentBetType
 				AND	a.OperatorType = b.OperatorType
 		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
-			AND	(a.bettype < 31 
-				OR a.bettype BETWEEN 121 AND 999 
+			AND (a.bettype < 999 
 				OR a.bettype BETWEEN 1301 AND 1399
-				OR a.bettype BETWEEN 9001 AND 9074)
+				OR a.bettype BETWEEN 9001 AND 9086)
 			AND	a.bettype NOT BETWEEN 801 AND 806 -- metric gaming
 			AND	a.bettype NOT IN (901, 902, 903) -- bettrade
 		;
@@ -523,17 +556,16 @@ BEGIN
 		FROM		bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
-		LEFT JOIN	dbo.OSBettype AS b WITH (NOLOCK)
+		LEFT JOIN	#tmpDLAllBettypes AS b WITH (NOLOCK)
 				ON	a.bettype = b.AssignmentBetType
 				AND	a.OperatorType = b.OperatorType
 		WHERE	m.EventDate BETWEEN @BalanceUpDay AND @MoveBetsDay
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
-			AND	(a.bettype < 31 
-				OR a.bettype BETWEEN 121 AND 999 
+			AND (a.bettype < 999 
 				OR a.bettype BETWEEN 1301 AND 1399
-				OR a.bettype BETWEEN 9001 AND 9074)
+				OR a.bettype BETWEEN 9001 AND 9086)
 			AND	a.bettype NOT BETWEEN 801 AND 806 -- metric gaming
 			AND	a.bettype NOT IN (901, 902, 903) -- bettrade
 		;
@@ -718,7 +750,7 @@ BEGIN
 		FROM		bodb02.dbo.Dot_admin_Assignment_Operator AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
-		LEFT JOIN	dbo.OSBettype AS b WITH (NOLOCK)
+		LEFT JOIN	#tmpDLAllBettypes AS b WITH (NOLOCK)
 				ON	a.bettype = b.AssignmentBetType
 				AND	a.OperatorType = b.OperatorType
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
@@ -726,10 +758,9 @@ BEGIN
 			AND	a.OperatorType < 3
 			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
-			AND	(a.bettype < 31 
-				OR a.bettype BETWEEN 121 AND 999 
+			AND (a.bettype < 999 
 				OR a.bettype BETWEEN 1301 AND 1399
-				OR a.bettype BETWEEN 9001 AND 9074)
+				OR a.bettype BETWEEN 9001 AND 9086)
 			AND	a.bettype NOT BETWEEN 801
 			AND	806 -- metric gaming
 			AND	a.bettype NOT IN (901, 902, 903) -- bettrade
