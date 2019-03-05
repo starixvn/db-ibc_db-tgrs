@@ -1,11 +1,3 @@
-
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 ALTER PROCEDURE [dbo].[Task_StagingTraderPerformanceByMonth_WithLiveIndicator]
 		@GenerateFromDate		DATE = NULL
 	,	@GenerateToDate			DATE = NULL
@@ -18,9 +10,10 @@ AS
  Original:  
   
  Revisions:      
-	- 20171127@Long: Create new
-	- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
-	- 20190111@Long: Change the way to sum Monthly & Yearly for bettypes [Redmine ID: 107602]
+	- 20171127@Long:	Create new
+	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
+	- 20190111@Long:	Change the way to sum Monthly & Yearly for bettypes [Redmine ID: 107602]
+	- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
    			
  Param's Explanation:  
 	 
@@ -57,6 +50,9 @@ BEGIN;
 			[Stake]			MONEY NULL,
 			[WinLost]		MONEY NULL,
 			[Comm]			MONEY NULL,
+			[Stake_AR]		MONEY NULL,
+			[WinLost_AR]	MONEY NULL,
+			[Comm_AR]		MONEY NULL,
 			[BetCount]		INT NULL,
 			[HomeId]		INT NULL,
 			[AwayId]		INT NULL,
@@ -65,7 +61,10 @@ BEGIN;
 			[Spread]		MONEY NULL,
 			[Juice]			MONEY NULL,
 			[StakeMYR]		MONEY NULL,
-			[StakeMYRJuice] MONEY NULL
+			[StakeMYRJuice] MONEY NULL,
+			[Juice_AR]		MONEY NULL,
+			[StakeMYR_AR]	MONEY NULL,
+			[StakeMYRJuice_AR] MONEY NULL
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpTraderPerformanceIdx ON #tmpTraderPerformance (
@@ -102,6 +101,9 @@ BEGIN;
 				[Stake],
 				[WinLost],
 				[Comm],
+				[Stake_AR],
+				[WinLost_AR],
+				[Comm_AR],
 				[BetCount],
 				[HomeId],
 				[AwayId],
@@ -121,6 +123,9 @@ BEGIN;
 				tp.[Stake],
 				tp.[WinLost],
 				tp.[Comm],
+				tp.[Stake_AR],
+				tp.[WinLost_AR],
+				tp.[Comm_AR],
 				tp.[BetCount],
 				tp.[HomeId],
 				tp.[AwayId],
@@ -147,6 +152,9 @@ BEGIN;
 			,	[Turnover]
 			,	[WinLoss]
 			,	[Comm]
+			,	[Turnover_AR]
+			,	[WinLoss_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -158,8 +166,11 @@ BEGIN;
 			,	SUM(tpp.Stake) AS Turnover
 			,	SUM(tpp.WinLost) AS WinLoss
 			,	SUM(tpp.Comm) AS Comm
+			,	SUM(tpp.Stake_AR) AS Turnover_AR
+			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+			,	SUM(tpp.Comm_AR) AS Comm_AR
 			,	SUM(tpp.BetCount) AS BetCount
-		FROM #tmpTraderPerformance tpp
+		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tpp.CustId
 			,	tpp.LeagueId
@@ -178,6 +189,9 @@ BEGIN;
 			,	[Turnover]
 			,	[WinLoss]
 			,	[Comm]
+			,	[Turnover_AR]
+			,	[WinLoss_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -189,8 +203,11 @@ BEGIN;
 			,	SUM(tpp.Stake) AS Turnover
 			,	SUM(tpp.WinLost) AS WinLoss
 			,	SUM(tpp.Comm) AS Comm
+			,	SUM(tpp.Stake_AR) AS Turnover_AR
+			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+			,	SUM(tpp.Comm_AR) AS Comm_AR
 			,	SUM(tpp.BetCount) AS BetCount
-		FROM #tmpTraderPerformance tpp
+		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tpp.CustId
 			,	tpp.LeagueId
@@ -208,6 +225,9 @@ BEGIN;
 			,	[Turnover]
 			,	[WinLoss]
 			,	[Comm]
+			,	[Turnover_AR]
+			,	[WinLoss_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -219,8 +239,11 @@ BEGIN;
 			,	SUM(tpp.Stake) AS Turnover
 			,	SUM(tpp.WinLost) AS WinLoss
 			,	SUM(tpp.Comm) AS Comm
+			,	SUM(tpp.Stake_AR) AS Turnover_AR
+			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+			,	SUM(tpp.Comm_AR) AS Comm_AR
 			,	SUM(tpp.BetCount) AS BetCount
-		FROM #tmpTraderPerformance tpp
+		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tpp.CustId
 			,	tpp.LeagueId
@@ -238,6 +261,9 @@ BEGIN;
 			,	[Turnover]
 			,	[WinLoss]
 			,	[Comm]
+			,	[Turnover_AR]
+			,	[WinLoss_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -249,8 +275,11 @@ BEGIN;
 			,	SUM(tpp.Stake) AS Turnover
 			,	SUM(tpp.WinLost) AS WinLoss
 			,	SUM(tpp.Comm) AS Comm
+			,	SUM(tpp.Stake_AR) AS Turnover_AR
+			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+			,	SUM(tpp.Comm_AR) AS Comm_AR
 			,	SUM(tpp.BetCount) AS BetCount
-		FROM #tmpTraderPerformance tpp
+		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tpp.CustId
 			,	tpp.LeagueId
@@ -277,7 +306,7 @@ BEGIN;
 			,	tp.BetType
 			,	tp.IsLive
 			,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-		FROM #tmpTraderPerformance tp
+		FROM #tmpTraderPerformance tp WITH(NOLOCK)
 		WHERE tp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tp.CustId
 			,	tp.LeagueId
@@ -302,7 +331,7 @@ BEGIN;
 			,	tp.BetType
 			,	-1 AS IsLive
 			,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-		FROM #tmpTraderPerformance tp
+		FROM #tmpTraderPerformance tp WITH(NOLOCK)
 		WHERE tp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tp.CustId
 			,	tp.LeagueId
@@ -326,7 +355,7 @@ BEGIN;
 			,	-1 AS BetType
 			,	tp.IsLive
 			,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-		FROM #tmpTraderPerformance tp
+		FROM #tmpTraderPerformance tp WITH(NOLOCK)
 		WHERE tp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tp.CustId
 			,	tp.LeagueId
@@ -350,7 +379,7 @@ BEGIN;
 			,	-1 AS BetType
 			,	-1 AS IsLive
 			,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-		FROM #tmpTraderPerformance tp
+		FROM #tmpTraderPerformance tp WITH(NOLOCK)
 		WHERE tp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tp.CustId
 			,	tp.LeagueId
@@ -374,6 +403,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -385,8 +417,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
@@ -405,6 +440,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -416,8 +454,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
@@ -435,6 +476,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -446,8 +490,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
@@ -465,6 +512,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -476,8 +526,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
@@ -504,7 +557,7 @@ BEGIN;
 				,	tp.BetType
 				,	tp.IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			WHERE tp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tp.CustId
 				,	tp.LeagueId
@@ -529,7 +582,7 @@ BEGIN;
 				,	tp.BetType
 				,	-1 AS IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			WHERE tp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tp.CustId
 				,	tp.LeagueId
@@ -553,7 +606,7 @@ BEGIN;
 				,	-1 AS BetType
 				,	tp.IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			WHERE tp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tp.CustId
 				,	tp.LeagueId
@@ -577,7 +630,7 @@ BEGIN;
 				,	-1 AS BetType
 				,	-1 AS IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			WHERE tp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tp.CustId
 				,	tp.LeagueId
@@ -630,6 +683,9 @@ BEGIN;
 					[Stake],
 					[WinLost],
 					[Comm],
+					[Stake_AR],
+					[WinLost_AR],
+					[Comm_AR],
 					[BetCount],
 					[HomeId],
 					[AwayId],
@@ -649,6 +705,9 @@ BEGIN;
 					tp.[Stake],
 					tp.[WinLost],
 					tp.[Comm],
+					tp.[Stake_AR],
+					tp.[WinLost_AR],
+					tp.[Comm_AR],
 					tp.[BetCount],
 					tp.[HomeId],
 					tp.[AwayId],
@@ -675,6 +734,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -686,8 +748,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
@@ -705,6 +770,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -716,8 +784,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
@@ -734,6 +805,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -745,8 +819,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
@@ -763,6 +840,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -774,8 +854,11 @@ BEGIN;
 				,	SUM(tpp.Stake) AS Turnover
 				,	SUM(tpp.WinLost) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Stake_AR) AS Turnover_AR
+				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
-			FROM #tmpTraderPerformance tpp
+			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType;
@@ -801,7 +884,7 @@ BEGIN;
 				,	tp.BetType
 				,	tp.IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			GROUP BY tp.CustId
 				,	tp.LeagueId
 				,	tp.SportType
@@ -825,7 +908,7 @@ BEGIN;
 				,	tp.BetType
 				,	-1 AS IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			GROUP BY tp.CustId
 				,	tp.LeagueId
 				,	tp.SportType
@@ -848,7 +931,7 @@ BEGIN;
 				,	-1 AS BetType
 				,	tp.IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			GROUP BY tp.CustId
 				,	tp.LeagueId
 				,	tp.SportType
@@ -871,7 +954,7 @@ BEGIN;
 				,	-1 AS BetType
 				,	-1 AS IsLive
 				,	COUNT(DISTINCT tp.MatchId) AS MatchCount
-			FROM #tmpTraderPerformance tp
+			FROM #tmpTraderPerformance tp WITH(NOLOCK)
 			GROUP BY tp.CustId
 				,	tp.LeagueId
 				,	tp.SportType;
@@ -886,4 +969,4 @@ BEGIN;
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet"  isFunction="0" isNested="0"></info>*/

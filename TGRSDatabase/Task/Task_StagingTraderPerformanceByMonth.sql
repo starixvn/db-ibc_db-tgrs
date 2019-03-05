@@ -1,10 +1,3 @@
-
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
 ALTER PROCEDURE [dbo].[Task_StagingTraderPerformanceByMonth]
 		@Month					DATE = NULL
 	,	@GenerateFromDate		DATE = NULL
@@ -22,6 +15,7 @@ AS
 	- 20171025@Long:	Sum by BettypeGroup (Major, PH)
 	- 20171127@Long:	Support Live Status
 	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
+	- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
    			
  Param's Explanation:  
 	 
@@ -72,28 +66,34 @@ BEGIN;
 			,	[CustId]
 			,	[LeagueId]
 			,	[WorkShift]
+			,	[BettypeGroup]
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
+			,	[Stake_AR]
+			,	[WinLost_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 			,	[MatchCount]
-			,	[BettypeGroup]
 		)
-		SELECT	@Month [Eventdate]
-			,	s.[CustId]
-			,	s.[LeagueId]
-			,	s.[WorkShift]
-			,	SUM(s.[Stake]) [Stake]
-			,	SUM(s.[WinLost]) [WinLost]
-			,	SUM(s.[Comm]) [Comm]
-			,	SUM(s.[BetCount]) [BetCount]
-			,	COUNT(DISTINCT s.[MatchId])[MatchCount]
-			,	g.[BettypeGroup]
+		SELECT	[Eventdate]		= @Month 
+			,	[CustId]		= s.[CustId]
+			,	[LeagueId]		= s.[LeagueId]
+			,	[WorkShift]		= s.[WorkShift]
+			,	[BettypeGroup]	= g.[BettypeGroup]
+			,	[Stake]			= SUM(s.[Stake])
+			,	[WinLost]		= SUM(s.[WinLost]) 
+			,	[Comm]			= SUM(s.[Comm])
+			,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+			,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+			,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+			,	[BetCount]		= SUM(s.[BetCount]) 
+			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		 FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
-		 WHERE EventDate BETWEEN @StartDate AND @EndDate
-			AND IsLive = 1
-		 GROUP BY [CustId]
+		 WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+			AND s.IsLive = 1
+		 GROUP BY s.[CustId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
 			,	g.[BettypeGroup];
@@ -110,24 +110,30 @@ BEGIN;
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
+			,	[Stake_AR]
+			,	[WinLost_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 			,	[MatchCount]
 		)
-		SELECT @Month [EventDate]
-			,	[LeagueId]
-			,	[BetType]
-			,	[WorkShift]
-			,	SUM([Stake]) [Stake]
-			,	SUM([WinLost]) [WinLost]
-			,	SUM([Comm]) [Comm]
-			,	SUM([BetCount]) BetCount
-			,	COUNT(DISTINCT [MatchId])[MatchCount]
-		FROM [dbo].[TraderPerformance] WITH(NOLOCK)
-		WHERE EventDate BETWEEN @StartDate AND @EndDate
-			AND IsLive = 1
-		GROUP BY [LeagueId]
-			,	[BetType]
-			,	[WorkShift]
+		SELECT	[EventDate]		= @Month 
+			,	[LeagueId]		= s.[LeagueId]
+			,	[BetType]		= s.[BetType]
+			,	[WorkShift]		= s.[WorkShift]
+			,	[Stake]			= SUM(s.[Stake])
+			,	[WinLost]		= SUM(s.[WinLost]) 
+			,	[Comm]			= SUM(s.[Comm])
+			,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+			,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+			,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+			,	[BetCount]		= SUM(s.[BetCount]) 
+			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
+		FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
+		WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+			AND s.IsLive = 1
+		GROUP BY s.[LeagueId]
+			,	s.[BetType]
+			,	s.[WorkShift]
 
 		-- [SummaryByLeague_Monthly] table
 		DELETE [dbo].SummaryByLeague_Monthly	WHERE EventDate = @Month
@@ -137,27 +143,33 @@ BEGIN;
 				[EventDate]
 			,	[LeagueId]
 			,	[WorkShift]
+			,	[BettypeGroup]
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
+			,	[Stake_AR]
+			,	[WinLost_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 			,	[MatchCount]
-			,	[BettypeGroup]
 		)
-		SELECT	@Month [EventDate]
-			,	s.[LeagueId]
-			,	s.[WorkShift]
-			,	SUM(s.[Stake]) [Stake]
-			,	SUM(s.[WinLost]) [WinLost]
-			,	SUM(s.[Comm]) [Comm]
-			,	SUM(s.[BetCount]) BetCount
-			,	COUNT(DISTINCT s.[MatchId])[MatchCount]
-			,	g.[BettypeGroup]
+		SELECT	[EventDate]		= @Month
+			,	[LeagueId]		= s.[LeagueId]
+			,	[WorkShift]		= s.[WorkShift]
+			,	[BettypeGroup]	= g.[BettypeGroup]
+			,	[Stake]			= SUM(s.[Stake])
+			,	[WinLost]		= SUM(s.[WinLost]) 
+			,	[Comm]			= SUM(s.[Comm])
+			,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+			,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+			,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+			,	[BetCount]		= SUM(s.[BetCount]) 
+			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
-		WHERE EventDate BETWEEN @StartDate AND @EndDate
-			AND IsLive = 1
-		GROUP BY [LeagueId]
+		WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+			AND s.IsLive = 1
+		GROUP BY s.[LeagueId]
 			,	s.[WorkShift]
 			,	g.[BettypeGroup];
 
@@ -170,28 +182,34 @@ BEGIN;
 			,	[TeamId]
 			,	[LeagueId]
 			,	[WorkShift]
+			,	[BettypeGroup]
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
+			,	[Stake_AR]
+			,	[WinLost_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 			,	[MatchCount]
-			,	[BettypeGroup]
 		)
-		SELECT @Month [EventDate]
-			,	s.[TeamId]
-			,	s.[LeagueId]
-			,	s.[WorkShift]
-			,	SUM(s.[Stake]) [Stake]
-			,	SUM(s.[WinLost]) [WinLost]
-			,	SUM(s.[Comm]) [Comm]
-			,	SUM(s.[BetCount]) BetCount
-			,	COUNT(DISTINCT s.[MatchId])[MatchCount]
-			,	g.[BettypeGroup]
+		SELECT  [EventDate]		= @Month 
+			,	[TeamId]		= s.[TeamId]
+			,	[LeagueId]		= s.[LeagueId]
+			,	[WorkShift]		= s.[WorkShift]
+			,	[BettypeGroup]	= g.[BettypeGroup]
+			,	[Stake]			= SUM(s.[Stake])
+			,	[WinLost]		= SUM(s.[WinLost]) 
+			,	[Comm]			= SUM(s.[Comm])
+			,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+			,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+			,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+			,	[BetCount]		= SUM(s.[BetCount]) 
+			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
-		WHERE EventDate BETWEEN @StartDate AND @EndDate
-			AND IsLive = 1
-		GROUP BY [TeamId]
+		WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+			AND s.IsLive = 1
+		GROUP BY s.[TeamId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
 			,	g.[BettypeGroup];
@@ -238,28 +256,34 @@ BEGIN;
 				,	[CustId]
 				,	[LeagueId]
 				,	[WorkShift]
+				,	[BettypeGroup]
 				,	[Stake]
 				,	[WinLost]
 				,	[Comm]
+				,	[Stake_AR]
+				,	[WinLost_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 				,	[MatchCount]
-				,	[BettypeGroup]
 			)
-			SELECT	@WinLostDate [Eventdate]
-				,	s.[CustId]
-				,	s.[LeagueId]
-				,	s.[WorkShift]
-				,	SUM(s.[Stake]) [Stake]
-				,	SUM(s.[WinLost]) [WinLost]
-				,	SUM(s.[Comm]) [Comm]
-				,	SUM(s.[BetCount]) [BetCount]
-				,	COUNT(DISTINCT s.[MatchId])[MatchCount]
-				,	g.[BettypeGroup]
+			SELECT	[Eventdate]		= @WinLostDate 
+				,	[CustId]		= s.[CustId]
+				,	[LeagueId]		= s.[LeagueId]
+				,	[WorkShift]		= s.[WorkShift]
+				,	[BettypeGroup]	= g.[BettypeGroup]
+				,	[Stake]			= SUM(s.[Stake])
+				,	[WinLost]		= SUM(s.[WinLost]) 
+				,	[Comm]			= SUM(s.[Comm])
+				,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+				,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+				,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+				,	[BetCount]		= SUM(s.[BetCount]) 
+				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			 FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 				INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
-			 WHERE EventDate BETWEEN @StartDate AND @EndDate
-				AND IsLive = 1
-			 GROUP BY [CustId]
+			 WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+				AND s.IsLive = 1
+			 GROUP BY s.[CustId]
 				,	s.[LeagueId]
 				,	s.[WorkShift]
 				,	g.[BettypeGroup];
@@ -276,24 +300,30 @@ BEGIN;
 				,	[Stake]
 				,	[WinLost]
 				,	[Comm]
+				,	[Stake_AR]
+				,	[WinLost_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 				,	[MatchCount]
 			)
-			SELECT @WinLostDate [EventDate]
-				,	[LeagueId]
-				,	[BetType]
-				,	[WorkShift]
-				,	SUM([Stake]) [Stake]
-				,	SUM([WinLost]) [WinLost]
-				,	SUM([Comm]) [Comm]
-				,	SUM([BetCount]) BetCount
-				,	COUNT(DISTINCT [MatchId])[MatchCount]
-			FROM [dbo].[TraderPerformance] WITH(NOLOCK)
-			WHERE EventDate BETWEEN @StartDate AND @EndDate
-				AND IsLive = 1
-			GROUP BY [LeagueId]
-				,	[BetType]
-				,	[WorkShift]
+			SELECT	[EventDate]		= @WinLostDate 
+				,	[LeagueId]		= s.[LeagueId]
+				,	[BetType]		= s.[BetType]
+				,	[WorkShift]		= s.[WorkShift]
+				,	[Stake]			= SUM(s.[Stake])
+				,	[WinLost]		= SUM(s.[WinLost]) 
+				,	[Comm]			= SUM(s.[Comm])
+				,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+				,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+				,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+				,	[BetCount]		= SUM(s.[BetCount]) 
+				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
+			FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
+			WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+				AND s.IsLive = 1
+			GROUP BY s.[LeagueId]
+				,	s.[BetType]
+				,	s.[WorkShift]
 
 			-- [SummaryByLeague_Monthly] table
 			DELETE [dbo].SummaryByLeague_Monthly	WHERE EventDate = @WinLostDate;
@@ -303,27 +333,33 @@ BEGIN;
 					[EventDate]
 				,	[LeagueId]
 				,	[WorkShift]
+				,	[BettypeGroup]
 				,	[Stake]
 				,	[WinLost]
-				,	[Comm]
+				,	[Comm]	
+				,	[Stake_AR]
+				,	[WinLost_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 				,	[MatchCount]
-				,	[BettypeGroup]
 			)
-			SELECT	@WinLostDate [EventDate]
-				,	s.[LeagueId]
-				,	s.[WorkShift]
-				,	SUM(s.[Stake]) [Stake]
-				,	SUM(s.[WinLost]) [WinLost]
-				,	SUM(s.[Comm]) [Comm]
-				,	SUM(s.[BetCount]) BetCount
-				,	COUNT(DISTINCT s.[MatchId])[MatchCount]
-				,	g.[BettypeGroup]
+			SELECT	[EventDate]		= @WinLostDate 
+				,	[LeagueId]		= s.[LeagueId]
+				,	[WorkShift]		= s.[WorkShift]
+				,	[BettypeGroup]	= g.[BettypeGroup]
+				,	[Stake]			= SUM(s.[Stake])
+				,	[WinLost]		= SUM(s.[WinLost]) 
+				,	[Comm]			= SUM(s.[Comm])
+				,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+				,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+				,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+				,	[BetCount]		= SUM(s.[BetCount]) 
+				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 				INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
-			WHERE EventDate BETWEEN @StartDate AND @EndDate
-				AND IsLive = 1
-			GROUP BY [LeagueId]
+			WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+				AND s.IsLive = 1
+			GROUP BY s.[LeagueId]
 				,	s.[WorkShift]
 				,	g.[BettypeGroup];
 
@@ -336,28 +372,34 @@ BEGIN;
 				,	[TeamId]
 				,	[LeagueId]
 				,	[WorkShift]
+				,	[BettypeGroup]
 				,	[Stake]
 				,	[WinLost]
 				,	[Comm]
+				,	[Stake_AR]
+				,	[WinLost_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 				,	[MatchCount]
-				,	[BettypeGroup]
 			)
-			SELECT @WinLostDate [EventDate]
-				,	s.[TeamId]
-				,	s.[LeagueId]
-				,	s.[WorkShift]
-				,	SUM(s.[Stake]) [Stake]
-				,	SUM(s.[WinLost]) [WinLost]
-				,	SUM(s.[Comm]) [Comm]
-				,	SUM(s.[BetCount]) BetCount
-				,	COUNT(DISTINCT s.[MatchId])[MatchCount]
-				,	g.[BettypeGroup]
+			SELECT	[EventDate]		= @WinLostDate 
+				,	[TeamId]		= s.[TeamId]
+				,	[LeagueId]		= s.[LeagueId]
+				,	[WorkShift]		= s.[WorkShift]
+				,	[BettypeGroup]	= g.[BettypeGroup]
+				,	[Stake]			= SUM(s.[Stake])
+				,	[WinLost]		= SUM(s.[WinLost]) 
+				,	[Comm]			= SUM(s.[Comm])
+				,	[Stake_AR]		= SUM(s.[Stake_AR]) 
+				,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
+				,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+				,	[BetCount]		= SUM(s.[BetCount]) 
+				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 				INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
-			WHERE EventDate BETWEEN @StartDate AND @EndDate
-				AND IsLive = 1
-			GROUP BY [TeamId]
+			WHERE s.EventDate BETWEEN @StartDate AND @EndDate
+				AND s.IsLive = 1
+			GROUP BY s.[TeamId]
 				,	s.[LeagueId]
 				,	s.[WorkShift]
 				,	g.[BettypeGroup];
