@@ -773,7 +773,7 @@ BEGIN
 				-- Force the output to appear immediately --
 				RAISERROR('From BK - Insert #tmpDLFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+				-- "DISTINCT" Prevent Page Splits
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
 			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, actualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, 
@@ -798,7 +798,7 @@ BEGIN
 				,	[TeamId]			= t.TeamId
 				,	[Grade]				= t.Grade
 				,	[BetType]			= ca.BetType
-				,	[Stake]				= b.Stake --turn over
+				,	[Stake]				= b.Stake --Turnover
 				,	[WinLost]			= b.WinLost
 				,	[SMAWinLost]		= b.SMAWinLost
 				,	[Comm]				= b.scomm --Commission
@@ -1253,7 +1253,7 @@ BEGIN
 				-- Force the output to appear immediately --
 				RAISERROR('From 14 - Insert #tmpDLFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+				-- "DISTINCT" Prevent Page Splits
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
 			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, actualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, 
@@ -1278,10 +1278,10 @@ BEGIN
 				,	[TeamId]			= t.TeamId
 				,	[Grade]				= t.Grade
 				,	[BetType]			= ca.BetType
-				,	[Stake]				= b.Stake --turn over
+				,	[Stake]				= b.Stake --Turnover
 				,	[WinLost]			= b.WinLost
 				,	[SMAWinLost]		= b.SMAWinLost
-				,	[Comm]				= scomm --Commission
+				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
 				,	[Spread]			= b.Spread
 				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
@@ -1743,7 +1743,7 @@ BEGIN
 				-- Force the output to appear immediately --
 				RAISERROR('From Origin - Insert #tmpDLFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+				-- "DISTINCT" Prevent Page Splits
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
 			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, actualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
@@ -1768,10 +1768,10 @@ BEGIN
 				,	[TeamId]			= t.TeamId
 				,	[Grade]				= t.Grade
 				,	[BetType]			= ca.BetType
-				,	[Stake]				= b.Stake --turn over
+				,	[Stake]				= b.Stake --Turnover
 				,	[WinLost]			= b.WinLost
 				,	[SMAWinLost]		= b.SMAWinLost
-				,	[Comm]				= scomm --Commission
+				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
 				,	[Spread]			= b.Spread
 				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
