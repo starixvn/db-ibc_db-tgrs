@@ -7,14 +7,14 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Trader_Match]
 AS
 /*  
 	Created:	20190304@John
-	Task :		AR Performance Detail Report - Trader - Match
+	Task :		New AR Performance Details (Juice & Leftover) Report - Trader - Match
 	DB:			DBTGRS.bodb_TGRS
 	Original:  
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
     
-    Example: EXECUTE [TGRS_Rpt_ARPerformanceDetail_Trader_Match] @FromDate = '2014-01-01', @ToDate= '2014-12-30', @CustID = 1530768  
+    Example: EXECUTE [TGRS_Rpt_ARPerformanceDetail_Trader_Match] @FromDate = '2019-02-01', @ToDate= '2019-03-05', @CustID = 1530768  
 */
 
 BEGIN

@@ -5,15 +5,15 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_BetType]
 AS
 /*
 	Created:	20190304@John
-	Task :		New AR Detail report - BetType Performance
+	Task :		New AR Performance Details (Juice & Leftover) Report - BetType
 	DB:			DBTGRS.bodb_TGRS
 	Original:  
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]		
 
- Exam: 
-	  	 EXEC  [TGRS_Rpt_ARPerformanceDetail_BetType] @FromDate = '2014-01-01', @ToDate= '2015-12-30' 
+	Exam: 
+	  	 EXEC  [TGRS_Rpt_ARPerformanceDetail_BetType] @FromDate = '2019-01-01', @ToDate= '2019-03-05' 
   
 */
 BEGIN

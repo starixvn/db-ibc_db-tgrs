@@ -5,7 +5,7 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Grade]
 AS
 /* 
 	Created:	20190304@John
-	Task :		New AR Performance Detail Report - Grade
+	Task :		New AR Performance Details (Juice & Leftover) Report - Grade
 	DB:			DBTGRS.bodb_TGRS
 	Original:  
 	 
@@ -13,7 +13,7 @@ AS
 		- 20190304@John: Create new [Redmine ID: #108920]
 	
 	Example: 	
-				EXECUTE	TGRS_Rpt_ARPerformanceDetail_Grade @FromDate = '2016-02-15 00:00:00', @ToDate = '2016-03-14 00:00:00'
+				EXECUTE	TGRS_Rpt_ARPerformanceDetail_Grade @FromDate = '2019-02-15 00:00:00', @ToDate = '2019-03-14 00:00:00'
 */
 BEGIN
 	SET NOCOUNT ON;

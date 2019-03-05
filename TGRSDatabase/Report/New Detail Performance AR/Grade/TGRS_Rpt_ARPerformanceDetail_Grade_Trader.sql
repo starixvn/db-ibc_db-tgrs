@@ -6,7 +6,7 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Grade_Trader]
 AS
 /* 
 	Created:	20190304@John
-	Task :		New AR Detail report Grade Performance - Detail Trader
+	Task :		New AR Performance Details (Juice & Leftover) Report - Grade - Trader
 	DB:			DBTGRS.bodb_TGRS
 	Original:  
 	 
@@ -14,7 +14,7 @@ AS
 		- 20190304@John: Create new [Redmine ID: #108920]		
 	
 	Example: 
-		EXEC [TGRS_Rpt_ARPerformanceDetail_Grade_Trader] @FromDate = '2016-03-01', @ToDate= '2017-03-28', @Grade = 1
+		EXEC [TGRS_Rpt_ARPerformanceDetail_Grade_Trader] @FromDate = '2019-02-01', @ToDate= '2019-03-05', @Grade = 1
   
 */
 BEGIN

@@ -7,7 +7,7 @@ CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Grade_League_Trader]
 AS
 /* 
 	Created:	20190304@John
-	Task :		New AR Detail report Grade Performance - Detail Trader by League
+	Task :		New AR Performance Details (Juice & Leftover) Report - Grade - League - Trader
 	DB:			DBTGRS.bodb_TGRS
 	Original:  
 	 
@@ -16,7 +16,7 @@ AS
 
 	
 	Example: 
-		EXEC [TGRS_Rpt_ARPerformanceDetail_Grade_League_Trader] @FromDate = '2016-03-13', @ToDate= '2016-03-27', @Grade = 1, @LeagueId = 1085
+		EXEC [TGRS_Rpt_ARPerformanceDetail_Grade_League_Trader] @FromDate = '2019-02-13', @ToDate= '2019-03-05', @Grade = 1, @LeagueId = 1085
   
 */
 BEGIN
