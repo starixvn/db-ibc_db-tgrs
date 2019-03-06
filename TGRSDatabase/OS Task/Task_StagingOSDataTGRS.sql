@@ -443,7 +443,8 @@ BEGIN
 			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
-					AND	b.LiveIndicator = 1;
+					AND	b.LiveIndicator = 1
+					AND b.stake <> 0;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -636,7 +637,8 @@ BEGIN
 			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
-					AND	b.LiveIndicator = 1;
+					AND	b.LiveIndicator = 1
+					AND b.stake <> 0;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -832,7 +834,8 @@ BEGIN
 					AND	b.statusID IN (112, 113)
 					AND	b.ruben = 1
 					AND	b.Currency NOT IN (20, 27, 28)
-					AND	b.LiveIndicator = 1;
+					AND	b.LiveIndicator = 1
+					AND b.stake <> 0;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
