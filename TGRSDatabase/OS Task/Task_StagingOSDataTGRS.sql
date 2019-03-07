@@ -474,7 +474,7 @@ BEGIN
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
 					AND	es.SportType = 0
@@ -668,7 +668,7 @@ BEGIN
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
 					AND	es.SportType = 0
@@ -865,7 +865,7 @@ BEGIN
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
 					AND	es.SportType = 0
