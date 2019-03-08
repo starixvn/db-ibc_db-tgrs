@@ -625,7 +625,7 @@ BEGIN
 				,	b.Stake
 				,	b.WinLost
 				,	b.SMAWinLost
-				,	scomm
+				,	b.scomm
 				,	b.Spread
 				,	b.tpositiontaking
 				,	b.virtualrate
@@ -1151,7 +1151,6 @@ BEGIN
 		LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK)
 				ON	m.leagueid = l.leagueid
 		WHERE	m.EventDate = @WinlostDate
-			AND m.matchid NOT IN (SELECT t.MatchId FROM #tmpRTScannedMatches t)
 			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
 			AND	a.OperatorType < 3
@@ -1199,7 +1198,6 @@ BEGIN
 				AND	es.SubProduct = ''
 				AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 		WHERE	b.winlostdate = @winlostdate
-			AND m.matchid NOT IN (SELECT t.MatchId FROM #tmpRTScannedMatches t)
 			AND	b.bettype IN (1, 3, 7, 8)
 			AND	b.statusID IN (112, 113)
 			AND	b.Currency NOT IN (20, 27, 28)

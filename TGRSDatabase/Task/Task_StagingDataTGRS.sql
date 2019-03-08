@@ -111,7 +111,7 @@ BEGIN
 			SELECT	DISTINCT b.bettype
 			FROM	dbo.BetType AS b WITH (NOLOCK)
 			WHERE	b.BetType < 0;
-		END
+		END;
 
 	INSERT INTO #tmpDLSupportedBettypes(BetType)
 	SELECT	DISTINCT b.bettype
