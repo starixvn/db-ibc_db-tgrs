@@ -92,6 +92,7 @@ BEGIN
 	SELECT	DISTINCT m.bettype
 	FROM	bodb02.dbo.SportBettypeMatrix AS m WITH(NOLOCK)
 	WHERE	m.sporttype <> 1
+		AND m.ProductID = 1
 		AND	m.bettype IS NOT NULL
 	UNION
 	SELECT	DISTINCT b.BettypeId
@@ -440,11 +441,15 @@ BEGIN
 					(transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
 			SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
 			FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
+				INNER JOIN bodb_Archive.dbo.match_bk m WITH (NOLOCK) ON b.matchid = m.matchid
+				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
-					AND b.stake <> 0;
+					AND sbm.ProductID = 1
+					AND sbm.sporttype <> 1;
+				
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -634,11 +639,14 @@ BEGIN
 				(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
 			SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
 			FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.match14 m WITH (NOLOCK) ON b.matchid = m.matchid
+				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
-					AND b.stake <> 0;
+					AND sbm.ProductID = 1
+					AND sbm.sporttype <> 1;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -830,12 +838,14 @@ BEGIN
 				(	  transid,  custid, matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm)
 			SELECT	b.transid, b.custid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm
 			FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.match m WITH (NOLOCK) ON b.matchid = m.matchid
+				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
-					AND	b.ruben = 1
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
-					AND b.stake <> 0;
+					AND sbm.ProductID = 1
+					AND sbm.sporttype <> 1;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
