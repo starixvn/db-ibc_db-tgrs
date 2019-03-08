@@ -680,7 +680,7 @@ BEGIN
 		IF (@IsRunningJob = 1)
 		BEGIN
 			INSERT INTO dbo.Staging_EventDate (EventDate)
-			SELECT winlostdate FROM #tmpDLwinlostdate
+			SELECT winlostdate FROM #tmpDLwinlostdate WITH(NOLOCK)
 
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -697,7 +697,7 @@ BEGIN
 		BEGIN
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
-			FROM	#tmpDLwinlostdate AS d;
+			FROM	#tmpDLwinlostdate AS d WITH(NOLOCK);
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
 			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
@@ -933,7 +933,7 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
-			FROM	#tmpDLStagingTraderPerformance AS t
+			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
 			LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
 			WHERE	t.EventDate = @winlostdate
 			GROUP BY t.CustId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
@@ -966,7 +966,7 @@ BEGIN
 					,	[WinLost_AR]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.ActualRate)
 					,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
-			FROM	#tmpDLStagingTraderPerformance AS t 
+			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
 			LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
 			WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
 			GROUP BY t.CustId, t.matchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator;
@@ -1160,7 +1160,7 @@ BEGIN
 		IF (@IsRunningJob = 1)
 		BEGIN
 			INSERT INTO dbo.Staging_EventDate (EventDate)
-			SELECT winlostdate FROM #tmpDLwinlostdate
+			SELECT winlostdate FROM #tmpDLwinlostdate WITH(NOLOCK);
 
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1173,11 +1173,11 @@ BEGIN
 			END;
 		END;
 
-		WHILE	EXISTS (SELECT 1 FROM #tmpDLwinlostdate)
+		WHILE	EXISTS (SELECT 1 FROM #tmpDLwinlostdate WITH(NOLOCK))
 		BEGIN
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
-			FROM	#tmpDLwinlostdate AS d;
+			FROM	#tmpDLwinlostdate AS d WITH(NOLOCK);
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
 			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
@@ -1413,7 +1413,7 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
-			FROM	#tmpDLStagingTraderPerformance AS t 
+			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
 			WHERE	t.EventDate = @winlostdate
 			GROUP BY t.CustId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
@@ -1446,7 +1446,7 @@ BEGIN
 					,	[WinLost_AR]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.ActualRate)
 					,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
-			FROM	#tmpDLStagingTraderPerformance AS t
+			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
 			WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
 			GROUP BY t.CustId, t.matchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator;
@@ -1650,7 +1650,7 @@ BEGIN
 		IF (@IsRunningJob = 1)
 		BEGIN
 			INSERT INTO dbo.Staging_EventDate (EventDate)
-			SELECT winlostdate FROM #tmpDLwinlostdate
+			SELECT winlostdate FROM #tmpDLwinlostdate WITH(NOLOCK)
 
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1663,11 +1663,11 @@ BEGIN
 			END;
 		END;
 
-		WHILE	EXISTS (SELECT 1 FROM #tmpDLwinlostdate)
+		WHILE	EXISTS (SELECT 1 FROM #tmpDLwinlostdate WITH(NOLOCK))
 		BEGIN
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
-			FROM	#tmpDLwinlostdate AS d;
+			FROM	#tmpDLwinlostdate AS d WITH(NOLOCK);
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
 			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
@@ -1903,7 +1903,7 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
-			FROM	#tmpDLStagingTraderPerformance AS t 
+			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK) 
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
 			WHERE	t.EventDate = @winlostdate
 			GROUP BY t.CustId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator;
@@ -1936,7 +1936,7 @@ BEGIN
 					,	[WinLost_AR]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.ActualRate)
 					,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
-			FROM	#tmpDLStagingTraderPerformance AS t 
+			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK) 
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.MemberCustId = tc.custid AND tc.VendorID = 14
 			WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
 			GROUP BY t.CustId, t.MatchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator;
