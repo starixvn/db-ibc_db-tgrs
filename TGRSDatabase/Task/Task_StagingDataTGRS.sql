@@ -1003,6 +1003,8 @@ BEGIN
 	BEGIN
 		TRUNCATE TABLE #tmpDLTrader;
 		
+		SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
+
 		-- GET Scanned Match List: Completed Soccer Match
 		TRUNCATE TABLE #tmpDLScannedMatches;
 		INSERT INTO #tmpDLScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType)
@@ -1123,7 +1125,6 @@ BEGIN
 		IF	@Debug = 1
 		BEGIN
 			-- Force the output to appear immediately
-			SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
 			RAISERROR('From 14 - Insert #tmpDLTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
@@ -1151,7 +1152,6 @@ BEGIN
 		IF	@Debug = 1
 		BEGIN
 			-- Force the output to appear immediately
-			SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
 			RAISERROR('From 14 - Insert #tmpDLwinlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
@@ -1487,7 +1487,7 @@ BEGIN
 	BEGIN
 		TRUNCATE TABLE #tmpDLTrader;
 		
-		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+		SELECT @Date = '@FromDateOrigin = ' + CONVERT(NVARCHAR, @FromDateOrigin, 120) + ', @ToDateOrigin = ' + CONVERT(NVARCHAR, @ToDateOrigin, 120);
 
 		-- GET Scanned Match List: Completed Soccer Match
 		TRUNCATE TABLE #tmpDLScannedMatches;

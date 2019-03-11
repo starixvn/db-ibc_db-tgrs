@@ -46,6 +46,7 @@ BEGIN;
 		,	@winlostdate			DATETIME
 		,	@Duration				INT
 		,	@Msg					NVARCHAR(MAX)
+		,	@Date					NVARCHAR(250)
 		;
 	IF	OBJECT_ID('tempdb..#tmpDataGroup') IS NOT NULL
 	BEGIN;
@@ -376,6 +377,9 @@ BEGIN;
 
 	IF @IsGetDataFromBK = 1
 	BEGIN
+		
+		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+
 		INSERT INTO	#tmpTrader2 (CustId, MatchId, EventDate, BetType, SpecialType)
 		SELECT	DISTINCT
 				[CustId]		= a.OperatorID
@@ -429,9 +433,9 @@ BEGIN;
 			;
 
 		IF	@Debug = 1
-		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('Insert #tmpTrader2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		BEGIN
+			-- Force the output to appear immediately
+			RAISERROR('From BK - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
 		INSERT INTO	#winlostdate (winlostdate)
@@ -452,9 +456,9 @@ BEGIN;
 			;
 
 		IF	@Debug = 1
-		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('Insert #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		BEGIN
+			-- Force the output to appear immediately
+			RAISERROR('From BK - Insert #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		-------
@@ -463,6 +467,8 @@ BEGIN;
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
 			FROM	#winlostdate AS d WITH (NOLOCK);
+
+			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
 
 			-- Insert data into batch by Date
 			INSERT INTO #tmpFilteredBettransBKByBatch2 (transid, matchid, winlostdate, bettype, modds, virtualrate, actualrate, 
@@ -508,11 +514,11 @@ BEGIN;
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert #tmpFilteredBettransBKByBatch2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpFilteredBettransBKByBatch2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			-- Staging Performance 
@@ -598,11 +604,11 @@ BEGIN;
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert #tmpStagingTraderPerformance2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpStagingTraderPerformance2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			INSERT INTO #tmpDataGroup (CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, StatusID, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
@@ -636,11 +642,11 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert ##tmpDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpDataGroup - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
-		
+
 			DELETE	d
 			FROM	#winlostdate AS d
 			WHERE	d.winlostdate = @WinLostDate;
@@ -650,10 +656,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				PRINT	@WinLostDate
-				RAISERROR('DELETE #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - DELETE #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			TRUNCATE TABLE	#tmpStagingTraderPerformance2;
@@ -667,6 +672,8 @@ BEGIN;
 		TRUNCATE TABLE	#tmpTrader2;
 		TRUNCATE TABLE	#tmpStagingTraderPerformance2;
 		TRUNCATE TABLE	#tmpFilteredBettransBKByBatch2;
+		
+		SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
 
 		INSERT INTO	#tmpTrader2 (CustId, MatchId, EventDate, BetType, SpecialType)
 		SELECT	DISTINCT
@@ -720,11 +727,11 @@ BEGIN;
 			;
 
 		IF	@Debug = 1
-		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('Insert #tmpTrader2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		BEGIN
+			-- Force the output to appear immediately
+			RAISERROR('From 14 - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
-		
+
 		INSERT INTO	#winlostdate (winlostdate)
 		SELECT	tally.winlostdate
 		FROM	(
@@ -743,9 +750,9 @@ BEGIN;
 			;
 
 		IF	@Debug = 1
-		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('Insert #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		BEGIN
+			-- Force the output to appear immediately
+			RAISERROR('From 14 - Insert #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		------------
@@ -754,6 +761,8 @@ BEGIN;
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
 			FROM	#winlostdate AS d WITH (NOLOCK);
+
+			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
 
 			-- Insert data into batch by Date
 			INSERT INTO #tmpFilteredBettransBKByBatch2 (transid, matchid, winlostdate, bettype, modds, virtualrate, actualrate, 
@@ -801,9 +810,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert #tmpFilteredBettransBKByBatch2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpFilteredBettransBKByBatch2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			-- Staging Performance 
@@ -891,9 +900,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert #tmpStagingTraderPerformance2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpStagingTraderPerformance2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			INSERT INTO #tmpDataGroup (CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, StatusID, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
@@ -927,9 +936,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert ##tmpDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpDataGroup - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			DELETE	d
@@ -940,11 +949,11 @@ BEGIN;
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
 
+			
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				PRINT	@WinLostDate
-				RAISERROR('DELETE #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - DELETE #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			TRUNCATE TABLE	#tmpStagingTraderPerformance2;
@@ -958,7 +967,9 @@ BEGIN;
 		TRUNCATE TABLE	#tmpTrader2;
 		TRUNCATE TABLE	#tmpStagingTraderPerformance2;
 		TRUNCATE TABLE	#tmpFilteredBettransBKByBatch2;
-	
+		
+		SELECT @Date = '@FromDateOrigin = ' + CONVERT(NVARCHAR, @FromDateOrigin, 120) + ', @ToDateOrigin = ' + CONVERT(NVARCHAR, @ToDateOrigin, 120);
+
 		INSERT INTO	#tmpTrader2 (CustId, MatchId, EventDate, BetType, SpecialType)
 		SELECT	DISTINCT
 				[CustId]		= a.OperatorID
@@ -1012,11 +1023,11 @@ BEGIN;
 			;
 
 		IF	@Debug = 1
-		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('Insert #tmpTrader2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		BEGIN
+			-- Force the output to appear immediately
+			RAISERROR('From Origin - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
-		
+
 		INSERT INTO	#winlostdate (winlostdate)
 		SELECT	tally.winlostdate
 		FROM	(
@@ -1035,9 +1046,9 @@ BEGIN;
 			;
 
 		IF	@Debug = 1
-		BEGIN;
-			-- Force the output to appear immediately --
-			RAISERROR('Insert #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		BEGIN
+			-- Force the output to appear immediately
+			RAISERROR('From Origin - Insert #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		-------
@@ -1046,6 +1057,8 @@ BEGIN;
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
 			FROM	#winlostdate AS d WITH (NOLOCK);
+
+			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
 
 			-- Insert data into batch by Date
 			INSERT INTO #tmpFilteredBettransBKByBatch2 (transid, matchid, winlostdate, bettype, modds, virtualrate, actualrate, 
@@ -1093,9 +1106,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert #tmpFilteredBettransBKByBatch2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpFilteredBettransBKByBatch2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			-- Staging Performance 
@@ -1181,11 +1194,11 @@ BEGIN;
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert #tmpStagingTraderPerformance2 - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpStagingTraderPerformance2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			INSERT INTO #tmpDataGroup (CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, StatusID, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
@@ -1219,9 +1232,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				RAISERROR('	Insert ##tmpDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpDataGroup - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		
 			DELETE	d
@@ -1233,10 +1246,9 @@ BEGIN;
 				;
 
 			IF	@Debug = 1
-			BEGIN;
-				-- Force the output to appear immediately --
-				PRINT	@WinLostDate
-				RAISERROR('DELETE #winlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - DELETE #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			TRUNCATE TABLE	#tmpStagingTraderPerformance2;
