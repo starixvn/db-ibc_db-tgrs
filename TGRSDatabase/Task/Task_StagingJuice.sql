@@ -98,7 +98,7 @@ BEGIN;
 		,	betteam					VARCHAR(10)
 		,	odds					SMALLMONEY
 		,	statusID				TINYINT
-		,	ExtraPT					DECIMAL(9, 8)
+		,	ExtraPT					DECIMAL(12, 8)
 		,	ScoreHDP				SMALLMONEY
 		,	StakeMY					MONEY
 		,	Stake					MONEY
@@ -125,7 +125,7 @@ BEGIN;
 		,	Odds					FLOAT
 		,	StakeMY					MONEY
 		,	Stake					MONEY
-		,	ExtraPT					DECIMAL(9, 8)
+		,	ExtraPT					DECIMAL(12, 8)
 		,	TPositionTaking			SMALLMONEY
 		,	VirtualRate				FLOAT
 		,	ActualRate				FLOAT

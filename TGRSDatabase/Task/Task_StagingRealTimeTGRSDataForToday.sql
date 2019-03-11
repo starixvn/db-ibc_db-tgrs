@@ -149,7 +149,7 @@ BEGIN
 		,	tpositiontaking		SMALLMONEY
 		,	srecommend			INT
 		,	scomm				MONEY
-		,	ExtraPT				DECIMAL(9, 8)
+		,	ExtraPT				DECIMAL(12, 8)
 		,	Spread				MONEY
 		,	Stake				MONEY
 		,	WinLost				MONEY
@@ -162,16 +162,6 @@ BEGIN
 		,	AwayId				INT
 		,	LiveIndicator		BIT
 		,   BetChoice			NVARCHAR(10) 
-	);
-
-	CREATE CLUSTERED INDEX	#CIX_tmpRTFilteredBettransByBatchIdx ON #tmpRTFilteredBettransByBatch (
-			winlostdate			ASC
-		,	MatchId				ASC
-		,	BetType				ASC
-	);
-
-	CREATE NONCLUSTERED INDEX	#NCIX_tmpRTFilteredBettransByBatchIdx ON #tmpRTFilteredBettransByBatch (
-			custid				ASC
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpRTFilteredBettransByBatch_Distinct') IS NOT NULL
@@ -193,7 +183,7 @@ BEGIN
 		,	tpositiontaking		SMALLMONEY
 		,	srecommend			INT
 		,	scomm				MONEY
-		,	ExtraPT				DECIMAL(9, 8)
+		,	ExtraPT				DECIMAL(12, 8)
 		,	Spread				MONEY
 		,	Stake				MONEY
 		,	WinLost				MONEY
@@ -243,7 +233,7 @@ BEGIN
 		,	Comm				MONEY
 		,	BetCount			INT
 		,	Spread				MONEY
-		,	ExtraPT				DECIMAL(9, 8)
+		,	ExtraPT				DECIMAL(12, 8)
 		,	TPositionTaking		SMALLMONEY
 		,	VirtualRate			FLOAT
 		,	ActualRate			FLOAT
@@ -1048,7 +1038,7 @@ BEGIN
 			,	betteam				VARCHAR(10)
 			,	odds				SMALLMONEY
 			,	statusID			TINYINT
-			,	ExtraPT				DECIMAL(9, 8)
+			,	ExtraPT				DECIMAL(12, 8)
 			,	ScoreHDP			SMALLMONEY
 			,	StakeMY				MONEY
 			,	Stake				MONEY
@@ -1075,7 +1065,7 @@ BEGIN
 			,	Odds				FLOAT
 			,	StakeMY				MONEY
 			,	Stake				MONEY
-			,	ExtraPT				DECIMAL(9, 8)
+			,	ExtraPT				DECIMAL(12, 8)
 			,	TPositionTaking		SMALLMONEY
 			,	VirtualRate			FLOAT
 			,	ActualRate			FLOAT
