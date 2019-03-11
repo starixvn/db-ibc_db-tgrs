@@ -59,6 +59,7 @@ BEGIN
 		,	@RowCount				INT
 		,	@Duration				INT
 		,	@Msg					NVARCHAR(MAX)
+		,	@Date					NVARCHAR(250)
 		;
 
 	DECLARE @BalanceUpDay			SMALLDATETIME
@@ -523,14 +524,15 @@ BEGIN
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 			;
-			
+
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('Track Changes on Matches - Insert #tmpDLDateToTraceChangesOnMatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			SELECT @Date = '@GenerateFromDate = ' + CONVERT(NVARCHAR, @GenerateFromDate, 120) + ', @GenerateToDate = ' + CONVERT(NVARCHAR, @GenerateToDate, 120);
+			RAISERROR('Track Changes on Matches - Insert #tmpDLDateToTraceChangesOnMatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		--=======BACKUP TraderPerformance DATA  TO TraceMatch table
+		--=======BACKUP TraderPerformance DATA  TO TrackChangesOnMatches_Queue table
 		DELETE FROM dbo.TrackChangesOnMatches_Queue;
 		DECLARE @OldCapturedDate DATETIME = GETDATE();
 		INSERT INTO dbo.TrackChangesOnMatches_Queue(MatchId, EventDate, SportType, BetType, OldCapturedDate, OldTraderID
@@ -554,18 +556,22 @@ BEGIN
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 			;
-
+		
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From TraderPerformance - Insert #tmpDLChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			SELECT @Date = '@GenerateFromDate = ' + CONVERT(NVARCHAR, @GenerateFromDate, 120) + ', @GenerateToDate = ' + CONVERT(NVARCHAR, @GenerateToDate, 120);
+			RAISERROR('BACKUP TraderPerformance DATA - Insert TrackChangesOnMatches_Queue - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
+
 	END;
 
 	IF	@IsGetDataFromBK = 1
 	BEGIN
 		TRUNCATE TABLE #tmpDLTrader;
 		
+		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+
 		-- GET Scanned Match List: Completed Soccer Match
 		TRUNCATE TABLE #tmpDLScannedMatches;
 		INSERT INTO #tmpDLScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType)
@@ -649,8 +655,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From BK - Insert #tmpDLTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From BK - Insert #tmpDLTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 	
 		INSERT INTO	#tmpDLwinlostdate (winlostdate)
@@ -669,11 +675,11 @@ BEGIN
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 			;
-
+		
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From BK - Insert #tmpDLwinlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From BK - Insert #tmpDLwinlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		-- No input date range: Default job run
@@ -699,6 +705,8 @@ BEGIN
 					@WinLostDate = d.winlostdate
 			FROM	#tmpDLwinlostdate AS d WITH(NOLOCK);
 			
+			SELECT @Date = CONVERT(NVARCHAR, @winlostdate, 120);
+
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
 			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, actualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode
@@ -767,12 +775,13 @@ BEGIN
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-	
+			
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #tmpDLFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpDLFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
+
 				-- "DISTINCT" Prevent Page Splits
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
 			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
@@ -901,11 +910,11 @@ BEGIN
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #tmpDLStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpDLStagingTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
@@ -944,8 +953,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert TraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		
 			DELETE dbo.TraderPerformance_BetChoice	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
@@ -974,11 +983,11 @@ BEGIN
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert TraderPerformance_BetChoice - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			DELETE	d
@@ -988,12 +997,11 @@ BEGIN
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				PRINT	@winlostdate;
-				RAISERROR('From BK - DELETE #tmpDLwinlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - DELETE #tmpDLwinlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			TRUNCATE TABLE #tmpDLStagingTraderPerformance;
@@ -1122,11 +1130,12 @@ BEGIN
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 			;
-		
+
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From 14 - Insert #tmpDLTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
+			RAISERROR('From 14 - Insert #tmpDLTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
 		INSERT INTO dbo.TracePerformanceTrader(CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, fromSP, CapturedDate)
@@ -1152,8 +1161,9 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From 14 - Insert #tmpDLwinlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
+			RAISERROR('From 14 - Insert #tmpDLwinlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		-- No input date range: Default job run
@@ -1178,6 +1188,8 @@ BEGIN
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
 			FROM	#tmpDLwinlostdate AS d WITH(NOLOCK);
+
+			SELECT @Date = CONVERT(NVARCHAR, @winlostdate, 120);
 			
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
 			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
@@ -1250,9 +1262,10 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #tmpDLFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpDLFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
+
 				-- "DISTINCT" Prevent Page Splits
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
 			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
@@ -1384,10 +1397,10 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #tmpDLStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpDLStagingTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, 
@@ -1424,8 +1437,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert TraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		
 			DELETE dbo.TraderPerformance_BetChoice	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
@@ -1457,8 +1470,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert TraderPerformance_BetChoice - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			DELETE	d
@@ -1471,9 +1484,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				PRINT	@winlostdate;
-				RAISERROR('From 14 - DELETE #tmpDLwinlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - DELETE #tmpDLwinlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			TRUNCATE TABLE #tmpDLStagingTraderPerformance;
@@ -1486,6 +1498,8 @@ BEGIN
 	BEGIN
 		TRUNCATE TABLE #tmpDLTrader;
 		
+		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+
 		-- GET Scanned Match List: Completed Soccer Match
 		TRUNCATE TABLE #tmpDLScannedMatches;
 		INSERT INTO #tmpDLScannedMatches(MatchId, EventDate, KickOffTime,WorkShift, MatchCode, LeagueId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType)
@@ -1612,12 +1626,13 @@ BEGIN
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 			;
-
+		
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From Origin - Insert #tmpDLTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From Origin - Insert #tmpDLTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
+
 		----Captured Data for Tunning
 		INSERT INTO dbo.TracePerformanceTrader(CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, fromSP, CapturedDate)
 		SELECT CustId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade, @fromSP, @CapturedDate
@@ -1642,8 +1657,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From Origin - Insert #tmpDLwinlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From Origin - Insert #tmpDLwinlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		-- No input date range: Default job run
@@ -1669,6 +1684,8 @@ BEGIN
 					@WinLostDate = d.winlostdate
 			FROM	#tmpDLwinlostdate AS d WITH(NOLOCK);
 			
+			SELECT @Date = CONVERT(NVARCHAR, @winlostdate, 120);
+
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch;
 			INSERT INTO	#tmpDLFilteredBettransByBatch (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
 						virtualrate, actualrate, tpositiontaking, srecommend, scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, EventDate, SportType, 
@@ -1740,9 +1757,10 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert #tmpDLFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpDLFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
+
 				-- "DISTINCT" Prevent Page Splits
 			TRUNCATE TABLE	#tmpDLFilteredBettransByBatch_Distinct;
 			INSERT INTO	#tmpDLFilteredBettransByBatch_Distinct (transid, custid, matchid, workshift, specialType, winlostdate, bettype, modds, 
@@ -1874,10 +1892,10 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert #tmpDLStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpDLStagingTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, 
@@ -1914,8 +1932,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert TraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		
 			DELETE dbo.TraderPerformance_BetChoice	WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
@@ -1947,8 +1965,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert TraderPerformance_BetChoice - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			DELETE	d
@@ -1961,9 +1979,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				PRINT	@winlostdate;
-				RAISERROR('From Origin - DELETE #tmpDLwinlostdate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - DELETE #tmpDLwinlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			TRUNCATE TABLE #tmpDLStagingTraderPerformance;
