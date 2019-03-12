@@ -599,6 +599,7 @@ BEGIN;
 					,	b.scomm
 					,	b.modds
 					,	b.statusID
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 			OPTION (MAXDOP 2);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -893,6 +894,7 @@ BEGIN;
 					,	b.scomm
 					,	b.modds
 					,	b.statusID
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 			OPTION (MAXDOP 2);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1189,6 +1191,7 @@ BEGIN;
 					,	b.scomm
 					,	b.modds
 					,	b.statusID
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 			OPTION (MAXDOP 2);
 		
 			SELECT	@RowCount	= @@ROWCOUNT

@@ -894,6 +894,7 @@ BEGIN
 					,	b.actualrate
 					,	b.LiveIndicator
 					,	b.BetChoice
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1378,6 +1379,7 @@ BEGIN
 					,	b.actualrate
 					,	b.LiveIndicator
 					,	b.BetChoice
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1873,6 +1875,7 @@ BEGIN
 					,	b.actualrate
 					,	b.LiveIndicator
 					,	b.BetChoice
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
 
 			SELECT	@RowCount	= @@ROWCOUNT

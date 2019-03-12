@@ -26,6 +26,7 @@ AS
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
 		- 20190128@John:	Fix Null value for Grade & Team [Redmine ID: 107809]
 		- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+
 	Param's Explanation:
 		
 	Exam:
@@ -620,9 +621,9 @@ BEGIN
 				,	b.tpositiontaking
 				,	b.virtualrate
 				,	b.actualrate
-				,	b.transid
 				,	b.LiveIndicator
 				,	b.BetChoice
+				,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 				;
 
 		SELECT	@RowCount	= @@ROWCOUNT
@@ -1282,7 +1283,7 @@ BEGIN
 				,	b.scomm
 				,	b.modds
 				,	b.statusID
-				,	b.transid
+				,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 		OPTION (MAXDOP 2);
 		
 		SELECT	@RowCount	= @@ROWCOUNT
