@@ -448,7 +448,8 @@ BEGIN
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
 					AND sbm.ProductID = 1
-					AND sbm.sporttype <> 1;
+					AND sbm.sporttype <> 1
+					AND sbm.IsLive = 1;
 				
 			
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -484,7 +485,7 @@ BEGIN
 					AND	es.ProductId = 1
 					AND	es.SportType = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate AND es.ToDate
+					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader), b.custid, b.winlostdate, b.matchid, b.bettype
 					,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END) * b.virtualrate)
 					,	(b.winlost - b.actual_stake), (b.awinlost + b.mwinlost + b.swinlost)
@@ -646,7 +647,8 @@ BEGIN
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
 					AND sbm.ProductID = 1
-					AND sbm.sporttype <> 1;
+					AND sbm.sporttype <> 1
+					AND sbm.IsLive = 1;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -681,7 +683,7 @@ BEGIN
 					AND	es.ProductId = 1
 					AND	es.SportType = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate AND es.ToDate
+					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader), b.custid, b.winlostdate, b.matchid, b.bettype
 					,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END) * b.virtualrate)
 					,	(b.winlost - b.actual_stake), (b.awinlost + b.mwinlost + b.swinlost)
@@ -845,7 +847,8 @@ BEGIN
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
 					AND sbm.ProductID = 1
-					AND sbm.sporttype <> 1;
+					AND sbm.sporttype <> 1
+					AND sbm.IsLive = 1;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -880,7 +883,7 @@ BEGIN
 					AND	es.ProductId = 1
 					AND	es.SportType = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate AND es.ToDate
+					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader), b.custid, b.winlostdate, b.matchid, b.BetType
 					,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END) * b.virtualrate)
 					,	(WinLost - actual_stake), (awinlost + mwinlost + swinlost)
