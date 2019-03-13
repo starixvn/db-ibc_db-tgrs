@@ -1,4 +1,3 @@
-
 ALTER PROCEDURE [dbo].[Task_StagingTraderPerformanceByYear_WithLiveIndicator]
 		@GenerateFromDate		DATE = NULL
 	,	@GenerateToDate			DATE = NULL
@@ -11,8 +10,9 @@ AS
  Original:  
   
  Revisions:      
-	- 20171127@Long: Create new
-	- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
+	- 20171127@Long:	Create new
+	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
+	- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
    			
  Param's Explanation:  
 	 
@@ -54,6 +54,9 @@ BEGIN;
 			,	[Turnover]
 			,	[WinLoss]
 			,	[Comm]
+			,	[Turnover_AR]
+			,	[WinLoss_AR]
+			,	[Comm_AR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -65,6 +68,9 @@ BEGIN;
 			,	SUM(tpp.Turnover) AS Turnover
 			,	SUM(tpp.WinLoss) AS WinLoss
 			,	SUM(tpp.Comm) AS Comm
+			,	SUM(tpp.Turnover_AR) AS Turnover_AR
+			,	SUM(tpp.WinLoss_AR) AS WinLoss_AR
+			,	SUM(tpp.Comm_AR) AS Comm_AR
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM [dbo].[TraderPerformance_Monthly] tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentYearStartDate AND @CurrentYearEndDate
@@ -122,6 +128,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -133,6 +142,9 @@ BEGIN;
 				,	SUM(tpp.Turnover) AS Turnover
 				,	SUM(tpp.WinLoss) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Turnover_AR) AS Turnover_AR
+				,	SUM(tpp.WinLoss_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM [dbo].[TraderPerformance_Monthly] tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastYearStartDate AND @LastYearEndDate
@@ -222,6 +234,9 @@ BEGIN;
 				,	[Turnover]
 				,	[WinLoss]
 				,	[Comm]
+				,	[Turnover_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]
 				,	[BetCount]
 			)
 			SELECT	tpp.CustId
@@ -233,6 +248,9 @@ BEGIN;
 				,	SUM(tpp.Turnover) AS Turnover
 				,	SUM(tpp.WinLoss) AS WinLoss
 				,	SUM(tpp.Comm) AS Comm
+				,	SUM(tpp.Turnover_AR) AS Turnover_AR
+				,	SUM(tpp.WinLoss_AR) AS WinLoss_AR
+				,	SUM(tpp.Comm_AR) AS Comm_AR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM [dbo].[TraderPerformance_Monthly] tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @CurrentYearStartDate AND @CurrentYearEndDate

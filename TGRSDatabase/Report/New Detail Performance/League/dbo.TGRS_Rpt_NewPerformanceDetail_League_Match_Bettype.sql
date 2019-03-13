@@ -1,8 +1,3 @@
-
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_NewPerformanceDetail_League_Match_Bettype    Script Date: 1/17/2017 11:20:01 AM ******/
-
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match_Bettype    Script Date: 3/23/2016 11:22:31 PM ******/
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match_Bettype    Script Date: 3/22/2016 12:48:52 PM ******/
 ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Match_Bettype] 
 	 @FromDate DATE
 	,@ToDate DATE
@@ -20,6 +15,7 @@ AS
 	- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
 	- 20171205@Simon: get only Live data & Bettypes are not disabled
 	- 20180912@Simon: add league exclusion
+	- 20190304@John: Update StakeMYR for SumCategory [Redmine ID: #108920]
 
  Param's Explanation:  	
 	
@@ -66,7 +62,7 @@ BEGIN
 				ELSE 1
 				END) AS WinLossScore
 		,ISNULL(SUM(tp.BetCount), 0) AS BetCount
-		,ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
+		,ISNULL(SUM(tp.StakeMYR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
 		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
@@ -100,13 +96,6 @@ BEGIN
 
 	DROP TABLE #BettypeDetail;
 END
-/*
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Match_Bettype] TO [bodbTGRSNet]
-GO
-GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_NewPerformanceDetail_League_Match_Bettype] TO [bodbTGRSNet ]
-GO
-*/
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
