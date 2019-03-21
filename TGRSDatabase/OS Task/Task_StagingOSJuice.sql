@@ -18,7 +18,8 @@ AS
 		- 20170712@Billy:	Change from 200000 rows batch to 100 matchs batch - [Redmine: #79615]
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
 		- 20190121@John:	Enhance performance for BK [Redmine ID: 107809]
-   		
+   		- 20190321@John:	Handling for unassigned trader - [Redmine ID: 109716]
+
 	Param's Explanation:
 		
 	Exam:
@@ -28,10 +29,14 @@ BEGIN
 	SET NOCOUNT ON;
 	
 	-- Common variables
+	DECLARE	@IdForUnassignedTrader	INT	= 0
+		;
+
 	DECLARE	@Begin					DATETIME = GETDATE()
 		,	@RowCount				INT
 		,	@Duration				INT
 		,	@Msg					NVARCHAR(MAX)
+		,	@Date					NVARCHAR(250)
 		;
 
 	DECLARE @BalanceUpDay			SMALLDATETIME
@@ -48,7 +53,6 @@ BEGIN
 	BEGIN
 		SELECT @IsRunningJob = 1
 	END
-	--
 		
 	IF	OBJECT_ID('tempdb..#tmpDLBUMBData') IS NOT NULL
 	BEGIN
@@ -78,7 +82,7 @@ BEGIN
 			@MoveBetsDay  = ' + CONVERT(NVARCHAR, @MoveBetsDay, 120) + N'
 			@Yesterday    = ' + CONVERT(NVARCHAR, @Yesterday, 120);
 
-		-- Force the output to appear immediately --
+		-- Force the output to appear immediately
 		RAISERROR(@Msg, 0, 0) WITH NOWAIT;
 	END;
 
@@ -260,7 +264,7 @@ BEGIN
 		BEGIN
 			SELECT	@Msg = 'GenerateToDate < GenerateFromDate: Unacceptable!';
 
-			-- Force the output to appear immediately --
+			-- Force the output to appear immediately
 			RAISERROR(@Msg, 0, 0) WITH NOWAIT;
 		END;
 
@@ -356,8 +360,9 @@ BEGIN
 
 	IF	@IsGetDataFromBK = 1
 	BEGIN
-
 		TRUNCATE TABLE #tmpOSTrader;
+		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+
 		INSERT INTO	#tmpOSTrader(CustId, matchid, SportType, EventDate, BetType)
 		SELECT	DISTINCT
 				[CustId]	= a.OperatorID
@@ -377,9 +382,10 @@ BEGIN
 		FROM		bodb_Archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
 		WHERE	m.eventdate BETWEEN @FromDateBK AND @ToDateBK
-			AND	a.OperatorType < 3
-			AND	m.matchcode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
+			AND m.EventStatus = 'completed'
+			AND	m.MatchCode NOT LIKE '%hedge%'
+			AND	a.OperatorType < 3
 		;
 
 		SELECT	@RowCount	= @@ROWCOUNT
@@ -388,8 +394,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From BK - Insert #tmpOSTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From BK - Insert #tmpOSTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 	
 		INSERT INTO	#tmpBettransDate (winlostdate)
@@ -411,8 +417,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From BK - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From BK - Insert #tmpBettransDate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
@@ -421,15 +427,22 @@ BEGIN
 					@WinLostDate = d.winlostdate
 			FROM	#tmpBettransDate AS d;
 			
+			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
+
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 			INSERT INTO	#tmpFilteredBettransByBatch
-				(	  transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
+					(transid, matchid, winlostdate, bettype, modds, stake, actual_stake, virtualrate, winlost, awinlost, mwinlost, swinlost, tpositiontaking, srecommend, scomm, betteam, livehomescore, liveawayscore, odds, hdp1, hdp2)
 			SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
 			FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
-			WHERE	b.winlostdate = @winlostdate
+				INNER JOIN bodb_Archive.dbo.match_bk m WITH (NOLOCK) ON b.matchid = m.matchid
+				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
+			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
-					AND	b.currency NOT IN (20, 27, 28)
-					AND	b.liveindicator = 1
+					AND	b.Currency NOT IN (20, 27, 28)
+					AND	b.LiveIndicator = 1
+					AND sbm.ProductID = 1
+					AND sbm.sporttype <> 1
+					AND sbm.IsLive = 1
 					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -438,43 +451,50 @@ BEGIN
 	
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #tmpFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			INSERT INTO #tmpStagingOSTraderPerformance(CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, Odds, StakeMY, Stake, ExtraPT, TPositionTaking, VirtualRate, Scomm, MOdds)
-			SELECT	[CustId]			= t.CustId
-				,	[EventDate]			= t.EventDate
-				,	[MatchId]			= t.matchid
+			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+				,	[EventDate]			= b.winlostdate
+				,	[MatchId]			= b.matchid
 				,	[BetType]			= b.bettype
 				,	[BetTeam]			= b.betteam
 				,	[ScoreHDP]			= (CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END)
 				,	[Odds]				= b.odds
-				,	[StakeMY]			= (CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stakemy
-				,	[Stake]				= ((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stake
+				,	[StakeMY]			= (CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- StakeMY
+				,	[Stake]				= ((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- Stake
 				,	[ExtraPT]			= SUM(ISNULL(es.ExtraPT, 0))
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[Scomm]				= b.scomm
 				,	[MOdds]				= b.modds
 			FROM		#tmpFilteredBettransByBatch AS b
-			INNER JOIN	#tmpOSTrader AS t WITH (NOLOCK)
+			LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
 					AND	es.Sporttype = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate
-					AND	es.ToDate
-			GROUP BY	t.CustId, t.EventDate, t.matchid, b.bettype, b.betteam
+					AND	t.EventDate BETWEEN es.FromDate	AND	es.ToDate
+			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+					,	b.winlostdate
+					,	b.matchid
+					,	b.bettype
+					,	b.betteam
 					,	(CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END)
 					,	b.odds
-					,	(CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stakemy
-					,	((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stake
-					,	b.tpositiontaking, b.virtualrate, b.scomm, b.modds, b.transid
+					,	(CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- StakeMY
+					,	((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- Stake
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.scomm
+					,	b.modds
+					,	b.transid
 			OPTION (MAXDOP 2);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -483,8 +503,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert #tmpStagingOSTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpStagingOSTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			INSERT INTO	#tmpOSDataGroup(CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake)
@@ -509,10 +529,10 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert tmpOSDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpOSDataGroup - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+
 			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
@@ -525,8 +545,9 @@ BEGIN
 
 	IF	@IsGetDataFrom14 = 1
 	BEGIN
-
 		TRUNCATE TABLE #tmpOSTrader;
+		SELECT @Date = '@FromDate14K = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
+
 		INSERT INTO	#tmpOSTrader(CustId, matchid, SportType, EventDate, BetType)
 		SELECT	DISTINCT
 				[CustId]	= a.OperatorID
@@ -546,9 +567,10 @@ BEGIN
 		FROM		bodb_Archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.match14 AS m WITH (NOLOCK) ON a.matchid = m.matchid
 		WHERE	m.eventdate BETWEEN @FromDate14 AND @ToDate14
-			AND	a.OperatorType < 3
-			AND	m.matchcode NOT LIKE '%hedge%'
 			AND	m.sporttype <> 1
+			AND m.EventStatus = 'completed'
+			AND	m.MatchCode NOT LIKE '%hedge%'
+			AND	a.OperatorType < 3
 		;
 
 		SELECT	@RowCount	= @@ROWCOUNT
@@ -557,8 +579,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From 14 - Insert #tmpOSTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From 14 - Insert #tmpOSTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 	
 		INSERT INTO	#tmpBettransDate (winlostdate)
@@ -580,8 +602,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From 14 - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From 14 - Insert #tmpBettransDate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
@@ -589,16 +611,23 @@ BEGIN
 			SELECT	TOP(1)
 					@WinLostDate = d.winlostdate
 			FROM	#tmpBettransDate AS d;
-			
+
+			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
+
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 			INSERT INTO	#tmpFilteredBettransByBatch
-					(transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
+					(transid, matchid, winlostdate, bettype, modds, stake, actual_stake, virtualrate, winlost, awinlost, mwinlost, swinlost, tpositiontaking, srecommend, scomm, betteam, livehomescore, liveawayscore, odds, hdp1, hdp2)
 			SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
 			FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.match14 m WITH (NOLOCK) ON b.matchid = m.matchid
+				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
-					AND	b.currency NOT IN (20, 27, 28)
-					AND	b.liveindicator = 1
+					AND	b.Currency NOT IN (20, 27, 28)
+					AND	b.LiveIndicator = 1
+					AND sbm.ProductID = 1
+					AND sbm.sporttype <> 1
+					AND sbm.IsLive = 1
 					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -607,53 +636,60 @@ BEGIN
 	
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #tmpFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			INSERT INTO #tmpStagingOSTraderPerformance (CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, Odds, StakeMY, Stake, ExtraPT, TPositionTaking, VirtualRate, Scomm, MOdds)
-			SELECT	[CustId]			= t.CustId
-				,	[EventDate]			= t.EventDate
-				,	[MatchId]			= t.matchid
+			INSERT INTO #tmpStagingOSTraderPerformance(CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, Odds, StakeMY, Stake, ExtraPT, TPositionTaking, VirtualRate, Scomm, MOdds)
+			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+				,	[EventDate]			= b.winlostdate
+				,	[MatchId]			= b.matchid
 				,	[BetType]			= b.bettype
 				,	[BetTeam]			= b.betteam
 				,	[ScoreHDP]			= (CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END)
 				,	[Odds]				= b.odds
-				,	[StakeMY]			= (CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stakemy
-				,	[Stake]				= ((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stake
+				,	[StakeMY]			= (CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- StakeMY
+				,	[Stake]				= ((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- Stake
 				,	[ExtraPT]			= SUM(ISNULL(es.ExtraPT, 0))
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[Scomm]				= b.scomm
 				,	[MOdds]				= b.modds
 			FROM		#tmpFilteredBettransByBatch AS b
-			INNER JOIN	#tmpOSTrader AS t WITH (NOLOCK)
+			LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
 					AND	es.Sporttype = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate
-					AND	es.ToDate
-			GROUP BY	t.CustId, t.EventDate, t.matchid, b.bettype, b.betteam
+					AND	t.EventDate BETWEEN es.FromDate AND	es.ToDate
+			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+					,	b.winlostdate
+					,	b.matchid
+					,	b.bettype
+					,	b.betteam
 					,	(CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END)
 					,	b.odds
-					,	(CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stakemy
-					,	((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stake
-					,	b.tpositiontaking, b.virtualrate, b.scomm, b.modds, b.transid
+					,	(CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- StakeMY
+					,	((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- Stake
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.scomm
+					,	b.modds
+					,	b.transid
 			OPTION (MAXDOP 2);
 
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert #tmpStagingOSTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpStagingOSTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			INSERT INTO	#tmpOSDataGroup(CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake)
@@ -678,10 +714,10 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert tmpOSDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - Insert #tmpOSDataGroup - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+
 			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
@@ -694,8 +730,9 @@ BEGIN
 	
 	IF	@IsGetDataFromOrigin = 1
 	BEGIN
-	
 		TRUNCATE TABLE #tmpOSTrader;
+		SELECT @Date = '@FromDateOrigin = ' + CONVERT(NVARCHAR, @FromDateOrigin, 120) + ', @ToDateOrigin = ' + CONVERT(NVARCHAR, @ToDateOrigin, 120);
+
 		INSERT INTO	#tmpOSTrader(CustId, matchid, SportType, EventDate, BetType)
 		SELECT	DISTINCT
 				[CustId]			= a.OperatorID
@@ -716,10 +753,10 @@ BEGIN
 		INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK)
 				ON	a.matchid = m.matchid
 		WHERE	m.eventdate BETWEEN @FromDateOrigin AND @ToDateOrigin
-			AND	m.eventstatus = 'completed'
+			AND	m.sporttype <> 1
+			AND m.EventStatus = 'completed'
+			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND	a.OperatorType < 3
-			AND	m.matchcode NOT LIKE '%hedge%'
-			AND	m.sporttype <> 1;
 			;
 
 		SELECT	@RowCount	= @@ROWCOUNT
@@ -728,8 +765,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From Origin - Insert #tmpOSTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From Origin - Insert #tmpOSTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 	
 		INSERT INTO	#tmpBettransDate (winlostdate)
@@ -751,8 +788,8 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			-- Force the output to appear immediately --
-			RAISERROR('From Origin - Insert #tmpBettransDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			-- Force the output to appear immediately
+			RAISERROR('From Origin - Insert #tmpBettransDate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
@@ -761,15 +798,22 @@ BEGIN
 					@WinLostDate = d.winlostdate
 			FROM	#tmpBettransDate AS d;
 			
+			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
+
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 			INSERT INTO	#tmpFilteredBettransByBatch
 					(transid,   matchid,   winlostdate,   bettype,   modds,   stake,   actual_stake,   virtualrate,   winlost,   awinlost,   mwinlost,   swinlost,   tpositiontaking,   srecommend,   scomm,   betteam,   livehomescore,   liveawayscore,   odds,   hdp1,   hdp2)
 			SELECT	b.transid, b.matchid, b.winlostdate, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.winlost, b.awinlost, b.mwinlost, b.swinlost, b.tpositiontaking, b.srecommend, b.scomm, b.betteam, b.livehomescore, b.liveawayscore, b.odds, b.hdp1, b.hdp2
 			FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.match m WITH (NOLOCK) ON b.matchid = m.matchid
+				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.winlostdate = @WinLostDate
 					AND	b.statusID IN (112, 113)
-					AND	b.currency NOT IN (20, 27, 28)
-					AND	b.liveindicator = 1
+					AND	b.Currency NOT IN (20, 27, 28)
+					AND	b.LiveIndicator = 1
+					AND sbm.ProductID = 1
+					AND sbm.sporttype <> 1
+					AND sbm.IsLive = 1
 					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -778,43 +822,50 @@ BEGIN
 	
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert #tmpFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			INSERT INTO #tmpStagingOSTraderPerformance(CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, Odds, StakeMY, Stake, ExtraPT, TPositionTaking, VirtualRate, Scomm, MOdds)
-			SELECT	[CustId]			= t.CustId
-				,	[EventDate]			= t.EventDate
-				,	[MatchId]			= t.matchid
+			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+				,	[EventDate]			= b.winlostdate
+				,	[MatchId]			= b.matchid
 				,	[BetType]			= b.bettype
 				,	[BetTeam]			= b.betteam
 				,	[ScoreHDP]			= (CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END)
 				,	[Odds]				= b.odds
-				,	[StakeMY]			= (CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stakemy
-				,	[Stake]				= ((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stake
+				,	[StakeMY]			= (CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- StakeMY
+				,	[Stake]				= ((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- Stake
 				,	[ExtraPT]			= SUM(ISNULL(es.ExtraPT, 0))
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[Scomm]				= b.scomm
 				,	[MOdds]				= b.modds
 			FROM		#tmpFilteredBettransByBatch AS b
-			INNER JOIN	#tmpOSTrader AS t WITH (NOLOCK)
+			LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb_ACC.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
 					AND	es.ProductId = 1
 					AND	es.Sporttype = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate
-					AND	es.ToDate
-			GROUP BY	t.CustId, t.EventDate, t.matchid, b.bettype, b.betteam
+					AND	t.EventDate BETWEEN es.FromDate AND	es.ToDate
+			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+					,	b.winlostdate
+					,	b.matchid
+					,	b.bettype
+					,	b.betteam
 					,	(CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END)
 					,	b.odds
-					,	(CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stakemy
-					,	((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- stake
-					,	b.tpositiontaking, b.virtualrate, b.scomm, b.modds, b.transid
+					,	(CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * (CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- StakeMY
+					,	((CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END) * ABS(b.stake)) -- Stake
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.scomm
+					,	b.modds
+					,	b.transid
 			OPTION (MAXDOP 2);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -823,8 +874,8 @@ BEGIN
 
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert #tmpStagingOSTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpStagingOSTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			INSERT INTO #tmpOSDataGroup(CustId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake)
@@ -846,13 +897,13 @@ BEGIN
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
-
+			
 			IF	@Debug = 1
 			BEGIN
-				-- Force the output to appear immediately --
-				RAISERROR('From Origin - Insert tmpOSDataGroup - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - Insert #tmpOSDataGroup - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+
 			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpBettransDate
@@ -958,8 +1009,8 @@ BEGIN
 	;
 
 	IF	@Debug = 1
-	BEGIN;
-		-- Force the output to appear immediately --
+	BEGIN
+		-- Force the output to appear immediately
 		RAISERROR('Update Juice for OSDataTGRS - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 	END;
 	
