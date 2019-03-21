@@ -440,10 +440,12 @@ BEGIN
 					AND	b.statusID IN (112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
+					AND	b.bettype IN (1, 3, 7, 8, 2, 12)
 					AND sbm.ProductID = 1
 					AND sbm.sporttype <> 1
 					AND sbm.IsLive = 1
-					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
+					AND m.EventStatus = 'completed'
+					AND	m.MatchCode NOT LIKE '%hedge%';
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -546,7 +548,7 @@ BEGIN
 	IF	@IsGetDataFrom14 = 1
 	BEGIN
 		TRUNCATE TABLE #tmpOSTrader;
-		SELECT @Date = '@FromDate14K = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
+		SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
 
 		INSERT INTO	#tmpOSTrader(CustId, matchid, SportType, EventDate, BetType)
 		SELECT	DISTINCT
@@ -625,10 +627,12 @@ BEGIN
 					AND	b.statusID IN (112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
+					AND	b.bettype IN (1, 3, 7, 8, 2, 12)
 					AND sbm.ProductID = 1
 					AND sbm.sporttype <> 1
 					AND sbm.IsLive = 1
-					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
+					AND m.EventStatus = 'completed'
+					AND	m.MatchCode NOT LIKE '%hedge%';
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -811,10 +815,12 @@ BEGIN
 					AND	b.statusID IN (112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
+					AND	b.bettype IN (1, 3, 7, 8, 2, 12)
 					AND sbm.ProductID = 1
 					AND sbm.sporttype <> 1
 					AND sbm.IsLive = 1
-					AND	b.bettype IN (1, 3, 7, 8, 2, 12);
+					AND m.EventStatus = 'completed'
+					AND	m.MatchCode NOT LIKE '%hedge%';
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
