@@ -482,7 +482,7 @@ BEGIN
 					AND	es.ProductId = 1
 					AND	es.Sporttype = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate	AND	es.ToDate
+					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
 					,	b.winlostdate
 					,	b.matchid
@@ -669,7 +669,7 @@ BEGIN
 					AND	es.ProductId = 1
 					AND	es.Sporttype = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate AND	es.ToDate
+					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
 					,	b.winlostdate
 					,	b.matchid
@@ -857,7 +857,7 @@ BEGIN
 					AND	es.ProductId = 1
 					AND	es.Sporttype = 0
 					AND	es.SubProduct = ''
-					AND	t.EventDate BETWEEN es.FromDate AND	es.ToDate
+					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
 					,	b.winlostdate
 					,	b.matchid
