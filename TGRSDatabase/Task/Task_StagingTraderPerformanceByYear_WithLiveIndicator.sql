@@ -13,6 +13,7 @@ AS
 	- 20171127@Long:	Create new
 	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
 	- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+	- 20190321@John:	Update Logic generating data [Redmine: #109599]
    			
  Param's Explanation:  
 	 
@@ -33,9 +34,9 @@ BEGIN;
 	IF (@GenerateFromDate IS NULL AND @GenerateToDate IS NULL)
 	BEGIN
 		SELECT @CurrentYearEndDate = GETDATE();
-		SELECT @CurrentYearStartDate = DATEADD(yy, DATEDIFF(yy, 0, @CurrentYearEndDate), 0);
+		SELECT @CurrentYearStartDate = DATEADD(YY, DATEDIFF(YY, 0, @CurrentYearEndDate), 0);
 		SELECT @LastYearEndDate = DATEADD(DD, -1, @CurrentYearStartDate);
-		SELECT @LastYearStartDate = DATEADD(yy, DATEDIFF(yy, 0, @LastYearEndDate), 0);
+		SELECT @LastYearStartDate = DATEADD(YY, DATEDIFF(YY, 0, @LastYearEndDate), 0);
 	 
 		-- Update data for TraderPerformance Yearly
 		SELECT @Year = YEAR(@CurrentYearEndDate);
@@ -214,7 +215,7 @@ BEGIN;
 					@WinLostDate = d.winlostdate
 			FROM	#tmpWinlostDate AS d;
 
-			SELECT @CurrentYearStartDate = @WinLostDate;
+			SELECT @CurrentYearStartDate = DATEADD(YY, DATEDIFF(YY, 0, @WinLostDate), 0);
 			SELECT @CurrentYearEndDate = DATEADD(DD, -1 , DATEADD(YY, 1, @CurrentYearStartDate));
 	 
 			-- Update data for TraderPerformance Yearly
