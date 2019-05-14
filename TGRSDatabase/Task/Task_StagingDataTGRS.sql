@@ -42,6 +42,7 @@ AS
 		- 20180924@Long:	Compare to pick the max value of (MoveBetDate -3) vs BalanceUpDate
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
 		- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+		- 20190513@John.Ngo: Update the logic on checking match to prepare data for trading performance [Redmine ID: 113321]
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -1545,6 +1546,7 @@ BEGIN
 		WHERE	sm.MatchId  IN (	SELECT	TOP(1) b.MatchId
 									FROM	bodb02.dbo.bettrans AS b WITH(NOLOCK) 
 									WHERE	b.matchid = sm.matchid
+											AND b.Currency NOT IN (20, 27, 28)
 											AND b.ruben <> 1);		
 		
 		----Captured Data for Tunning
