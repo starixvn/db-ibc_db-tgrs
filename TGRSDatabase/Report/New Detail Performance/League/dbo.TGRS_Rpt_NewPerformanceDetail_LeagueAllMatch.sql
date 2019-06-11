@@ -16,22 +16,21 @@ AS
  Param's Explanation:
  Exam: 
 	  	  EXEC TGRS_Rpt_NewPerformanceDetail_LeagueAllMatch @FromDate = '2019-05-01', @ToDate= '2019-06-01', @LeagueName = '', @IsExcludeLeagues = 0
-  
 */
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT P.LeagueId
-		,L.LeagueName 
-		,P.MatchId
-		,P.HomeId
-		,P.AwayId
-		,P.EventDate
-		,ISNULL(SUM(P.StakeMYR), 0) AS Turnover
-		,ISNULL(SUM(P.StakeMYRJuice), 0) AS TurnoverJuice
-		,ISNULL(SUM(P.Juice), 0) AS Juice
-		,ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss
-		,ISNULL(SUM(P.BetCount), 0) AS BetCount
+	SELECT   P.LeagueId
+			,L.LeagueName 
+			,P.MatchId
+			,P.HomeId
+			,P.AwayId
+			,P.EventDate
+			,ISNULL(SUM(P.StakeMYR), 0) AS Turnover
+			,ISNULL(SUM(P.StakeMYRJuice), 0) AS TurnoverJuice
+			,ISNULL(SUM(P.Juice), 0) AS Juice
+			,ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss
+			,ISNULL(SUM(P.BetCount), 0) AS BetCount
 	FROM dbo.TraderPerformance P WITH (NOLOCK)
 	INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
@@ -47,6 +46,7 @@ BEGIN
 		,P.HomeId
 		,P.AwayId
 		,P.EventDate
+	ORDER BY P.EventDate ASC, P.LeagueId ASC;
 END
 
 GO
