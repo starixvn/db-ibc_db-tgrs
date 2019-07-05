@@ -11,18 +11,19 @@ AS
 	Original:
   
 	Revisions:
-   		- 20170315@Long:	apply ExtraPT and Calc for TO & WL's Leftover
-		- 20170330@John:	Update TO & WL's Leftover
-		- 20170315@Long:	devide batch by date (not by 200k records as it is)
-		- 20170830@Long:	support UnassignedTrader
-		- 20170914@Billy:	Format code and tune performance for Task Staging Juice - [Redmine: #81465]
-		- 20170918@Billy:	Remove hedge match from bettrans data - [Redmine: #83470]		
-		- 20180102@Long:	Change the way to get BU & MB days
-		- 20180103@Long:	Support code for generating historical data
-		- 20180105@Aaron:   Fix date range. Note: BU & MB are in bettrans14
-		- 20180423@John:    Update date range [Redmine: #89493]
-		- 20190116@John:    Fix date range for generating historical data [Redmine: #108008]
-		- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+   		- 20170315@Long:		Apply ExtraPT and Calc for TO & WL's Leftover
+		- 20170330@John:		Update TO & WL's Leftover
+		- 20170315@Long:		Devide batch by date (not by 200k records as it is)
+		- 20170830@Long:		Support UnassignedTrader
+		- 20170914@Billy:		Format code and tune performance for Task Staging Juice - [Redmine: #81465]
+		- 20170918@Billy:		Remove hedge match from bettrans data - [Redmine: #83470]		
+		- 20180102@Long:		Change the way to get BU & MB days
+		- 20180103@Long:		Support code for generating historical data
+		- 20180105@Aaron:		Fix date range. Note: BU & MB are in bettrans14
+		- 20180423@John:		Update date range [Redmine: #89493]
+		- 20190116@John:		Fix date range for generating historical data [Redmine: #108008]
+		- 20190304@Long:		Calc Actual-rate values for Soccer [Redmine ID: 108920]
+		- 20190704@John.Ngo:	Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
    		
 	Param's Explanation:
 		
@@ -79,6 +80,19 @@ BEGIN;
 
 	CREATE TABLE	#winlostdate (
 			winlostdate				DATETIME
+	);
+
+	IF	OBJECT_ID('tempdb..#ExtraPTSportbook') IS NOT NULL
+	BEGIN
+		DROP TABLE	#ExtraPTSportbook;
+	END;
+
+	CREATE TABLE #ExtraPTSportbook
+	(
+		SuperId		INT,
+		ExtraPT		MONEY,
+		FromDate	DATETIME,
+		ToDate		DATETIME
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpFilteredBettransBKByBatch2') IS NOT NULL
@@ -461,7 +475,23 @@ BEGIN;
 			RAISERROR('From BK - Insert #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		-------
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDateBK BETWEEN FromDate AND ToDate
+					OR @ToDateBK BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+		
 		WHILE	EXISTS (SELECT 1 FROM #winlostdate)
 		BEGIN;
 			SELECT	TOP(1)
@@ -497,11 +527,8 @@ BEGIN;
 			FROM		DBARC.bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
 			INNER JOIN	DBARC.bodb_Archive.dbo.match_bk AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.Sporttype = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			WHERE	b.winlostdate = @winlostdate
 				AND	b.bettype IN (1, 3, 7, 8)
@@ -533,7 +560,7 @@ BEGIN;
 				,	[Odds]				= b.odds
 				,	[StakeMY]			= b.StakeMY
 				,	[Stake]				= b.Stake
-				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
@@ -570,6 +597,8 @@ BEGIN;
 													THEN -7 --Corners 15mins O/U
 												WHEN b.BetType = 3 AND SpecialType = 7
 													THEN -8 --Total Bookings
+												WHEN b.BetType = 1 AND SpecialType = 1
+													THEN - 37 --Total Bookings 15mins HDP
 												WHEN b.BetType = 3 AND SpecialType = 1
 													THEN -10 --Total Bookings 15mins O/U
 												WHEN b.BetType = 3 AND SpecialType = 6
@@ -593,6 +622,7 @@ BEGIN;
 					,	b.odds
 					,	b.StakeMY
 					,	b.Stake
+					,	ISNULL(b.ExtraPT, 0)
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
@@ -756,7 +786,23 @@ BEGIN;
 			RAISERROR('From 14 - Insert #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		------------
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDate14 BETWEEN FromDate AND ToDate
+					OR @ToDate14 BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+
 		WHILE	EXISTS (SELECT 1 FROM #winlostdate)
 		BEGIN;
 			SELECT	TOP(1)
@@ -792,11 +838,8 @@ BEGIN;
 			FROM		bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.Sporttype = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			WHERE	b.winlostdate = @WinLostDate
 				AND	b.bettype IN (1, 3, 7, 8)
@@ -828,7 +871,7 @@ BEGIN;
 				,	[Odds]				= b.odds
 				,	[StakeMY]			= b.StakeMY
 				,	[Stake]				= b.Stake
-				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
@@ -865,6 +908,8 @@ BEGIN;
 													THEN -7 --Corners 15mins O/U
 												WHEN b.BetType = 3 AND SpecialType = 7
 													THEN -8 --Total Bookings
+												WHEN b.BetType = 1 AND SpecialType = 1
+													THEN - 37 --Total Bookings 15mins HDP
 												WHEN b.BetType = 3 AND SpecialType = 1
 													THEN -10 --Total Bookings 15mins O/U
 												WHEN b.BetType = 3 AND SpecialType = 6
@@ -888,6 +933,7 @@ BEGIN;
 					,	b.odds
 					,	b.StakeMY
 					,	b.Stake
+					,	ISNULL(b.ExtraPT, 0)
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
@@ -1053,7 +1099,23 @@ BEGIN;
 			RAISERROR('From Origin - Insert #winlostdate - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		-------
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDateOrigin BETWEEN FromDate AND ToDate
+					OR @ToDateOrigin BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+
 		WHILE	EXISTS (SELECT 1 FROM #winlostdate)
 		BEGIN;
 			SELECT	TOP(1)
@@ -1089,11 +1151,8 @@ BEGIN;
 			FROM		bodb02.dbo.bettrans AS b WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.Match AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.Sporttype = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			WHERE	b.winlostdate = @winlostdate
 				AND	b.bettype IN (1, 3, 7, 8)
@@ -1125,7 +1184,7 @@ BEGIN;
 				,	[Odds]				= b.odds
 				,	[StakeMY]			= b.StakeMY
 				,	[Stake]				= b.Stake
-				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
@@ -1162,6 +1221,8 @@ BEGIN;
 													THEN -7 --Corners 15mins O/U
 												WHEN b.BetType = 3 AND SpecialType = 7
 													THEN -8 --Total Bookings
+												WHEN b.BetType = 1 AND SpecialType = 1
+													THEN - 37 --Total Bookings 15mins HDP
 												WHEN b.BetType = 3 AND SpecialType = 1
 													THEN -10 --Total Bookings 15mins O/U
 												WHEN b.BetType = 3 AND SpecialType = 6
@@ -1185,6 +1246,7 @@ BEGIN;
 					,	b.odds
 					,	b.StakeMY
 					,	b.Stake
+					,	ISNULL(b.ExtraPT, 0)
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
