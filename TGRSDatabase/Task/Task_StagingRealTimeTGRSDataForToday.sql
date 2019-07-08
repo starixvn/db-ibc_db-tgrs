@@ -1282,9 +1282,9 @@ BEGIN
 												THEN -7 --Corners 15mins O/U
 											WHEN b.BetType = 3 AND SpecialType = 7
 												THEN -8 --Total Bookings
-											WHEN b.BetType = 1 AND b.SpecialType = 1
+											WHEN b.BetType = 1 AND SpecialType = 1
 												THEN - 37 --Total Bookings 15mins HDP
-											WHEN b.BetType = 3 AND SpecialType = 1
+											WHEN b.BetType = 3 AND SpecialType = 1 
 												THEN -10 --Total Bookings 15mins O/U
 											WHEN b.BetType = 3 AND SpecialType = 6
 												THEN -13 --No. of Corner
