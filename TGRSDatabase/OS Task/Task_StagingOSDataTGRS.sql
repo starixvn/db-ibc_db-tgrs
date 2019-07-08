@@ -15,17 +15,18 @@ AS
 	Original:
   
 	Revisions:  
-		- 20170227@Aaron:	Added MatchCount
-		- 20170306@John:	Change table OSDataTGRS
-		- 20170330@Long:	Apply ExtraPT
-   		- 20170711@Billy:	Remove delete OSStagingDataTGRS part to update Juice for next step - [Redmine: #79615]
-		- 20180928@Long:	Support more bettypes - [Redmine: #83185]
-		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
-		- 20190121@John:	Enhance performance for BK [Redmine ID: 107809]
-		- 20190218@Harvey:	Get more OS bettypes - [Redmine ID: 109005]
-		- 20190305@Harvey:	Handling for unassigned trader - [Redmine ID: 109716]
-		- 20190321@John:	Update log and performance  [Redmine ID: 109716]
-		- 2019528@John:		Include Draw tickets into all reports and modify Virtual Commission formula [Redmine ID: 114210]
+		- 20170227@Aaron:		Added MatchCount
+		- 20170306@John:		Change table OSDataTGRS
+		- 20170330@Long:		Apply ExtraPT
+   		- 20170711@Billy:		Remove delete OSStagingDataTGRS part to update Juice for next step - [Redmine: #79615]
+		- 20180928@Long:		Support more bettypes - [Redmine: #83185]
+		- 20190108@John:		Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
+		- 20190121@John:		Enhance performance for BK [Redmine ID: 107809]
+		- 20190218@Harvey:		Get more OS bettypes - [Redmine ID: 109005]
+		- 20190305@Harvey:		Handling for unassigned trader - [Redmine ID: 109716]
+		- 20190321@John:		Update log and performance  [Redmine ID: 109716]
+		- 2019528@John:			Include Draw tickets into all reports and modify Virtual Commission formula [Redmine ID: 114210]
+		- 20190704@John.Ngo:	Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
 
 	Param's Explanation:
 		
@@ -156,6 +157,19 @@ BEGIN
 	CREATE TABLE	#tmpBettransDate (
 						winlostdate DATE
 					);
+
+	IF	OBJECT_ID('tempdb..#ExtraPTSportbook') IS NOT NULL
+	BEGIN
+		DROP TABLE	#ExtraPTSportbook;
+	END;
+
+	CREATE TABLE #ExtraPTSportbook
+	(
+		SuperId		INT,
+		ExtraPT		MONEY,
+		FromDate	DATETIME,
+		ToDate		DATETIME
+	);
 
 	IF	OBJECT_ID('tempdb..#tmpFilteredBettransByBatch') IS NOT NULL
 	BEGIN
@@ -432,6 +446,23 @@ BEGIN
 			END;
 		END;
 		
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDateBK BETWEEN FromDate AND ToDate
+					OR @ToDateBK BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
 			SELECT	TOP(1)
@@ -477,7 +508,7 @@ BEGIN
 				,	[WinLost]			= (b.winlost - b.actual_stake)  --Winlost
 				,	[SMAWinLost]		= (b.awinlost + b.mwinlost + b.swinlost)  --SMAWinlost
 				,	[Comm]				= b.scomm  --Commission
-				,	[ExtraPT]			= SUM(ISNULL(es.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(es.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
@@ -486,11 +517,8 @@ BEGIN
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.SportType = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
 					,	b.custid
@@ -499,7 +527,12 @@ BEGIN
 					,	b.bettype
 					,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END))
 					,	(b.winlost - b.actual_stake), (b.awinlost + b.mwinlost + b.swinlost)
-					,	b.scomm, b.tpositiontaking, b.virtualrate, b.actualrate, b.transid
+					,	b.scomm
+					,	ISNULL(es.ExtraPT, 0)
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.actualrate
+					,	b.transid
 			OPTION (MAXDOP 2);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -631,6 +664,23 @@ BEGIN
 			END;
 		END;
 		
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDate14 BETWEEN FromDate AND ToDate
+					OR @ToDate14 BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
 			SELECT	TOP(1)
@@ -676,7 +726,7 @@ BEGIN
 				,	[WinLost]			= (b.winlost - b.actual_stake)  --Winlost
 				,	[SMAWinLost]		= (b.awinlost + b.mwinlost + b.swinlost)  --SMAWinlost
 				,	[Comm]				= b.scomm  --Commission
-				,	[ExtraPT]			= SUM(ISNULL(es.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(es.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,   [ActualRate]		= b.actualrate
@@ -685,11 +735,8 @@ BEGIN
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.SportType = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
 					,	b.custid
@@ -698,7 +745,12 @@ BEGIN
 					,	b.bettype
 					,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END))
 					,	(b.winlost - b.actual_stake), (b.awinlost + b.mwinlost + b.swinlost)
-					,	b.scomm, b.tpositiontaking, b.virtualrate, b.actualrate, b.transid
+					,	b.scomm
+					,	ISNULL(es.ExtraPT, 0)
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.actualrate
+					,	b.transid
 			OPTION (MAXDOP 2);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -830,6 +882,23 @@ BEGIN
 			END;
 		END;
 		
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDateOrigin BETWEEN FromDate AND ToDate
+					OR @ToDateOrigin BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+
 		WHILE	EXISTS (SELECT 1 FROM #tmpBettransDate)
 		BEGIN
 			SELECT	TOP(1)
@@ -875,7 +944,7 @@ BEGIN
 				,	[WinLost]			= (b.winlost - b.actual_stake)  --Winlost
 				,	[SMAWinLost]		= (b.awinlost + b.mwinlost + b.swinlost)  --SMAWinlost
 				,	[Comm]				= b.scomm  --Commission
-				,	[ExtraPT]			= SUM(ISNULL(es.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(es.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,   [ActualRate]		= b.actualrate
@@ -884,11 +953,8 @@ BEGIN
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.SportType = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
 					,	b.custid
@@ -897,7 +963,12 @@ BEGIN
 					,	b.BetType
 					,	((CASE WHEN b.modds = 0.25 OR b.modds = -0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END))
 					,	(WinLost - actual_stake), (awinlost + mwinlost + swinlost)
-					,	b.scomm, b.tpositiontaking, b.virtualrate, b.actualrate, b.transid
+					,	b.scomm
+					,	ISNULL(es.ExtraPT, 0)
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.actualrate
+					,	b.transid
 			OPTION (MAXDOP 2);
 
 			SELECT	@RowCount	= @@ROWCOUNT

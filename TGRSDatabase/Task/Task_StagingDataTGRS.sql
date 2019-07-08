@@ -43,6 +43,7 @@ AS
 		- 20190108@John:	Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
 		- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
 		- 20190513@John.Ngo: Update the logic on checking match to prepare data for trading performance [Redmine ID: 113321]
+		- 20190704@John.Ngo: Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -231,6 +232,19 @@ BEGIN
 
 	CREATE TABLE	#tmpDLwinlostdate (
 		winlostdate				DATE
+	);
+
+	IF	OBJECT_ID('tempdb..#ExtraPTSportbook') IS NOT NULL
+	BEGIN
+		DROP TABLE	#ExtraPTSportbook;
+	END;
+
+	CREATE TABLE #ExtraPTSportbook
+	(
+		SuperId		INT,
+		ExtraPT		MONEY,
+		FromDate	DATETIME,
+		ToDate		DATETIME
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpDLFilteredBettransByBatch') IS NOT NULL
@@ -688,6 +702,23 @@ BEGIN
 				RAISERROR('From BK - Insert Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
+		
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDateBK BETWEEN FromDate AND ToDate
+					OR @ToDateBK BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
 
 		WHILE	EXISTS (SELECT 1 FROM #tmpDLwinlostdate)
 		BEGIN
@@ -745,11 +776,8 @@ BEGIN
 			FROM		bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
 			INNER JOIN	#tmpDLScannedMatches AS m WITH (NOLOCK)
 					ON	b.matchId = m.matchId
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.Sporttype = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			LEFT JOIN	bodb_Archive.dbo.MatchMaxbet_bk AS mm WITH (NOLOCK)
 					ON	mm.matchId = b.matchId
@@ -803,7 +831,7 @@ BEGIN
 				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
 				,	[Spread]			= b.Spread
-				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
@@ -854,6 +882,8 @@ BEGIN
 												THEN - 7 --Corners 15mins O/U
 											WHEN b.BetType = 3 AND b.SpecialType = 7
 												THEN - 8 --Total Bookings
+											WHEN b.BetType = 1 AND b.SpecialType = 1
+												THEN - 37 --Total Bookings 15mins HDP
 											WHEN b.BetType = 3 AND b.SpecialType = 1
 												THEN - 10 --Total Bookings 15mins O/U
 											WHEN b.BetType = 3 AND b.SpecialType = 6
@@ -890,6 +920,7 @@ BEGIN
 					,	b.SMAWinLost
 					,	b.scomm
 					,	b.Spread
+					,	ISNULL(b.ExtraPT, 0)
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
@@ -1174,6 +1205,23 @@ BEGIN
 			END;
 		END;
 
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDate14 BETWEEN FromDate AND ToDate
+					OR @ToDate14 BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+
 		WHILE	EXISTS (SELECT 1 FROM #tmpDLwinlostdate WITH(NOLOCK))
 		BEGIN
 			SELECT	TOP(1)
@@ -1230,11 +1278,8 @@ BEGIN
 			FROM		bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
 			INNER JOIN	#tmpDLScannedMatches AS m WITH (NOLOCK)
 					ON	b.matchId = m.matchId
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.Sporttype = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			LEFT JOIN	bodb02.dbo.MatchMaxbet14 AS mm WITH (NOLOCK)
 					ON	mm.matchId = b.matchId
@@ -1288,7 +1333,7 @@ BEGIN
 				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
 				,	[Spread]			= b.Spread
-				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
@@ -1339,6 +1384,8 @@ BEGIN
 												THEN - 7 --Corners 15mins O/U
 											WHEN b.BetType = 3 AND b.SpecialType = 7
 												THEN - 8 --Total Bookings
+											WHEN b.BetType = 1 AND b.SpecialType = 1
+												THEN - 37 --Total Bookings 15mins HDP
 											WHEN b.BetType = 3 AND b.SpecialType = 1
 												THEN - 10 --Total Bookings 15mins O/U
 											WHEN b.BetType = 3 AND b.SpecialType = 6
@@ -1375,6 +1422,7 @@ BEGIN
 					,	b.SMAWinLost
 					,	b.scomm
 					,	b.Spread
+					,	ISNULL(b.ExtraPT, 0)
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
@@ -1671,6 +1719,23 @@ BEGIN
 			END;
 		END;
 
+		-- SUM(ExtraPT)
+		TRUNCATE TABLE	#ExtraPTSportbook;
+		INSERT INTO #ExtraPTSportbook
+		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
+		FROM
+		(
+			SELECT SuperId, ExtraPT, FromDate, ToDate
+			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
+			WHERE
+				(
+					@FromDateOrigin BETWEEN FromDate AND ToDate
+					OR @ToDateOrigin BETWEEN FromDate AND ToDate
+				)
+				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
+		) A
+		GROUP BY SuperId, FromDate, ToDate;
+
 		WHILE	EXISTS (SELECT 1 FROM #tmpDLwinlostdate WITH(NOLOCK))
 		BEGIN
 			SELECT	TOP(1)
@@ -1727,11 +1792,8 @@ BEGIN
 			FROM		bodb02.dbo.bettrans AS b WITH (NOLOCK)
 			INNER JOIN	#tmpDLScannedMatches AS m WITH (NOLOCK)
 					ON	b.matchid = m.matchid
-			LEFT JOIN	bodb02.dbo.Acc_GroupExtraPTSetting AS es WITH (NOLOCK)
+			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK)
 					ON	es.SuperId = b.srecommend
-					AND	es.ProductId = 1
-					AND	es.Sporttype = 0
-					AND	es.SubProduct = ''
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			LEFT JOIN	bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK)
 					ON	mm.MatchId = b.matchid
@@ -1785,7 +1847,7 @@ BEGIN
 				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
 				,	[Spread]			= b.Spread
-				,	[ExtraPT]			= SUM(ISNULL(b.ExtraPT, 0))
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
@@ -1836,6 +1898,8 @@ BEGIN
 												THEN - 7 --Corners 15mins O/U
 											WHEN b.BetType = 3 AND b.SpecialType = 7
 												THEN - 8 --Total Bookings
+											WHEN b.BetType = 1 AND b.SpecialType = 1
+												THEN - 37 --Total Bookings 15mins HDP
 											WHEN b.BetType = 3 AND b.SpecialType = 1
 												THEN - 10 --Total Bookings 15mins O/U
 											WHEN b.BetType = 3 AND b.SpecialType = 6
@@ -1872,6 +1936,7 @@ BEGIN
 					,	b.SMAWinLost
 					,	b.scomm
 					,	b.Spread
+					,	ISNULL(b.ExtraPT, 0)
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
