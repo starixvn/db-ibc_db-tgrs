@@ -1,10 +1,10 @@
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader_Match_Bettype]  	
-	@FromDate	DATE,
-	@ToDate		DATE,
-	@CustId		INT,
-	@MatchId	INT,
-	@Bettypes	VARCHAR(2000) =  '0',
+	@FromDate			DATE,
+	@ToDate				DATE,
+	@CustId				INT,
+	@MatchId			INT,
+	@Bettypes			VARCHAR(2000) =  '0',
 	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
@@ -14,9 +14,10 @@ AS
  Original:  
   
  Revisions:         	
-	- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
-	- 20171205@Simon: get only Live data & Bettypes are not disabled
-	- 20180912@Simon: add league exclusion
+	- 20171019@Simon:		Change VARCHAR(200) to VARCHAR(2000)
+	- 20171205@Simon:		get only Live data & Bettypes are not disabled
+	- 20180912@Simon:		add league exclusion
+	- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
 
  Param's Explanation:  	
 	
@@ -72,8 +73,6 @@ BEGIN
 			END														AS Margin		
 		,   ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
-				ON	t.CustId = tp.CustId
 		LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
 				ON	tm.BetType = tp.BetType
 				AND	tm.WorkShift = tp.WorkShift	
@@ -97,7 +96,7 @@ BEGIN
 		,	bd.BetCount
 		,	bd.Margin
 		,	CASE WHEN bd.SumCategory = 0 THEN NULL ELSE bd.WinLossScore * 100 / bd.SumCategory END AS Score
-	FROM		#BettypeDetail AS bd		
+	FROM		#BettypeDetail AS bd WITH (NOLOCK)		
 	ORDER BY	bd.Margin DESC;
 
 	DROP TABLE #BettypeDetail;

@@ -1,9 +1,9 @@
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League]  	
-	@FromDate		DATE,
-	@ToDate			DATE,
-	@Grade			INT,
-	@Bettypes		VARCHAR(2000) =  '0',
+	@FromDate			DATE,
+	@ToDate				DATE,
+	@Grade				INT,
+	@Bettypes			VARCHAR(2000) =  '0',
 	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
@@ -13,9 +13,10 @@ AS
  Original:  
  
  Revisions:      	
-	- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
-	- 20171205@Simon: get only Live data & Bettypes are not disabled
-	- 20180912@Simon: add league exclusion
+	- 20171019@Simon:		Change VARCHAR(200) to VARCHAR(2000)
+	- 20171205@Simon:		get only Live data & Bettypes are not disabled
+	- 20180912@Simon:		add league exclusion
+	- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
 
  Param's Explanation:  	
 
@@ -48,20 +49,14 @@ BEGIN
 		CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin		
 	FROM dbo.TraderPerformance P WITH (NOLOCK)	 
 	INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-	INNER JOIN dbo.Trader t WITH (NOLOCK) ON P.CustId = t.CustId
 	WHERE	P.Bettype IN (SELECT bettype FROM @BettypeList)
-		AND t.Grade = @Grade
+		AND P.Grade = @Grade
 		AND P.EventDate BETWEEN @FromDate AND @ToDate	
 		AND P.IsLive = 1
 		AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.LeagueId, L.LeagueName 	
 	ORDER BY Margin DESC, LeagueName ASC;
 END;
-
-/*
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League] TO [bodbTGRSNet]
-GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League] TO [bodbTGRSNet ]
-*/
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

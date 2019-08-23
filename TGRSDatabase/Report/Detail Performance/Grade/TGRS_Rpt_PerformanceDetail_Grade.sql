@@ -1,12 +1,12 @@
 ALTER PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]  
-					@FromDate		DATE
-				,	@ToDate			DATE
-				,	@Turnover		MONEY			= NULL
-				,	@WinLoss		MONEY			= NULL
-				,	@MarginFrom		MONEY			= NULL
-				,	@MarginTo		MONEY			= NULL
-				,	@Bettypes		VARCHAR(2000)	= '0'
-				,	@IsExcludeLeagues	BIT = 1
+		@FromDate			DATE
+	,	@ToDate				DATE
+	,	@Turnover			MONEY			= NULL
+	,	@WinLoss			MONEY			= NULL
+	,	@MarginFrom			MONEY			= NULL
+	,	@MarginTo			MONEY			= NULL
+	,	@Bettypes			VARCHAR(2000)	= '0'
+	,	@IsExcludeLeagues	BIT				= 1
 AS
 /*  
 	Created:	20160217@Billy
@@ -15,11 +15,12 @@ AS
 	Original:  
 	 
 	Revisions:
-		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
-		- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
-		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
-		- 20171205@Simon: get only Live data & Bettypes are not disabled
-		- 20180912@Simon: add league exclusion
+		- 20160301@Billy:		US011 - Modify Trader's Score - [Redmine: #53084]
+		- 20160315@Thai:		US018 - Modify Trader's Score - [Redmine: #53987]
+		- 20171019@Simon:		Change VARCHAR(200) to VARCHAR(2000)
+		- 20171205@Simon:		get only Live data & Bettypes are not disabled
+		- 20180912@Simon:		add league exclusion
+		- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
 
 	Param's Explanation:  	
 	
@@ -40,6 +41,7 @@ BEGIN
 	 
 	CREATE TABLE #ScoreDetail (
 								CustID				INT
+							,	Grade				TINYINT
 							,	WinLoss				MONEY
 							,	SumCategory			MONEY
 							);
@@ -72,10 +74,12 @@ BEGIN
 
 	INSERT INTO	#ScoreDetail (
 					CustID
+				,	Grade
 				,	WinLoss
 				,	SumCategory
 				)
 	SELECT	tp.CustId
+		,	tp.Grade
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss		
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
@@ -89,10 +93,10 @@ BEGIN
 			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
-	GROUP BY	tp.CustId;
+	GROUP BY	tp.CustId, tp.Grade;
 
 	WITH GradeDetail AS (
-		SELECT	t.Grade													AS Grade
+		SELECT	tp.Grade												AS Grade
 			,	COUNT(DISTINCT tp.CustId)								AS TraderCount
 			,	COUNT(DISTINCT tp.LeagueId)								AS LeagueCount
 			,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
@@ -103,14 +107,12 @@ BEGIN
 						THEN NULL
 						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
 				END														AS Margin
-		FROM		dbo.TraderPerformance	AS tp WITH (NOLOCK)
-		INNER JOIN	dbo.Trader				AS t WITH (NOLOCK)
-				ON t.CustId = tp.CustId
+		FROM	dbo.TraderPerformance	AS tp WITH (NOLOCK)
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 			AND tp.IsLive = 1
 			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY	t.Grade
+		GROUP BY	tp.Grade
 	)
 	INSERT INTO @Grade 
 		(	Grade   , TraderCount   , LeagueCount   , MatchCount   , Turnover   , WinLoss   , BetCount   , Margin   )
@@ -122,12 +124,10 @@ BEGIN
 		AND	(@MarginTo IS NULL OR gd.Margin <= @MarginTo);
 
 	WITH score AS (
-		SELECT	t.Grade
+		SELECT	sd.Grade
 			,	AVG(CASE WHEN sd.SumCategory = 0 THEN NULL ELSE sd.WinLoss * 100 / sd.SumCategory END) AS Score
 		FROM	#ScoreDetail AS sd WITH (NOLOCK)
-		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
-				ON	t.CustId = sd.CustID
-		GROUP BY t.Grade
+		GROUP BY sd.Grade
 	)
 	UPDATE  g
 	SET		g.Score = s.Score
