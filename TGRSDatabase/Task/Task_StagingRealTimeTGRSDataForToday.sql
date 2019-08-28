@@ -38,9 +38,7 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE	@IdForUnassignedTrader	INT = 0
-		,	@IDForUnknownTeam		INT = 200
-		,	@IDForUnknownGrade		INT = 200;
+	DECLARE	@IdForUnassignedTrader	INT = 0;
 
 	DECLARE	@Begin					DATETIME	= GETDATE()
 		,	@RowCount				INT
@@ -670,11 +668,12 @@ BEGIN
 			RAISERROR('From Origin - Insert #tmpRTStagingTraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		UPDATE t
-		SET t.TeamId = @IDForUnknownTeam
-			,	t.Grade = @IDForUnknownGrade
-		FROM #tmpRTStagingTraderPerformance AS t WITH(ROWLOCK, UPDLOCK)
-		WHERE t.CustId = 0;
+		UPDATE stp WITH(ROWLOCK, UPDLOCK)
+		SET stp.TeamId = t.TeamId
+			,	stp.Grade = t.Grade
+		FROM #tmpRTStagingTraderPerformance AS stp
+		INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
+		WHERE stp.CustId = 0;
 
 		INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, 
 			IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, BetCount, Spread)
