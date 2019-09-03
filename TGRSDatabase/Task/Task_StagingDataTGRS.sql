@@ -44,6 +44,7 @@ AS
 		- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
 		- 20190513@John.Ngo: Update the logic on checking match to prepare data for trading performance [Redmine ID: 113321]
 		- 20190704@John.Ngo: Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
+		- 20190822@Long.Luu:	Grade brokendown for details performance [Redmine ID: 117030]
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -54,8 +55,7 @@ BEGIN
 	SET NOCOUNT ON;
 
 	-- Common variables
-	DECLARE	@IdForUnassignedTrader	INT = 0
-		;
+	DECLARE	@IdForUnassignedTrader	INT = 0;
 
 	DECLARE	@Begin					DATETIME = GETDATE()
 		,	@RowCount				INT
@@ -938,6 +938,13 @@ BEGIN
 				-- Force the output to appear immediately
 				RAISERROR('From BK - Insert #tmpDLStagingTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
+
+			UPDATE stp WITH(ROWLOCK, UPDLOCK)
+			SET stp.TeamId = t.TeamId
+				,	stp.Grade = t.Grade
+			FROM #tmpDLStagingTraderPerformance AS stp
+			INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
+			WHERE stp.CustId = 0;
 			
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
@@ -1440,6 +1447,13 @@ BEGIN
 				-- Force the output to appear immediately
 				RAISERROR('From 14 - Insert #tmpDLStagingTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
+
+			UPDATE stp WITH(ROWLOCK, UPDLOCK)
+			SET stp.TeamId = t.TeamId
+				,	stp.Grade = t.Grade
+			FROM #tmpDLStagingTraderPerformance AS stp
+			INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
+			WHERE stp.CustId = 0;
 
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
@@ -1954,6 +1968,13 @@ BEGIN
 				-- Force the output to appear immediately
 				RAISERROR('From Origin - Insert #tmpDLStagingTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
+
+			UPDATE stp WITH(ROWLOCK, UPDLOCK)
+			SET stp.TeamId = t.TeamId
+				,	stp.Grade = t.Grade
+			FROM #tmpDLStagingTraderPerformance AS stp
+			INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
+			WHERE stp.CustId = 0;
 
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 

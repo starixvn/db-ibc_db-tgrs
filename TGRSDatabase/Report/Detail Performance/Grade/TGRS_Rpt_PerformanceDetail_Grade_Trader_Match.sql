@@ -1,11 +1,11 @@
 
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader_Match]  	
-					@FromDate	DATE
-				,	@ToDate		DATE
-				,	@CustId		INT
-				,	@Bettypes	VARCHAR(2000) =  '0'
-				,	@IsExcludeLeagues	BIT = 1
+		@FromDate			DATE
+	,	@ToDate				DATE
+	,	@CustId				INT
+	,	@Bettypes			VARCHAR(2000) =  '0'
+	,	@IsExcludeLeagues	BIT = 1
 AS    
 /*  
 	Created:	20160328@Aaron
