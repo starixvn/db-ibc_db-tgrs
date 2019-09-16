@@ -45,6 +45,7 @@ AS
 		- 20190513@John.Ngo: Update the logic on checking match to prepare data for trading performance [Redmine ID: 113321]
 		- 20190704@John.Ngo: Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
 		- 20190822@Long.Luu:	Grade brokendown for details performance [Redmine ID: 117030]
+		- 20190822@Long.Luu:	Suppport Non-Live Data [Redmine ID: 118959]
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -55,7 +56,8 @@ BEGIN
 	SET NOCOUNT ON;
 
 	-- Common variables
-	DECLARE	@IdForUnassignedTrader	INT = 0;
+	DECLARE	@IdForLiveUnassignedTrader		INT = 0
+		,	@IdForNonLiveUnassignedTrader	INT = -1;
 
 	DECLARE	@Begin					DATETIME = GETDATE()
 		,	@RowCount				INT
@@ -812,7 +814,7 @@ BEGIN
 			
 			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
-			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+			SELECT	[CustId]			= ISNULL(t.Custid, @IdForLiveUnassignedTrader)
 				,	[MemberCustId]		= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.matchId
@@ -835,7 +837,7 @@ BEGIN
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
-				,	[LiveIndicator]		= b.LiveIndicator
+				,	[LiveIndicator]		= 1
 				,	[BetChoice]			= b.BetChoice 
 			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
@@ -902,7 +904,8 @@ BEGIN
 										END
 				) AS ca
 			WHERE	b.winlostdate = @winlostdate
-			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+				AND b.LiveIndicator = 1
+			GROUP BY	ISNULL(t.Custid, @IdForLiveUnassignedTrader)
 					,	b.custid
 					,	ISNULL(b.WorkShift, 1)
 					,	b.matchId
@@ -924,7 +927,124 @@ BEGIN
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
-					,	b.LiveIndicator
+					,	b.BetChoice
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
+					;
+
+			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
+			SELECT	[CustId]			= @IdForNonLiveUnassignedTrader
+				,	[MemberCustId]		= b.custid
+				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
+				,	[MatchId]			= b.matchId
+				,	[MatchCode]			= b.matchCode
+				,	[EventDate]			= b.EventDate
+				,	[SportType]			= b.SportType
+				,	[LeagueId]			= b.LeagueId
+				,	[HomeId]			= b.HomeId
+				,	[AwayId]			= b.AwayId
+				,	[TeamId]			= t.TeamId
+				,	[Grade]				= t.Grade
+				,	[BetType]			= ca.BetType
+				,	[Stake]				= b.Stake --Turnover
+				,	[WinLost]			= b.WinLost
+				,	[SMAWinLost]		= b.SMAWinLost
+				,	[Comm]				= b.scomm --Commission
+				,	[BetCount]			= 1 --Live BetCount
+				,	[Spread]			= b.Spread
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
+				,	[TPositionTaking]	= b.tpositiontaking
+				,	[VirtualRate]		= b.virtualrate
+				,	[ActualRate]		= b.actualrate
+				,	[LiveIndicator]		= 0
+				,	[BetChoice]			= b.BetChoice 
+			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
+			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
+			LEFT JOIN	#tmpDLTrader AS t WITH (NOLOCK)
+					ON	b.winlostdate = t.EventDate
+					AND	b.matchId = t.matchId
+					AND	(	b.BetType = t.BetType
+						OR	(b.bettype = 23 AND t.BetType = 1)
+						)
+			CROSS APPLY	(
+				SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
+												THEN 1 --HDP
+											WHEN b.BetType = 7
+												THEN 7 --1st HDP
+											WHEN b.BetType = 3 AND b.SpecialType = 0
+												THEN 3 --O/U		
+											WHEN b.BetType = 8 AND b.SpecialType = 0
+												THEN 8 --1st O/U
+											WHEN b.BetType = 2
+												THEN 2 --O/E
+											WHEN b.BetType = 12
+												THEN 12 --1x2
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 0
+												THEN 5 --1x2		
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 5
+												THEN - 14 --10mins 1x2
+											WHEN b.BetType IN (15, 125) AND b.SpecialType = 0
+												THEN 15 --1st 1x2
+											WHEN b.BetType = 1 AND b.SpecialType = 4
+												THEN - 1 --15mins HDP
+											WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+												THEN - 2 --Next Corner
+											WHEN b.BetType = 1 AND b.SpecialType = 5
+												THEN - 15 --10mins HDP
+											WHEN b.BetType = 1 AND b.SpecialType = 9
+												THEN - 3 --Next Booking
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 4
+												THEN - 4 --15mins 1X2
+											WHEN b.BetType = 3 AND b.SpecialType = 4
+												THEN - 5 --15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 5
+												THEN - 6 --10mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 2
+												THEN - 7 --Corners 15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 7
+												THEN - 8 --Total Bookings
+											WHEN b.BetType = 1 AND b.SpecialType = 1
+												THEN - 37 --Total Bookings 15mins HDP
+											WHEN b.BetType = 3 AND b.SpecialType = 1
+												THEN - 10 --Total Bookings 15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 6
+												THEN - 13 --No. of Corner
+											WHEN b.BetType = 8 AND b.SpecialType = 6
+												THEN - 12 --1st No. of Corner
+											WHEN b.BetType = 8 AND b.SpecialType = 7
+												THEN - 9 --1st TotalBookings
+											WHEN (b.BetType = 3 OR b.BetType = 8) AND b.SpecialType = 3
+												THEN - 11 --Single Team O/U
+											WHEN b.BetType IN (5, 124)
+												THEN 5 --1x2	
+											WHEN b.BetType IN (15, 125)
+												THEN 15 --1st 1x2
+											ELSE b.BetType
+										END
+				) AS ca
+			WHERE	b.winlostdate = @winlostdate
+				AND b.LiveIndicator = 0
+			GROUP BY	b.custid
+					,	ISNULL(b.WorkShift, 1)
+					,	b.matchId
+					,	b.matchCode
+					,	b.EventDate
+					,	b.SportType
+					,	b.LeagueId
+					,	b.HomeId
+					,	b.AwayId
+					,	t.TeamId
+					,	t.Grade
+					,	ca.BetType
+					,	b.Stake
+					,	b.WinLost
+					,	b.SMAWinLost
+					,	b.scomm
+					,	b.Spread
+					,	ISNULL(b.ExtraPT, 0)
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.actualrate
 					,	b.BetChoice
 					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
@@ -1321,7 +1441,7 @@ BEGIN
 			
 			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
-			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+			SELECT	[CustId]			= ISNULL(t.Custid, @IdForLiveUnassignedTrader)
 				,	[MemberCustId]		= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.matchId
@@ -1344,7 +1464,7 @@ BEGIN
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
-				,	[LiveIndicator]		= b.LiveIndicator
+				,	[LiveIndicator]		= 1
 				,	[BetChoice]			= b.BetChoice 
 			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
@@ -1411,7 +1531,8 @@ BEGIN
 										END
 				) AS ca
 			WHERE	b.winlostdate = @winlostdate
-			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+				AND b.LiveIndicator = 1
+			GROUP BY	ISNULL(t.Custid, @IdForLiveUnassignedTrader)
 					,	b.custid
 					,	ISNULL(b.WorkShift, 1)
 					,	b.matchId
@@ -1433,7 +1554,124 @@ BEGIN
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
-					,	b.LiveIndicator
+					,	b.BetChoice
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
+					;
+
+			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
+			SELECT	[CustId]			= @IdForNonLiveUnassignedTrader
+				,	[MemberCustId]		= b.custid
+				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
+				,	[MatchId]			= b.matchId
+				,	[MatchCode]			= b.matchCode
+				,	[EventDate]			= b.EventDate
+				,	[SportType]			= b.SportType
+				,	[LeagueId]			= b.LeagueId
+				,	[HomeId]			= b.HomeId
+				,	[AwayId]			= b.AwayId
+				,	[TeamId]			= t.TeamId
+				,	[Grade]				= t.Grade
+				,	[BetType]			= ca.BetType
+				,	[Stake]				= b.Stake --Turnover
+				,	[WinLost]			= b.WinLost
+				,	[SMAWinLost]		= b.SMAWinLost
+				,	[Comm]				= b.scomm --Commission
+				,	[BetCount]			= 1 --Live BetCount
+				,	[Spread]			= b.Spread
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
+				,	[TPositionTaking]	= b.tpositiontaking
+				,	[VirtualRate]		= b.virtualrate
+				,	[ActualRate]		= b.actualrate
+				,	[LiveIndicator]		= 0
+				,	[BetChoice]			= b.BetChoice 
+			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
+			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
+			LEFT JOIN	#tmpDLTrader AS t WITH (NOLOCK)
+					ON	b.winlostdate = t.EventDate
+					AND	b.matchId = t.matchId
+					AND	(	b.BetType = t.BetType
+						OR	(b.bettype = 23 AND t.BetType = 1)
+						)
+			CROSS APPLY	(
+				SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
+												THEN 1 --HDP
+											WHEN b.BetType = 7
+												THEN 7 --1st HDP
+											WHEN b.BetType = 3 AND b.SpecialType = 0
+												THEN 3 --O/U		
+											WHEN b.BetType = 8 AND b.SpecialType = 0
+												THEN 8 --1st O/U
+											WHEN b.BetType = 2
+												THEN 2 --O/E
+											WHEN b.BetType = 12
+												THEN 12 --1x2
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 0
+												THEN 5 --1x2		
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 5
+												THEN - 14 --10mins 1x2
+											WHEN b.BetType IN (15, 125) AND b.SpecialType = 0
+												THEN 15 --1st 1x2
+											WHEN b.BetType = 1 AND b.SpecialType = 4
+												THEN - 1 --15mins HDP
+											WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+												THEN - 2 --Next Corner
+											WHEN b.BetType = 1 AND b.SpecialType = 5
+												THEN - 15 --10mins HDP
+											WHEN b.BetType = 1 AND b.SpecialType = 9
+												THEN - 3 --Next Booking
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 4
+												THEN - 4 --15mins 1X2
+											WHEN b.BetType = 3 AND b.SpecialType = 4
+												THEN - 5 --15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 5
+												THEN - 6 --10mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 2
+												THEN - 7 --Corners 15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 7
+												THEN - 8 --Total Bookings
+											WHEN b.BetType = 1 AND b.SpecialType = 1
+												THEN - 37 --Total Bookings 15mins HDP
+											WHEN b.BetType = 3 AND b.SpecialType = 1
+												THEN - 10 --Total Bookings 15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 6
+												THEN - 13 --No. of Corner
+											WHEN b.BetType = 8 AND b.SpecialType = 6
+												THEN - 12 --1st No. of Corner
+											WHEN b.BetType = 8 AND b.SpecialType = 7
+												THEN - 9 --1st TotalBookings
+											WHEN (b.BetType = 3 OR b.BetType = 8) AND b.SpecialType = 3
+												THEN - 11 --Single Team O/U
+											WHEN b.BetType IN (5, 124)
+												THEN 5 --1x2	
+											WHEN b.BetType IN (15, 125)
+												THEN 15 --1st 1x2
+											ELSE b.BetType
+										END
+				) AS ca
+			WHERE	b.winlostdate = @winlostdate
+				AND b.LiveIndicator = 0
+			GROUP BY	b.custid
+					,	ISNULL(b.WorkShift, 1)
+					,	b.matchId
+					,	b.matchCode
+					,	b.EventDate
+					,	b.SportType
+					,	b.LeagueId
+					,	b.HomeId
+					,	b.AwayId
+					,	t.TeamId
+					,	t.Grade
+					,	ca.BetType
+					,	b.Stake
+					,	b.WinLost
+					,	b.SMAWinLost
+					,	b.scomm
+					,	b.Spread
+					,	ISNULL(b.ExtraPT, 0)
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.actualrate
 					,	b.BetChoice
 					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
@@ -1842,7 +2080,7 @@ BEGIN
 			
 			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
-			SELECT	[CustId]			= ISNULL(t.Custid, @IdForUnassignedTrader)
+			SELECT	[CustId]			= ISNULL(t.Custid, @IdForLiveUnassignedTrader)
 				,	[MemberCustId]		= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.MatchId
@@ -1865,7 +2103,7 @@ BEGIN
 				,	[TPositionTaking]	= b.tpositiontaking
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
-				,	[LiveIndicator]		= b.LiveIndicator
+				,	[LiveIndicator]		= 1
 				,	[BetChoice]			= b.BetChoice 
 			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
@@ -1932,7 +2170,8 @@ BEGIN
 										END
 				) AS ca
 			WHERE	b.winlostdate = @winlostdate
-			GROUP BY	ISNULL(t.Custid, @IdForUnassignedTrader)
+				AND b.LiveIndicator = 1
+			GROUP BY	ISNULL(t.Custid, @IdForLiveUnassignedTrader)
 					,	b.custid
 					,	ISNULL(b.WorkShift, 1)
 					,	b.MatchId
@@ -1954,7 +2193,124 @@ BEGIN
 					,	b.tpositiontaking
 					,	b.virtualrate
 					,	b.actualrate
-					,	b.LiveIndicator
+					,	b.BetChoice
+					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
+					;
+
+			INSERT INTO	#tmpDLStagingTraderPerformance (CustId, MemberCustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
+			SELECT	[CustId]			= @IdForNonLiveUnassignedTrader
+				,	[MemberCustId]		= b.custid
+				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
+				,	[MatchId]			= b.MatchId
+				,	[MatchCode]			= b.MatchCode
+				,	[EventDate]			= b.EventDate
+				,	[SportType]			= b.SportType
+				,	[LeagueId]			= b.LeagueId
+				,	[HomeId]			= b.HomeId
+				,	[AwayId]			= b.AwayId
+				,	[TeamId]			= t.TeamId
+				,	[Grade]				= t.Grade
+				,	[BetType]			= ca.BetType
+				,	[Stake]				= b.Stake --Turnover
+				,	[WinLost]			= b.WinLost
+				,	[SMAWinLost]		= b.SMAWinLost
+				,	[Comm]				= b.scomm --Commission
+				,	[BetCount]			= 1 --Live BetCount
+				,	[Spread]			= b.Spread
+				,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
+				,	[TPositionTaking]	= b.tpositiontaking
+				,	[VirtualRate]		= b.virtualrate
+				,	[ActualRate]		= b.actualrate
+				,	[LiveIndicator]		= 0
+				,	[BetChoice]			= b.BetChoice 
+			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
+			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
+			LEFT JOIN	#tmpDLTrader AS t WITH (NOLOCK)
+					ON	b.winlostdate = t.EventDate
+					AND	b.matchid = t.matchid
+					AND	(	b.BetType = t.BetType
+						OR	(b.bettype = 23 AND t.BetType = 1)
+						)
+			CROSS APPLY	(
+				SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
+												THEN 1 --HDP
+											WHEN b.BetType = 7
+												THEN 7 --1st HDP
+											WHEN b.BetType = 3 AND b.SpecialType = 0
+												THEN 3 --O/U		
+											WHEN b.BetType = 8 AND b.SpecialType = 0
+												THEN 8 --1st O/U
+											WHEN b.BetType = 2
+												THEN 2 --O/E
+											WHEN b.BetType = 12
+												THEN 12 --1x2
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 0
+												THEN 5 --1x2		
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 5
+												THEN - 14 --10mins 1x2
+											WHEN b.BetType IN (15, 125) AND b.SpecialType = 0
+												THEN 15 --1st 1x2
+											WHEN b.BetType = 1 AND b.SpecialType = 4
+												THEN - 1 --15mins HDP
+											WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+												THEN - 2 --Next Corner
+											WHEN b.BetType = 1 AND b.SpecialType = 5
+												THEN - 15 --10mins HDP
+											WHEN b.BetType = 1 AND b.SpecialType = 9
+												THEN - 3 --Next Booking
+											WHEN b.BetType IN (5, 124) AND b.SpecialType = 4
+												THEN - 4 --15mins 1X2
+											WHEN b.BetType = 3 AND b.SpecialType = 4
+												THEN - 5 --15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 5
+												THEN - 6 --10mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 2
+												THEN - 7 --Corners 15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 7
+												THEN - 8 --Total Bookings
+											WHEN b.BetType = 1 AND b.SpecialType = 1
+												THEN - 37 --Total Bookings 15mins HDP
+											WHEN b.BetType = 3 AND b.SpecialType = 1
+												THEN - 10 --Total Bookings 15mins O/U
+											WHEN b.BetType = 3 AND b.SpecialType = 6
+												THEN - 13 --No. of Corner
+											WHEN b.BetType = 8 AND b.SpecialType = 6
+												THEN - 12 --1st No. of Corner
+											WHEN b.BetType = 8 AND b.SpecialType = 7
+												THEN - 9 --1st TotalBookings
+											WHEN (b.BetType = 3 OR b.BetType = 8) AND b.SpecialType = 3
+												THEN - 11 --Single Team O/U
+											WHEN b.BetType IN (5, 124)
+												THEN 5 --1x2	
+											WHEN b.BetType IN (15, 125)
+												THEN 15 --1st 1x2
+											ELSE b.BetType
+										END
+				) AS ca
+			WHERE	b.winlostdate = @winlostdate
+				AND b.LiveIndicator = 0
+			GROUP BY	b.custid
+					,	ISNULL(b.WorkShift, 1)
+					,	b.MatchId
+					,	b.MatchCode
+					,	b.EventDate
+					,	b.SportType
+					,	b.LeagueId
+					,	b.HomeId
+					,	b.AwayId
+					,	t.TeamId
+					,	t.Grade
+					,	ca.BetType
+					,	b.Stake
+					,	b.WinLost
+					,	b.SMAWinLost
+					,	b.scomm
+					,	b.Spread
+					,	ISNULL(b.ExtraPT, 0)
+					,	b.tpositiontaking
+					,	b.virtualrate
+					,	b.actualrate
 					,	b.BetChoice
 					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;

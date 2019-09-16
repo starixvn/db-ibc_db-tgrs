@@ -8,13 +8,14 @@ AS
 	Original:  
   
 	Revisions:      
-		- 20141203@Tom:		Staging data with new requirement
-		- 20160307@Billy:	Add new field Spread for staging data - [Redmine: #53240]
-		- 20171025@Long:	Sum by BettypeGroup (Major, PH)
-		- 20171127@Long:	Support Live Status
-		- 20180119@John:	Update Logic generating data [Redmine: #87861]
-		- 20190116@John:	Support excluding Leagues from report [Redmine ID: #108008]
-		- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+		- 20141203@Tom:			Staging data with new requirement
+		- 20160307@Billy:		Add new field Spread for staging data - [Redmine: #53240]
+		- 20171025@Long.Luu:	Sum by BettypeGroup (Major, PH)
+		- 20171127@Long.Luu:	Support Live Status
+		- 20180119@John:		Update Logic generating data [Redmine: #87861]
+		- 20190116@John:		Support excluding Leagues from report [Redmine ID: #108008]
+		- 20190304@Long.Luu:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+		- 20190822@Long.Luu:	Suppport Non-Live Data [Redmine ID: 118959]
    			
 	Param's Explanation:  
 	
@@ -55,6 +56,7 @@ BEGIN;
 		,	[LeagueId]
 		,	[BetType]
 		,	[WorkShift]
+		,	[IsLive]
 		,	[Stake]
 		,	[WinLost]
 		,	[Comm]
@@ -68,6 +70,7 @@ BEGIN;
 		,	[LeagueId]		= t.[LeagueId]
 		,	[BetType]		= t.[BetType]
 		,	[WorkShift]		= t.[WorkShift]
+		,	[IsLive]		= t.[IsLive]
 		,	[Stake]			= SUM(t.[Stake]) 
 		,	[WinLost]		= SUM(t.[WinLost]) 
 		,	[Comm]			= SUM(t.[Comm]) 
@@ -81,7 +84,8 @@ BEGIN;
 			AND t.IsLive = 1
 	GROUP BY t.[LeagueId]
 		,	t.[BetType]
-		,	t.[WorkShift];
+		,	t.[WorkShift]
+		,	t.[IsLive];
 
 	-- [SummaryByLeague_Daily] table
 	DELETE [dbo].[SummaryByLeague_Daily]	WHERE EventDate = @Date;
@@ -92,6 +96,7 @@ BEGIN;
 		,	[LeagueId]
 		,	[WorkShift]
 		,	[BettypeGroup]
+		,	[IsLive]
 		,	[Stake]
 		,	[WinLost]
 		,	[Comm]
@@ -105,6 +110,7 @@ BEGIN;
 		,	[LeagueId]		= s.[LeagueId]
 		,	[WorkShift]		= s.[WorkShift]
 		,	[BettypeGroup]	= g.[BettypeGroup]
+		,	[IsLive]		= s.[IsLive]
 		,	[Stake]			= SUM(s.[Stake])
 		,	[WinLost]		= SUM(s.[WinLost]) 
 		,	[Comm]			= SUM(s.[Comm]) 
@@ -119,7 +125,8 @@ BEGIN;
 		AND IsLive = 1
 	GROUP BY s.[LeagueId]
 		,	s.[WorkShift]
-		,	g.[BettypeGroup];
+		,	g.[BettypeGroup]
+		,	s.[IsLive];
 
 	-- [SummaryByTeam_Daily] table
 	DELETE [dbo].[SummaryByTeam_Daily]	WHERE EventDate = @Date;
@@ -131,6 +138,7 @@ BEGIN;
 		,	[LeagueId]
 		,	[WorkShift]
 		,	[BettypeGroup]
+		,	[IsLive]
 		,	[Stake]
 		,	[WinLost]
 		,	[Comm]
@@ -145,6 +153,7 @@ BEGIN;
 		,	[LeagueId]		= s.[LeagueId]
 		,	[WorkShift]		= s.[WorkShift]
 		,	[BettypeGroup]	= g.[BettypeGroup]
+		,	[IsLive]		= s.[IsLive]
 		,	[Stake]			= SUM(s.[Stake]) 
 		,	[WinLost]		= SUM(s.[WinLost])
 		,	[Comm]			= SUM(s.[Comm]) 
@@ -160,7 +169,8 @@ BEGIN;
 	GROUP BY s.[TeamId]
 		,	s.[LeagueId]
 		,	s.[WorkShift]
-		,	g.[BettypeGroup];
+		,	g.[BettypeGroup]
+		,	s.[IsLive];
 END;
 
 GO

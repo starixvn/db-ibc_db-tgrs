@@ -5,22 +5,22 @@ ALTER PROCEDURE [dbo].[Task_StagingTraderPerformanceByMonth]
 AS
 
 /*
- Created:	20140604@Tom.Vo
- Task :		Staging Data on TGRS DB By Month
- DB:		DBTGRS.bodb_TGRS
- Original:  
+	 Created:	20140604@Tom.Vo
+	 Task :		Staging Data on TGRS DB By Month
+	 DB:		DBTGRS.bodb_TGRS
+	 Original:  
   
- Revisions:      
-	- 20141203@Tom.Vo:	Staging data with new requirement
-	- 20171025@Long:	Sum by BettypeGroup (Major, PH)
-	- 20171127@Long:	Support Live Status
-	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
-	- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+	 Revisions:      
+		- 20141203@Tom.Vo:		Staging data with new requirement
+		- 20171025@Long.Luu:	Sum by BettypeGroup (Major, PH)
+		- 20171127@Long.Luu:	Support Live Status
+		- 20180911@Long.Luu:	Support excluding Leagues from report [Redmine ID: #100322]
+		- 20190304@Long.Luu:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
+		- 20190822@Long.Luu:	Suppport Non-Live Data [Redmine ID: 118959]
    			
- Param's Explanation:  
+	 Param's Explanation:  
 	 
- Exam:
-
+	 Exam:
 */
 BEGIN;
 	SET NOCOUNT ON;
@@ -67,6 +67,7 @@ BEGIN;
 			,	[LeagueId]
 			,	[WorkShift]
 			,	[BettypeGroup]
+			,	[IsLive]
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
@@ -81,6 +82,7 @@ BEGIN;
 			,	[LeagueId]		= s.[LeagueId]
 			,	[WorkShift]		= s.[WorkShift]
 			,	[BettypeGroup]	= g.[BettypeGroup]
+			,	[IsLive]		= s.[IsLive]
 			,	[Stake]			= SUM(s.[Stake])
 			,	[WinLost]		= SUM(s.[WinLost]) 
 			,	[Comm]			= SUM(s.[Comm])
@@ -96,7 +98,8 @@ BEGIN;
 		 GROUP BY s.[CustId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
-			,	g.[BettypeGroup];
+			,	g.[BettypeGroup]
+			,	s.[IsLive];
 
 		-- [SummaryByBetType_Monthly] table
 		DELETE [dbo].[SummaryByBetType_Monthly]	WHERE EventDate = @Month
@@ -107,6 +110,7 @@ BEGIN;
 			,	[LeagueId]
 			,	[BetType]
 			,	[WorkShift]
+			,	[IsLive]
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
@@ -120,6 +124,7 @@ BEGIN;
 			,	[LeagueId]		= s.[LeagueId]
 			,	[BetType]		= s.[BetType]
 			,	[WorkShift]		= s.[WorkShift]
+			,	[IsLive]		= s.[IsLive]
 			,	[Stake]			= SUM(s.[Stake])
 			,	[WinLost]		= SUM(s.[WinLost]) 
 			,	[Comm]			= SUM(s.[Comm])
@@ -134,6 +139,7 @@ BEGIN;
 		GROUP BY s.[LeagueId]
 			,	s.[BetType]
 			,	s.[WorkShift]
+			,	s.[IsLive];
 
 		-- [SummaryByLeague_Monthly] table
 		DELETE [dbo].SummaryByLeague_Monthly	WHERE EventDate = @Month
@@ -144,6 +150,7 @@ BEGIN;
 			,	[LeagueId]
 			,	[WorkShift]
 			,	[BettypeGroup]
+			,	[IsLive]
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
@@ -157,6 +164,7 @@ BEGIN;
 			,	[LeagueId]		= s.[LeagueId]
 			,	[WorkShift]		= s.[WorkShift]
 			,	[BettypeGroup]	= g.[BettypeGroup]
+			,	[IsLive]		= s.[IsLive]
 			,	[Stake]			= SUM(s.[Stake])
 			,	[WinLost]		= SUM(s.[WinLost]) 
 			,	[Comm]			= SUM(s.[Comm])
@@ -171,7 +179,8 @@ BEGIN;
 			AND s.IsLive = 1
 		GROUP BY s.[LeagueId]
 			,	s.[WorkShift]
-			,	g.[BettypeGroup];
+			,	g.[BettypeGroup]
+			,	s.[IsLive];
 
 		-- [SummaryByTeam_Monthly] table
 		DELETE [dbo].SummaryByTeam_Monthly	WHERE EventDate = @Month
@@ -183,6 +192,7 @@ BEGIN;
 			,	[LeagueId]
 			,	[WorkShift]
 			,	[BettypeGroup]
+			,	[IsLive]
 			,	[Stake]
 			,	[WinLost]
 			,	[Comm]
@@ -197,6 +207,7 @@ BEGIN;
 			,	[LeagueId]		= s.[LeagueId]
 			,	[WorkShift]		= s.[WorkShift]
 			,	[BettypeGroup]	= g.[BettypeGroup]
+			,	[IsLive]		= s.[IsLive]
 			,	[Stake]			= SUM(s.[Stake])
 			,	[WinLost]		= SUM(s.[WinLost]) 
 			,	[Comm]			= SUM(s.[Comm])
@@ -212,7 +223,8 @@ BEGIN;
 		GROUP BY s.[TeamId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
-			,	g.[BettypeGroup];
+			,	g.[BettypeGroup]
+			,	s.[IsLive];
 	END
 	ELSE IF (@GenerateFromDate IS NOT NULL AND @GenerateToDate IS NOT NULL)
 	BEGIN
@@ -257,6 +269,7 @@ BEGIN;
 				,	[LeagueId]
 				,	[WorkShift]
 				,	[BettypeGroup]
+				,	[IsLive]
 				,	[Stake]
 				,	[WinLost]
 				,	[Comm]
@@ -271,6 +284,7 @@ BEGIN;
 				,	[LeagueId]		= s.[LeagueId]
 				,	[WorkShift]		= s.[WorkShift]
 				,	[BettypeGroup]	= g.[BettypeGroup]
+				,	[IsLive]		= s.[IsLive]
 				,	[Stake]			= SUM(s.[Stake])
 				,	[WinLost]		= SUM(s.[WinLost]) 
 				,	[Comm]			= SUM(s.[Comm])
@@ -286,7 +300,8 @@ BEGIN;
 			 GROUP BY s.[CustId]
 				,	s.[LeagueId]
 				,	s.[WorkShift]
-				,	g.[BettypeGroup];
+				,	g.[BettypeGroup]
+				,	s.[IsLive];
 
 			-- [SummaryByBetType_Monthly] table
 			DELETE [dbo].[SummaryByBetType_Monthly]	WHERE EventDate = @WinLostDate;
@@ -297,6 +312,7 @@ BEGIN;
 				,	[LeagueId]
 				,	[BetType]
 				,	[WorkShift]
+				,	[IsLive]
 				,	[Stake]
 				,	[WinLost]
 				,	[Comm]
@@ -310,6 +326,7 @@ BEGIN;
 				,	[LeagueId]		= s.[LeagueId]
 				,	[BetType]		= s.[BetType]
 				,	[WorkShift]		= s.[WorkShift]
+				,	[IsLive]		= s.[IsLive]
 				,	[Stake]			= SUM(s.[Stake])
 				,	[WinLost]		= SUM(s.[WinLost]) 
 				,	[Comm]			= SUM(s.[Comm])
@@ -324,6 +341,7 @@ BEGIN;
 			GROUP BY s.[LeagueId]
 				,	s.[BetType]
 				,	s.[WorkShift]
+				,	s.[IsLive];
 
 			-- [SummaryByLeague_Monthly] table
 			DELETE [dbo].SummaryByLeague_Monthly	WHERE EventDate = @WinLostDate;
@@ -334,6 +352,7 @@ BEGIN;
 				,	[LeagueId]
 				,	[WorkShift]
 				,	[BettypeGroup]
+				,	[IsLive]
 				,	[Stake]
 				,	[WinLost]
 				,	[Comm]	
@@ -347,6 +366,7 @@ BEGIN;
 				,	[LeagueId]		= s.[LeagueId]
 				,	[WorkShift]		= s.[WorkShift]
 				,	[BettypeGroup]	= g.[BettypeGroup]
+				,	[IsLive]		= s.[IsLive]
 				,	[Stake]			= SUM(s.[Stake])
 				,	[WinLost]		= SUM(s.[WinLost]) 
 				,	[Comm]			= SUM(s.[Comm])
@@ -361,7 +381,8 @@ BEGIN;
 				AND s.IsLive = 1
 			GROUP BY s.[LeagueId]
 				,	s.[WorkShift]
-				,	g.[BettypeGroup];
+				,	g.[BettypeGroup]
+				,	s.[IsLive];
 
 			-- [SummaryByTeam_Monthly] table
 			DELETE [dbo].SummaryByTeam_Monthly	WHERE EventDate = @WinLostDate;
@@ -373,6 +394,7 @@ BEGIN;
 				,	[LeagueId]
 				,	[WorkShift]
 				,	[BettypeGroup]
+				,	[IsLive]
 				,	[Stake]
 				,	[WinLost]
 				,	[Comm]
@@ -387,6 +409,7 @@ BEGIN;
 				,	[LeagueId]		= s.[LeagueId]
 				,	[WorkShift]		= s.[WorkShift]
 				,	[BettypeGroup]	= g.[BettypeGroup]
+				,	[IsLive]		= s.[IsLive]
 				,	[Stake]			= SUM(s.[Stake])
 				,	[WinLost]		= SUM(s.[WinLost]) 
 				,	[Comm]			= SUM(s.[Comm])
@@ -402,7 +425,8 @@ BEGIN;
 			GROUP BY s.[TeamId]
 				,	s.[LeagueId]
 				,	s.[WorkShift]
-				,	g.[BettypeGroup];
+				,	g.[BettypeGroup]
+				,	s.[IsLive];
 
 			DELETE	d
 			FROM	#tmpWinlostDate AS d
