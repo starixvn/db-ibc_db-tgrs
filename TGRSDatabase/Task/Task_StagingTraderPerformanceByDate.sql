@@ -81,7 +81,6 @@ BEGIN;
 		,	[MatchCount]	= COUNT(DISTINCT [MatchId])
 	FROM [dbo].[TraderPerformance] AS t WITH(NOLOCK)
 	WHERE t.EventDate = @Date
-			AND t.IsLive = 1
 	GROUP BY t.[LeagueId]
 		,	t.[BetType]
 		,	t.[WorkShift]
@@ -122,7 +121,6 @@ BEGIN;
 	FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 		INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 	WHERE EventDate = @Date
-		AND IsLive = 1
 	GROUP BY s.[LeagueId]
 		,	s.[WorkShift]
 		,	g.[BettypeGroup]
@@ -165,7 +163,6 @@ BEGIN;
 	FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 		INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 	WHERE s.EventDate = @Date
-		AND s.IsLive = 1
 	GROUP BY s.[TeamId]
 		,	s.[LeagueId]
 		,	s.[WorkShift]

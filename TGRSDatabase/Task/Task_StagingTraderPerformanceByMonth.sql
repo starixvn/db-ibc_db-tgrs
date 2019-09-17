@@ -94,7 +94,6 @@ BEGIN;
 		 FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		 WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-			AND s.IsLive = 1
 		 GROUP BY s.[CustId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
@@ -135,7 +134,6 @@ BEGIN;
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
 		WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-			AND s.IsLive = 1
 		GROUP BY s.[LeagueId]
 			,	s.[BetType]
 			,	s.[WorkShift]
@@ -176,7 +174,6 @@ BEGIN;
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-			AND s.IsLive = 1
 		GROUP BY s.[LeagueId]
 			,	s.[WorkShift]
 			,	g.[BettypeGroup]
@@ -219,7 +216,6 @@ BEGIN;
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-			AND s.IsLive = 1
 		GROUP BY s.[TeamId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
@@ -296,7 +292,6 @@ BEGIN;
 			 FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 				INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 			 WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-				AND s.IsLive = 1
 			 GROUP BY s.[CustId]
 				,	s.[LeagueId]
 				,	s.[WorkShift]
@@ -337,7 +332,6 @@ BEGIN;
 				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
 			WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-				AND s.IsLive = 1
 			GROUP BY s.[LeagueId]
 				,	s.[BetType]
 				,	s.[WorkShift]
@@ -378,7 +372,6 @@ BEGIN;
 			FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 				INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 			WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-				AND s.IsLive = 1
 			GROUP BY s.[LeagueId]
 				,	s.[WorkShift]
 				,	g.[BettypeGroup]
@@ -421,7 +414,6 @@ BEGIN;
 			FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 				INNER JOIN #tmpBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 			WHERE s.EventDate BETWEEN @StartDate AND @EndDate
-				AND s.IsLive = 1
 			GROUP BY s.[TeamId]
 				,	s.[LeagueId]
 				,	s.[WorkShift]

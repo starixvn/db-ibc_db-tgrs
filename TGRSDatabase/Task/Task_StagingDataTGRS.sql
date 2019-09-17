@@ -500,7 +500,6 @@ BEGIN
 				,	@FromDateBK = @GenerateFromDate 
 				,	@ToDateBK = @BalanceUpDay - 1;
 	END;
-	
 	-- Track changes on matches
 	IF (@IsRunningJob = 1)
 	BEGIN
@@ -513,7 +512,7 @@ BEGIN
 		CREATE TABLE	#tmpDLDateToTraceChangesOnMatch (
 				EventDate			DATE
 		);
-
+		
 		INSERT INTO	#tmpDLDateToTraceChangesOnMatch (EventDate)
 		SELECT	tally.EventDate
 		FROM	(
@@ -526,6 +525,7 @@ BEGIN
 			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100(n)
 			CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)
 		) tally;
+		
 
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -943,8 +943,8 @@ BEGIN
 				,	[LeagueId]			= b.LeagueId
 				,	[HomeId]			= b.HomeId
 				,	[AwayId]			= b.AwayId
-				,	[TeamId]			= t.TeamId
-				,	[Grade]				= t.Grade
+				,	[TeamId]			= NULL
+				,	[Grade]				= NULL
 				,	[BetType]			= ca.BetType
 				,	[Stake]				= b.Stake --Turnover
 				,	[WinLost]			= b.WinLost
@@ -960,12 +960,6 @@ BEGIN
 				,	[BetChoice]			= b.BetChoice 
 			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-			LEFT JOIN	#tmpDLTrader AS t WITH (NOLOCK)
-					ON	b.winlostdate = t.EventDate
-					AND	b.matchId = t.matchId
-					AND	(	b.BetType = t.BetType
-						OR	(b.bettype = 23 AND t.BetType = 1)
-						)
 			CROSS APPLY	(
 				SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
 												THEN 1 --HDP
@@ -987,7 +981,7 @@ BEGIN
 												THEN 15 --1st 1x2
 											WHEN b.BetType = 1 AND b.SpecialType = 4
 												THEN - 1 --15mins HDP
-											WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+											WHEN (b.bettype = 23) OR (b.BetType = 1 AND b.SpecialType = 8)
 												THEN - 2 --Next Corner
 											WHEN b.BetType = 1 AND b.SpecialType = 5
 												THEN - 15 --10mins HDP
@@ -1033,8 +1027,6 @@ BEGIN
 					,	b.LeagueId
 					,	b.HomeId
 					,	b.AwayId
-					,	t.TeamId
-					,	t.Grade
 					,	ca.BetType
 					,	b.Stake
 					,	b.WinLost
@@ -1063,8 +1055,7 @@ BEGIN
 			SET stp.TeamId = t.TeamId
 				,	stp.Grade = t.Grade
 			FROM #tmpDLStagingTraderPerformance AS stp
-			INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
-			WHERE stp.CustId = 0;
+			INNER JOIN dbo.Trader t WITH (NOLOCK) ON t.CustId IN (@IdForLiveUnassignedTrader, @IdForNonLiveUnassignedTrader) AND stp.CustId = t.CustId;
 			
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
@@ -1570,8 +1561,8 @@ BEGIN
 				,	[LeagueId]			= b.LeagueId
 				,	[HomeId]			= b.HomeId
 				,	[AwayId]			= b.AwayId
-				,	[TeamId]			= t.TeamId
-				,	[Grade]				= t.Grade
+				,	[TeamId]			= NULL
+				,	[Grade]				= NULL
 				,	[BetType]			= ca.BetType
 				,	[Stake]				= b.Stake --Turnover
 				,	[WinLost]			= b.WinLost
@@ -1587,12 +1578,6 @@ BEGIN
 				,	[BetChoice]			= b.BetChoice 
 			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-			LEFT JOIN	#tmpDLTrader AS t WITH (NOLOCK)
-					ON	b.winlostdate = t.EventDate
-					AND	b.matchId = t.matchId
-					AND	(	b.BetType = t.BetType
-						OR	(b.bettype = 23 AND t.BetType = 1)
-						)
 			CROSS APPLY	(
 				SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
 												THEN 1 --HDP
@@ -1614,7 +1599,7 @@ BEGIN
 												THEN 15 --1st 1x2
 											WHEN b.BetType = 1 AND b.SpecialType = 4
 												THEN - 1 --15mins HDP
-											WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+											WHEN (b.bettype = 23) OR (b.BetType = 1 AND b.SpecialType = 8)
 												THEN - 2 --Next Corner
 											WHEN b.BetType = 1 AND b.SpecialType = 5
 												THEN - 15 --10mins HDP
@@ -1660,8 +1645,6 @@ BEGIN
 					,	b.LeagueId
 					,	b.HomeId
 					,	b.AwayId
-					,	t.TeamId
-					,	t.Grade
 					,	ca.BetType
 					,	b.Stake
 					,	b.WinLost
@@ -1690,8 +1673,7 @@ BEGIN
 			SET stp.TeamId = t.TeamId
 				,	stp.Grade = t.Grade
 			FROM #tmpDLStagingTraderPerformance AS stp
-			INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
-			WHERE stp.CustId = 0;
+			INNER JOIN dbo.Trader t WITH (NOLOCK) ON t.CustId IN (@IdForLiveUnassignedTrader, @IdForNonLiveUnassignedTrader) AND stp.CustId = t.CustId;
 
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 
@@ -2209,8 +2191,8 @@ BEGIN
 				,	[LeagueId]			= b.LeagueId
 				,	[HomeId]			= b.HomeId
 				,	[AwayId]			= b.AwayId
-				,	[TeamId]			= t.TeamId
-				,	[Grade]				= t.Grade
+				,	[TeamId]			= NULL
+				,	[Grade]				= NULL
 				,	[BetType]			= ca.BetType
 				,	[Stake]				= b.Stake --Turnover
 				,	[WinLost]			= b.WinLost
@@ -2226,12 +2208,6 @@ BEGIN
 				,	[BetChoice]			= b.BetChoice 
 			FROM		#tmpDLFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 			INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-			LEFT JOIN	#tmpDLTrader AS t WITH (NOLOCK)
-					ON	b.winlostdate = t.EventDate
-					AND	b.matchid = t.matchid
-					AND	(	b.BetType = t.BetType
-						OR	(b.bettype = 23 AND t.BetType = 1)
-						)
 			CROSS APPLY	(
 				SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
 												THEN 1 --HDP
@@ -2253,7 +2229,7 @@ BEGIN
 												THEN 15 --1st 1x2
 											WHEN b.BetType = 1 AND b.SpecialType = 4
 												THEN - 1 --15mins HDP
-											WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+											WHEN (b.bettype = 23) OR (b.BetType = 1 AND b.SpecialType = 8)
 												THEN - 2 --Next Corner
 											WHEN b.BetType = 1 AND b.SpecialType = 5
 												THEN - 15 --10mins HDP
@@ -2299,8 +2275,6 @@ BEGIN
 					,	b.LeagueId
 					,	b.HomeId
 					,	b.AwayId
-					,	t.TeamId
-					,	t.Grade
 					,	ca.BetType
 					,	b.Stake
 					,	b.WinLost
@@ -2329,8 +2303,7 @@ BEGIN
 			SET stp.TeamId = t.TeamId
 				,	stp.Grade = t.Grade
 			FROM #tmpDLStagingTraderPerformance AS stp
-			INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
-			WHERE stp.CustId = 0;
+			INNER JOIN dbo.Trader t WITH (NOLOCK) ON t.CustId IN (@IdForLiveUnassignedTrader, @IdForNonLiveUnassignedTrader) AND stp.CustId = t.CustId;
 
 			DELETE dbo.TraderPerformance WHERE EventDate = @winlostdate AND Bettype IN (SELECT BetType FROM #tmpDLFilteredBettypes WITH (NOLOCK));
 

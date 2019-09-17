@@ -672,8 +672,8 @@ BEGIN
 			,	[LeagueId]			= b.LeagueId
 			,	[HomeId]			= b.HomeId
 			,	[AwayId]			= b.AwayId
-			,	[TeamId]			= t.TeamId
-			,	[Grade]				= t.Grade
+			,	[TeamId]			= NULL
+			,	[Grade]				= NULL
 			,	[BetType]			= ca.BetType
 			,	[Stake]				= b.Stake --turn over
 			,	[WinLost]			= b.WinLost
@@ -689,12 +689,6 @@ BEGIN
 			,	[BetChoice]			= b.BetChoice 
 		FROM		#tmpRTFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 		INNER JOIN #tmpRTSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-		LEFT JOIN	#tmpRTTrader AS t WITH (NOLOCK)
-				ON	b.winlostdate = t.EventDate
-				AND	b.matchid = t.matchid
-				AND	(	b.BetType = t.BetType
-					OR	(b.bettype = 23 AND t.BetType = 1)
-					)
 		CROSS APPLY	(
 			SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
 											THEN 1 --HDP
@@ -716,7 +710,7 @@ BEGIN
 											THEN 15 --1st 1x2
 										WHEN b.BetType = 1 AND b.SpecialType = 4
 											THEN - 1 --15mins HDP
-										WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+										WHEN (b.bettype = 23) OR (b.BetType = 1 AND b.SpecialType = 8)
 											THEN - 2 --Next Corner
 										WHEN b.BetType = 1 AND b.SpecialType = 5
 											THEN - 15 --10mins HDP
@@ -762,8 +756,6 @@ BEGIN
 				,	b.LeagueId
 				,	b.HomeId
 				,	b.AwayId
-				,	t.TeamId
-				,	t.Grade
 				,	ca.BetType
 				,	b.Stake
 				,	b.WinLost
@@ -792,8 +784,7 @@ BEGIN
 		SET stp.TeamId = t.TeamId
 			,	stp.Grade = t.Grade
 		FROM #tmpRTStagingTraderPerformance AS stp
-		INNER JOIN dbo.Trader t WITH (NOLOCK) ON stp.CustId = t.CustId
-		WHERE stp.CustId = 0;
+		INNER JOIN dbo.Trader t WITH (NOLOCK) ON t.CustId IN (@IdForLiveUnassignedTrader, @IdForNonLiveUnassignedTrader) AND stp.CustId = t.CustId;
 
 		INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, 
 			IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, BetCount, Spread)
@@ -902,7 +893,6 @@ BEGIN
 			,	[MatchCount]	= COUNT(DISTINCT [MatchId])
 		FROM dbo.TraderPerformance AS t WITH(NOLOCK)
 		WHERE t.EventDate = @WinlostDate
-			AND t.IsLive = 1
 		GROUP BY t.[LeagueId]
 			,	t.[BetType]
 			,	t.[WorkShift]
@@ -957,7 +947,6 @@ BEGIN
 		FROM dbo.TraderPerformance s WITH(NOLOCK)
 			INNER JOIN #tmpRTBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		WHERE s.EventDate = @WinlostDate
-			AND s.IsLive = 1
 		GROUP BY s.[LeagueId]
 			,	s.[WorkShift]
 			,	g.[BettypeGroup]
@@ -999,7 +988,6 @@ BEGIN
 		FROM dbo.TraderPerformance s WITH(NOLOCK)
 			INNER JOIN #tmpRTBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		WHERE	s.EventDate = @WinlostDate
-			AND s.IsLive = 1
 		GROUP BY s.[TeamId]
 			,	s.[LeagueId]				
 			,	s.[WorkShift]
@@ -1046,7 +1034,6 @@ BEGIN
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpRTBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		WHERE s.EventDate BETWEEN @StartDate AND @WinlostDate
-			AND s.IsLive = 1
 		GROUP BY s.[CustId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
@@ -1086,7 +1073,6 @@ BEGIN
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
 		WHERE s.EventDate BETWEEN @StartDate AND @WinlostDate
-			AND s.IsLive = 1
 		GROUP BY s.[LeagueId]
 			,	s.[BetType]
 			,	s.[WorkShift]
@@ -1126,7 +1112,6 @@ BEGIN
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpRTBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		WHERE s.EventDate BETWEEN @StartDate AND @WinlostDate
-			AND s.IsLive = 1
 		GROUP BY s.[LeagueId]
 			,	s.[WorkShift]
 			,	g.[BettypeGroup]
@@ -1168,7 +1153,6 @@ BEGIN
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
 			INNER JOIN #tmpRTBettypeGroup g WITH(NOLOCK) ON s.BetType = g.BetType
 		WHERE s.EventDate BETWEEN @StartDate AND @WinlostDate
-			AND s.IsLive = 1
 		GROUP BY s.[TeamId]
 			,	s.[LeagueId]
 			,	s.[WorkShift]
