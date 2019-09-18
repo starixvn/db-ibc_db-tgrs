@@ -1,8 +1,0 @@
-TRUNCATE TABLE [dbo].[SummaryByBetType_Daily]
-TRUNCATE TABLE [dbo].[SummaryByBetType_Monthly]
-TRUNCATE TABLE [dbo].[SummaryByLeague_Daily]
-TRUNCATE TABLE [dbo].[SummaryByLeague_Monthly]
-TRUNCATE TABLE [dbo].[SummaryByTeam_Daily]
-TRUNCATE TABLE [dbo].[SummaryByTeam_Monthly]
-TRUNCATE TABLE [dbo].[SummaryByTrader_Monthly]
-TRUNCATE TABLE [dbo].[TraderPerformance]
