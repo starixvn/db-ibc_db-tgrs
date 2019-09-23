@@ -82,6 +82,7 @@ BEGIN
 
 	SELECT	td.CustID
 		,	t.Username AS TraderName
+		,	td.IsLive
 		,	t.Grade
 		,	t.TeamId
 		,	tm.TeamName

@@ -132,15 +132,15 @@ BEGIN
 
 	WITH score AS (
 		SELECT	sd.Grade
+			,	sd.IsLive
 			,	AVG(CASE WHEN sd.SumCategory = 0 THEN NULL ELSE sd.WinLoss * 100 / sd.SumCategory END) AS Score
 		FROM	#ScoreDetail AS sd WITH (NOLOCK)
-		GROUP BY sd.Grade
+		GROUP BY sd.Grade, sd.IsLive
 	)
 	UPDATE  g
 	SET		g.Score = s.Score
 	FROM		@Grade AS g
-	INNER JOIN	score AS s
-			ON	s.Grade = g.Grade;
+	INNER JOIN	score AS s ON	s.Grade = g.Grade AND s.IsLive = g.IsLive;
 
 	SELECT	Grade
 		,	TraderCount
