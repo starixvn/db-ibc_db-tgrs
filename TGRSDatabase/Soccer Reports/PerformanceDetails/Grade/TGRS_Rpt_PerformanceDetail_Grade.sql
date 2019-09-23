@@ -7,6 +7,7 @@ ALTER PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]
 	,	@MarginTo			MONEY			= NULL
 	,	@Bettypes			VARCHAR(2000)	= '0'
 	,	@IsExcludeLeagues	BIT				= 1
+	,	@Market				SMALLINT		= 1
 AS
 /*  
 	Created:	20160217@Billy
@@ -21,8 +22,10 @@ AS
 		- 20171205@Simon:		get only Live data & Bettypes are not disabled
 		- 20180912@Simon:		add league exclusion
 		- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
+		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 
-	Param's Explanation:  	
+	Param's Explanation:  
+		- @Market: -1 All; 0 Nonlive; 1 Live	
 	
 	Example: 	
 		EXECUTE	TGRS_Rpt_PerformanceDetail_Grade  
@@ -35,31 +38,33 @@ AS
 				,	@ToDate = '2016-03-14 00:00:00'
 */  
  
-BEGIN 
-	
+BEGIN 	
 	SET NOCOUNT ON;  
 	 
 	CREATE TABLE #ScoreDetail (
-								CustID				INT
-							,	Grade				TINYINT
-							,	WinLoss				MONEY
-							,	SumCategory			MONEY
-							);
+			CustID			INT
+		,	Grade			TINYINT
+		,	WinLoss			MONEY
+		,	SumCategory		MONEY
+		,	IsLive			BIT
+	);
 
 	DECLARE	@BettypeList	TABLE (
-								bettype			SMALLINT
-							);
+			bettype			SMALLINT
+	);
+
 	DECLARE	@Grade			TABLE (
-								Grade			TINYINT
-							,	TraderCount		INT
-							,	LeagueCount		INT
-							,	MatchCount		INT
-							,	Turnover		MONEY
-							,	WinLoss			MONEY
-							,	BetCount		INT
-							,	Margin			MONEY
-							,	Score			MONEY
-							);
+			Grade			TINYINT
+		,	TraderCount		INT
+		,	LeagueCount		INT
+		,	MatchCount		INT
+		,	Turnover		MONEY
+		,	WinLoss			MONEY
+		,	BetCount		INT
+		,	Margin			MONEY
+		,	Score			MONEY
+		,	IsLive			BIT
+	);
 
 	IF	@Bettypes <> '0'
 		INSERT INTO @BettypeList
@@ -73,13 +78,15 @@ BEGIN
 		FROM	dbo.BetType AS bt WITH (NOLOCK);
 
 	INSERT INTO	#ScoreDetail (
-					CustID
-				,	Grade
-				,	WinLoss
-				,	SumCategory
-				)
+			CustID
+		,	Grade
+		,	IsLive
+		,	WinLoss
+		,	SumCategory
+	)
 	SELECT	tp.CustId
 		,	tp.Grade
+		,	tp.IsLive
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss		
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
@@ -89,14 +96,15 @@ BEGIN
 	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
 			ON	s.Spread = tp.Spread
 			AND	s.Rate = tm.Rate
-			AND tp.IsLive = 1
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+			AND (@Market = -1 OR tp.IsLive = @Market)
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
-	GROUP BY	tp.CustId, tp.Grade;
+	GROUP BY	tp.CustId, tp.Grade, tp.IsLive;
 
 	WITH GradeDetail AS (
 		SELECT	tp.Grade												AS Grade
+			,	tp.IsLive												AS IsLive
 			,	COUNT(DISTINCT tp.CustId)								AS TraderCount
 			,	COUNT(DISTINCT tp.LeagueId)								AS LeagueCount
 			,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
@@ -110,13 +118,12 @@ BEGIN
 		FROM	dbo.TraderPerformance	AS tp WITH (NOLOCK)
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
-			AND tp.IsLive = 1
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY	tp.Grade
+			AND (@Market = -1 OR tp.IsLive = @Market)
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		GROUP BY	tp.Grade, tp.IsLive
 	)
-	INSERT INTO @Grade 
-		(	Grade   , TraderCount   , LeagueCount   , MatchCount   , Turnover   , WinLoss   , BetCount   , Margin   )
-	SELECT	gd.Grade, gd.TraderCount, gd.LeagueCount, gd.MatchCount, gd.Turnover, gd.WinLoss, gd.BetCount, gd.Margin
+	INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLoss, BetCount, Margin, IsLive)
+	SELECT	gd.Grade, gd.TraderCount, gd.LeagueCount, gd.MatchCount, gd.Turnover, gd.WinLoss, gd.BetCount, gd.Margin, gd.IsLive
 	FROM	GradeDetail gd
 	WHERE	(@Turnover IS NULL OR gd.Turnover >= @Turnover)
 		AND	(@WinLoss IS NULL OR gd.WinLoss >= @WinLoss)
@@ -144,6 +151,7 @@ BEGIN
 		,	BetCount
 		,	Margin
 		,	Score 
+		,	IsLive
 	FROM	@Grade
 	ORDER BY	Margin	DESC
 			,	Grade	ASC;

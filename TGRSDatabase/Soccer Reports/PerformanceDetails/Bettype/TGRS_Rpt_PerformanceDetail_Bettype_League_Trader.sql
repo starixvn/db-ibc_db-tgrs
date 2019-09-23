@@ -1,32 +1,32 @@
-/****** Object:  Stored Procedure dbo.TGRS_Rpt_PerformanceDetail_Bettype_League_Trader    Script Date: 3/22/2016 12:48:53 PM ******/
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_Trader]  	
-	@FromDate		DATE,
-	@ToDate			DATE,		
-	@LeagueId		INT,
-	@Bettype		SMALLINT,
-	@IsExcludeLeagues	BIT = 1
+	@FromDate			DATE,
+	@ToDate				DATE,		
+	@LeagueId			INT,
+	@Bettype			SMALLINT,
+	@IsExcludeLeagues	BIT = 1,
+	@Market				SMALLINT = 1
 AS    
 /*  
- Created:	20160315@Thai.Tran
- Task :		Detail report - Trader detail from Bet Type and League
- DB:		DBTGRS.bodb_TGRS
- Original:  
+	 Created:	20160315@Thai.Tran
+	 Task :		Detail report - Trader detail from Bet Type and League
+	 DB:		DBTGRS.bodb_TGRS
+	 Original:  
  
- Revisions:      	
-	- 20171205@Simon: get only Live data & Bettypes are not disabled
-	- 20180912@Simon: add league exclusion
+	 Revisions:      	
+		- 20171205@Simon:		get only Live data & Bettypes are not disabled
+		- 20180912@Simon:		add league exclusion
+		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 
- Param's Explanation:  	
+	 Param's Explanation:  	
+		- @Market: -1 All; 0 Nonlive; 1 Live  
 
- Exam: 
-	  exec TGRS_Rpt_PerformanceDetail_Bettype_League_Trader @Bettype=3,@LeagueId=10,@FromDate='2016-03-02 00:00:00',@ToDate='2016-03-16 00:00:00'
+	 Exam: 
+		  exec TGRS_Rpt_PerformanceDetail_Bettype_League_Trader @Bettype=3,@LeagueId=10,@FromDate='2016-03-02 00:00:00',@ToDate='2016-03-16 00:00:00'
   
 */  
  
 BEGIN 
-	 SET NOCOUNT ON;
-
-   DECLARE @BettypeList TABLE (BetType SMALLINT);
+	SET NOCOUNT ON;
 
    CREATE TABLE	#TraderDetail (
 			CustID				INT
@@ -38,10 +38,12 @@ BEGIN
 		,	BetCount			INT
 		,	Margin				MONEY
 		,	SumCategory			MONEY
+		,	IsLive				BIT
 	);	
 	   
     INSERT INTO #TraderDetail (
 			CustID
+		,	IsLive
 		,	MatchCount
 		,	Turnover
 		,	WinLoss
@@ -51,6 +53,7 @@ BEGIN
 		,	SumCategory
 	)
 	SELECT	tp.CustId																			AS CustId
+		,	tp.IsLive																			AS IsLive
 		,	COUNT(DISTINCT tp.MatchId)															AS MatchCount
 		,	ISNULL(SUM(tp.Stake), 0)															AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)							    AS WinLoss		
@@ -69,9 +72,9 @@ BEGIN
 	WHERE	tp.LeagueId = @LeagueId
 			AND	tp.BetType = @Bettype
 			AND	 tp.EventDate BETWEEN @FromDate AND @ToDate			
-			AND tp.IsLive = 1
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY	tp.CustId;
+			AND (@Market = -1 OR tp.IsLive = @Market)
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+	GROUP BY	tp.CustId, tp.IsLive;
 	
 	SELECT	td.CustID
 		,	t.Username
@@ -84,7 +87,8 @@ BEGIN
 		,	td.BetCount
 		,	td.Margin
 		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
-	FROM		#TraderDetail AS td
+		,	td.IsLive
+	FROM		#TraderDetail AS td WITH (NOLOCK)
 	INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 			ON	t.CustId = td.CustID
 	INNER JOIN	dbo.Team AS tm WITH (NOLOCK) 
@@ -93,9 +97,6 @@ BEGIN
 	
 	DROP TABLE #TraderDetail;
 END;
-
---GRANT EXECUTE ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_Trader] TO [bodbTGRSNet]
---GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_Trader] TO [bodbTGRSNet ]
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

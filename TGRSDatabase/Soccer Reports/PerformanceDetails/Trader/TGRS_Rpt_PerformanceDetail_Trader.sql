@@ -1,13 +1,14 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Trader]  	
-	@Username   VARCHAR(30) = '',
-	@FromDate	DATE,
-	@ToDate		DATE,
-	@Turnover	MONEY = NULL,
-	@WinLoss	MONEY = NULL,
-	@MarginFrom	MONEY = NULL,
-	@MarginTo   MONEY = NULL,  
-	@Bettypes	VARCHAR(2000) =  '0',
-	@IsExcludeLeagues	BIT = 1
+	@Username			VARCHAR(30) = '',
+	@FromDate			DATE,
+	@ToDate				DATE,
+	@Turnover			MONEY = NULL,
+	@WinLoss			MONEY = NULL,
+	@MarginFrom			MONEY = NULL,
+	@MarginTo			MONEY = NULL,  
+	@Bettypes			VARCHAR(2000) =  '0',
+	@IsExcludeLeagues	BIT = 1,
+	@Market				SMALLINT = 1
 AS    
 /*  
 	Created:	20160217@Billy
@@ -16,13 +17,15 @@ AS
 	Original:  
 	 
 	Revisions:
-		- 20160301@Billy: US011 - Modify Trader's Score - [Redmine: #53084]
-		- 20160315@Thai: US018 - Modify Trader's Score - [Redmine: #53987]
-		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
-		- 20171205@Simon: get only Live data & Bettypes are not disabled
-		- 20180912@Simon: add league exclusion
+		- 20160301@Billy:		US011 - Modify Trader's Score - [Redmine: #53084]
+		- 20160315@Thai:		US018 - Modify Trader's Score - [Redmine: #53987]
+		- 20171019@Simon:		Change VARCHAR(200) to VARCHAR(2000)
+		- 20171205@Simon:		get only Live data & Bettypes are not disabled
+		- 20180912@Simon:		add league exclusion
+		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 
-	Param's Explanation:  	
+	Param's Explanation:  
+		- @Market: -1 All; 0 Nonlive; 1 Live	
 	
 	Example: 	
 		EXECUTE	TGRS_Rpt_PerformanceDetail_Trader 
@@ -36,20 +39,21 @@ BEGIN
 	SET NOCOUNT ON;  
 	 
 	DECLARE	@BettypeList	TABLE (
-								bettype				SMALLINT
-							);
+			bettype				SMALLINT
+	);
 
 	CREATE TABLE #TraderDetail (
-								CustID				INT
-							,	LeagueCount			INT
-							,	MatchCount			INT
-							,	Turnover			MONEY
-							,	WinLoss				MONEY
-							,	WinLossScore		MONEY
-							,	BetCount			INT
-							,	Margin				MONEY
-							,	SumCategory			MONEY
-							);
+			CustID				INT
+		,	LeagueCount			INT
+		,	MatchCount			INT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	WinLossScore		MONEY
+		,	BetCount			INT
+		,	Margin				MONEY
+		,	SumCategory			MONEY
+		,	IsLive				BIT
+	);
 
 	IF	@Bettypes <> '0'
 		 INSERT INTO @BettypeList
@@ -64,6 +68,7 @@ BEGIN
 	
 	INSERT INTO	#TraderDetail (
 			CustID
+		,	IsLive
 		,	LeagueCount
 		,	MatchCount
 		,	Turnover
@@ -74,6 +79,7 @@ BEGIN
 		,	SumCategory
 	)
 	SELECT	tp.CustId
+		,	tp.IsLive
 		,	COUNT(DISTINCT tp.LeagueId)								AS LeagueCount
 		,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
 		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
@@ -97,9 +103,9 @@ BEGIN
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND	t.Username LIKE '%' + @Username + '%'
-		AND tp.IsLive = 1
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY	tp.CustId;
+		AND (@Market = -1 OR tp.IsLive = @Market)
+		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+	GROUP BY	tp.CustId, tp.IsLive;
 
 	SELECT	td.CustId
 		,	t.Username
@@ -113,7 +119,8 @@ BEGIN
 		,	td.BetCount
 		,	td.Margin
 		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
-	FROM		#TraderDetail AS td
+		,	td.IsLive
+	FROM		#TraderDetail AS td WITH (NOLOCK)
 		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
 				ON	t.CustId = td.CustId
 		INNER JOIN	dbo.Team AS tm WITH (NOLOCK) 
