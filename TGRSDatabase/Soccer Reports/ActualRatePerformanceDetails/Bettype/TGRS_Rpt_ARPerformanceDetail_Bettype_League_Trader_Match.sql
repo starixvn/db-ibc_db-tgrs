@@ -1,10 +1,11 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Bettype_League_Trader_Match] 
+ALTER PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Bettype_League_Trader_Match] 
 		@FromDate				DATE
 	,	@ToDate					DATE
 	,	@LeagueId				INT
 	,	@CustId					INT
 	,	@Bettype				SMALLINT
 	,	@IsExcludeLeagues		BIT = 1
+	,	@Market					SMALLINT = 1
 AS
 /*  
 	Created:	20190304@John
@@ -14,7 +15,11 @@ AS
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
-	
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+
+	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
+			
 	Example: 
 		exec TGRS_Rpt_ARPerformanceDetail_Bettype_League_Trader_Match @Bettype=3,@LeagueId=3162,@FromDate='2019-02-02 00:00:00',@ToDate='2019-03-16 00:00:00',@CustId=2438
   
@@ -34,6 +39,7 @@ BEGIN
 		,WinLossScore MONEY
 		,BetCount INT
 		,SumCategory MONEY
+		,IsLive	BIT
 	);
 
 	INSERT INTO #TraderDetail (
@@ -48,6 +54,7 @@ BEGIN
 		,TurnoverJuice
 		,Juice
 		,SumCategory
+		,IsLive
 	)
 	SELECT tp.MatchId
 		,tp.HomeId
@@ -64,6 +71,7 @@ BEGIN
 		,ISNULL(SUM(tp.StakeMYRJuice_AR), 0) AS TurnoverJuice
 		,ISNULL(SUM(tp.Juice_AR), 0) AS Juice
 		,ISNULL(SUM(tp.StakeMYR_AR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
+		,tp.IsLive
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
 	INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
 	LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
@@ -74,13 +82,14 @@ BEGIN
 		AND tp.LeagueId = @LeagueId
 		AND tp.BetType = @Bettype
 		AND tp.EventDate BETWEEN @FromDate AND @ToDate
-		AND tp.IsLive = 1
+		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY tp.MatchId
 		,tp.LeagueId
 		,tp.HomeId
 		,tp.AwayId
-		,tp.EventDate;
+		,tp.EventDate
+		,tp.IsLive;
 
 	SELECT td.MatchId
 		,td.HomeId
@@ -96,6 +105,7 @@ BEGIN
 				THEN NULL
 			ELSE td.WinLossScore * 100 / td.SumCategory
 			END AS Score
+		,td.IsLive
 	FROM #TraderDetail AS td;
 
 	DROP TABLE #TraderDetail;

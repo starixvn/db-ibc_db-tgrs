@@ -1,11 +1,12 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTopTrader]  
-	@Top		 TINYINT = 10,
-	@IsBottom	 BIT = 0,
-	@ReportType	 TINYINT = 1,
-	@FromDate	 DATE,
-	@ToDate		 DATE,
-	@ViewPermission SMALLINT,
-	@IsExcludeLeagues	BIT = 1
+		@Top				TINYINT = 10
+	,	@IsBottom			BIT = 0
+	,	@ReportType			TINYINT = 1
+	,	@FromDate			DATE
+	,	@ToDate				DATE
+	,	@ViewPermission		SMALLINT
+	,	@IsExcludeLeagues	BIT = 1
+	,	@Market				SMALLINT = 1
 AS    
 /*  
 	 Created:	20140520@Sophia
@@ -19,25 +20,25 @@ AS
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		- 20180912@Simon: add league exclusion
 		- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 
-	 Param's Explanation:  
-		@ReportType = 1: by Date
+	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
+		- @ReportType = 1: by Date
 				 = 2: By Month
 				 = 3: By Year
 
-		@Top	= XX:  Rows to display
+		- @Top	= XX:  Rows to display
 				= 0: All
 
-		@IsBottom = 0: List top traders
+		- @IsBottom = 0: List top traders
 				  = 1: List bottom traders
 
-		@ViewPermission = 0: all bet types
+		- @ViewPermission = 0: all bet types
 				 = 1: major bet types
 				 = 2: PHAIO bet types
 	 Exam: 
 		EXEC TGRS_Rpt_SummaryTopTrader @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
-		EXEC TGRS_Rpt_SummaryTopTrader_Xtest @Top = 0, @IsBottom = 0, @ReportType = 1, @FromDate = '2014-01-01', @ToDate = '2014-05-31'
-		EXEC TGRS_Rpt_SummaryTopTrader @Top = 10, @IsBottom = 0, @ReportType = 3, @FromDate = '2012-01-01', @ToDate = '2013-12-31'  
 */  
  
 BEGIN 
@@ -61,6 +62,7 @@ BEGIN
 		, Margin				MONEY
 		, NoOfTeamChanged		INT
 		, NoOfGradeChanged		INT
+		, IsLive				BIT
 	);	 
 
 	CREATE CLUSTERED INDEX	#CIX_TraderIdx ON #Trader (
@@ -74,7 +76,8 @@ BEGIN
 
 	CREATE TABLE #MatchCountByCustId (
 		CustId			INT, 
-		MatchCount		BIGINT
+		MatchCount		BIGINT,
+		IsLive			BIT
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_MatchCountByCustIdIdx ON #MatchCountByCustId (
@@ -84,9 +87,11 @@ BEGIN
 	INSERT INTO #MatchCountByCustId(
 			CustId
 		,	MatchCount
+		,	IsLive
 	)
 	SELECT tp.CustId
-		,	COUNT_BIG(DISTINCT tp.MatchId) AS MatchCount
+		,  COUNT_BIG(DISTINCT tp.MatchId) AS MatchCount
+		,  tp.IsLive
 	FROM dbo.TraderPerformance tp WITH(NOLOCK)
 		INNER JOIN dbo.BetType bt WITH(NOLOCK) on tp.BetType = bt.BetType
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
@@ -94,54 +99,55 @@ BEGIN
 				@ViewPermission = 0
 				OR bt.BettypeGroup = @ViewPermission
 			)
-		AND tp.IsLive = 1
+		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND bt.[Disabled] = 0
 		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY tp.CustId;
+	GROUP BY tp.CustId, tp.IsLive;
 
 	IF @ReportType	= 1 --- by date
 	BEGIN 
-		INSERT INTO #Trader (CustId, Username, TeamId, Grade, MatchCount, BetCount, Turnover, WinLost, Margin)
+		INSERT INTO #Trader (CustId, Username, TeamId, Grade, MatchCount, BetCount, Turnover, WinLost, Margin, IsLive)
 		SELECT  P.CustId, TR.Username, TR.TeamId, TR.Grade, 
-				ISNULL(COUNT_BIG(DISTINCT MatchID),0) AS MatchCount, 
-				ISNULL(SUM(BetCount),0) AS BetCount,
-				ISNULL(SUM(Stake),0) AS Turnover, 
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin				
+				ISNULL(COUNT_BIG(DISTINCT P.MatchID),0) AS MatchCount, 
+				ISNULL(SUM(P.BetCount),0) AS BetCount,
+				ISNULL(SUM(P.Stake),0) AS Turnover, 
+				ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost, 
+				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0))* 100/ ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin,
+				P.IsLive				
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)			
 			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = P.CustId
 			INNER JOIN dbo.Bettype bt WITH (NOLOCK) ON P.Bettype = bt.Bettype
-		WHERE	
-			P.EventDate BETWEEN @FromDate AND @ToDate
+		WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 			AND (
 					@ViewPermission = 0
 					OR bt.BettypeGroup = @ViewPermission
 				)
-			AND P.IsLive = 1
+			AND (@Market = -1 OR P.IsLive = @Market)
 			AND bt.[Disabled] = 0
 			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade;
+		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, P.IsLive;
 	END
 	ELSE  --- by month-year
 	BEGIN 
-		INSERT INTO #Trader (CustId, Username, TeamId, Grade, MatchCount, BetCount, Turnover, WinLost, Margin)
-		SELECT  P.CustId, TR.Username, TR.TeamId, TR.Grade, 
+		INSERT INTO #Trader (CustId, Username, TeamId, Grade, MatchCount, BetCount, Turnover, WinLost, Margin, IsLive)
+		SELECT  SM.CustId, TR.Username, TR.TeamId, TR.Grade, 
 				m.MatchCount AS MatchCount, 
-				ISNULL(SUM (BetCount),0) AS BetCount,
-				ISNULL(SUM(Stake),0) AS Turnover, 
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost, 
-				CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))* 100/ ISNULL(SUM(Stake),0) ELSE NULL END AS Margin		
-		FROM	dbo.SummaryByTrader_Monthly P WITH (NOLOCK)	
-			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = P.CustId		
-			INNER JOIN #MatchCountByCustId m ON P.CustId = m.CustId		
-		WHERE	
-			P.EventDate BETWEEN @FromDate AND @ToDate
+				ISNULL(SUM(SM.BetCount),0) AS BetCount,
+				ISNULL(SUM(SM.Stake),0) AS Turnover, 
+				ISNULL(SUM(SM.WinLost),0) - ISNULL(SUM(SM.Comm),0) AS WinLost, 
+				CASE WHEN ISNULL(SUM(SM.Stake),0) <> 0 THEN (ISNULL(SUM(SM.WinLost),0) - ISNULL(SUM(SM.Comm),0))* 100/ ISNULL(SUM(SM.Stake),0) ELSE NULL END AS Margin,
+				SM.IsLive		
+		FROM	dbo.SummaryByTrader_Monthly SM WITH (NOLOCK)	
+			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = SM.CustId		
+			INNER JOIN #MatchCountByCustId m ON SM.CustId = m.CustId AND m.IsLive = sm.IsLive	
+		WHERE SM.EventDate BETWEEN @FromDate AND @ToDate
+			AND (@Market = -1 OR SM.IsLive = @Market)
 			AND (
 					@ViewPermission = 0
-					OR P.BettypeGroup = @ViewPermission
+					OR SM.BettypeGroup = @ViewPermission
 				)
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount;	
+			AND (@IsExcludeLeagues = 0 OR (SM.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		GROUP BY SM.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount, SM.IsLive;	
 	END
 
 	-------------------------------------------------	

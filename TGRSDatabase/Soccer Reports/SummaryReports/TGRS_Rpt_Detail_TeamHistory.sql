@@ -1,13 +1,14 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_Detail_TeamHistory]  
-	@CustId					INT,
-	@Grade					TINYINT = 0,
-	@FromDate				DATE,
-	@ToDate					DATE,
-	@LeagueId				INT = 0, 
-	@Bettypes				VARCHAR(2000) = '0',
-	@BetTypeBMFrom			MONEY = NULL,
-	@BetTypeBMTo			MONEY = NULL,
-	@IsExcludeLeagues		BIT = 1
+			@CustId					INT
+		,	@Grade					TINYINT = 0
+		,	@FromDate				DATE
+		,	@ToDate					DATE
+		,	@LeagueId				INT = 0
+		,	@Bettypes				VARCHAR(2000) = '0'
+		,	@BetTypeBMFrom			MONEY = NULL
+		,	@BetTypeBMTo			MONEY = NULL
+		,	@IsExcludeLeagues		BIT = 1
+		,	@Market					SMALLINT = 1
 AS    
 /*  
  Created:	20140523@Sophia
@@ -19,14 +20,15 @@ AS
    		- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
 		- 20171019@Simon: Change VARCHAR(200) to VARCHAR(2000)
 		- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 
- Param's Explanation:  
+ Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live  
 	
  Exam: 
    EXEC TGRS_Rpt_Detail_TeamHistory @CustId = 772205, @FromDate='2013-07-14', @Todate= '2015-07-14', @Grade= 5
 	 
-*/  
- 
+*/ 
 BEGIN 
 	SET NOCOUNT ON 
 
@@ -46,11 +48,12 @@ BEGIN
 	BEGIN
 		SELECT  P.CustId, P.TeamId, T.TeamName, 
 				TH.BeginDate AS TeamEffectiveDate, 
-				ISNULL(COUNT( DISTINCT MatchID),0) AS MatchCount, 
-				ISNULL(SUM(Betcount),0) as Betcount,
-				ISNULL(SUM(Stake),0) AS Turnover, 
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,
-				 CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin
+				ISNULL(COUNT( DISTINCT P.MatchID),0) AS MatchCount, 
+				ISNULL(SUM(P.Betcount),0) as Betcount,
+				ISNULL(SUM(P.Stake),0) AS Turnover, 
+				ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost,
+				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin,
+				P.IsLive
 		FROM	TraderPerformance P WITH (NOLOCK) 
 		LEFT JOIN dbo.TraderTeam_History TH WITH (NOLOCK)
 				ON  P.EventDate BETWEEN ISNULL(TH.BeginDate,'1900-01-01') AND ISNULL(TH.EndDate,'9999-12-31')
@@ -67,20 +70,22 @@ BEGIN
 				AND P.LeagueId = CASE WHEN @LeagueId <> 0 THEN @LeagueId ELSE P.LeagueId END
 				AND P.Grade = CASE WHEN @Grade <> 0 THEN @Grade ELSE P.Grade END
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+				AND (@Market = -1 OR P.IsLive = @Market)
 				AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
 				AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
-		GROUP BY P.CustId, P.TeamId, T.TeamName, TH.BeginDate
+		GROUP BY P.CustId, P.TeamId, T.TeamName, TH.BeginDate, P.IsLive
 		ORDER BY TH.BeginDate;
 	END
 	ELSE
 	BEGIN
 		SELECT  P.CustId, P.TeamId, T.TeamName, 
 				TH.BeginDate AS TeamEffectiveDate, 
-				ISNULL(COUNT( DISTINCT MatchID),0) AS MatchCount, 
-				ISNULL(SUM(Betcount),0) as Betcount,
-				ISNULL(SUM(Stake),0) AS Turnover, 
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLost,
-				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin
+				ISNULL(COUNT( DISTINCT P.MatchID),0) AS MatchCount, 
+				ISNULL(SUM(P.Betcount),0) as Betcount,
+				ISNULL(SUM(P.Stake),0) AS Turnover, 
+				ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0) AS WinLost,
+				CASE WHEN ISNULL(SUM(P.Stake),0) <> 0 THEN (ISNULL(SUM(P.WinLost),0) - ISNULL(SUM(P.Comm),0)) * 100/ISNULL(SUM(P.Stake),0) ELSE NULL END AS Margin,
+				P.IsLive
 		FROM	TraderPerformance P WITH (NOLOCK) 
 		LEFT JOIN dbo.TraderTeam_History TH WITH (NOLOCK)
 				ON  P.EventDate BETWEEN ISNULL(TH.BeginDate,'1900-01-01') AND ISNULL(TH.EndDate,'9999-12-31')
@@ -99,17 +104,13 @@ BEGIN
 				AND le.LeagueId IS NULL
 				AND P.Grade = CASE WHEN @Grade <> 0 THEN @Grade ELSE P.Grade END
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
+				AND (@Market = -1 OR P.IsLive = @Market)
 				AND ISNULL(BT.Benchmark,0) * 100 >= CASE WHEN @BetTypeBMFrom IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMFrom END 
 				AND ISNULL(BT.Benchmark,0) * 100 <= CASE WHEN @BetTypeBMTo IS NULL THEN ISNULL(BT.Benchmark,0) * 100 ELSE @BetTypeBMTo END 
-		GROUP BY P.CustId, P.TeamId, T.TeamName, TH.BeginDate
+		GROUP BY P.CustId, P.TeamId, T.TeamName, TH.BeginDate, P.IsLive
 		ORDER BY TH.BeginDate;
 	END;
 END 
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_Detail_TeamHistory] TO [bodbTGRSNet]
-GO
-
- 
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

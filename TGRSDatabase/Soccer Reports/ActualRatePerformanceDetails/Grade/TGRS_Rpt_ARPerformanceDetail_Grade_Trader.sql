@@ -1,8 +1,9 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Grade_Trader] 
+ALTER PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Grade_Trader] 
 		@FromDate				DATE
 	,	@ToDate					DATE
 	,	@Grade					INT
 	,	@IsExcludeLeagues		BIT = 1
+	,	@Market					SMALLINT = 1
 AS
 /* 
 	Created:	20190304@John
@@ -12,7 +13,11 @@ AS
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]		
-	
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+
+	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
+			
 	Example: 
 		EXEC [TGRS_Rpt_ARPerformanceDetail_Grade_Trader] @FromDate = '2019-02-01', @ToDate= '2019-03-05', @Grade = 1
   
@@ -32,6 +37,7 @@ BEGIN
 		,WinLossScore MONEY
 		,BetCount INT
 		,SumCategory MONEY
+		,IsLive BIT
 	);
 
 	INSERT INTO #TraderDetail (
@@ -45,6 +51,7 @@ BEGIN
 		,WinLossScore
 		,BetCount
 		,SumCategory
+		,IsLive
 	)
 	SELECT tp.CustId AS CustId
 		,COUNT(DISTINCT tp.LeagueId) AS LeagueCount
@@ -60,6 +67,7 @@ BEGIN
 				END) AS WinLossScore
 		,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 		,ISNULL(SUM(tp.StakeMYR_AR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
+		,tp.IsLive
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
 		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON tp.CustId = t.CustId
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
@@ -72,9 +80,9 @@ BEGIN
 		AND t.Grade = @Grade
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
-		AND tp.IsLive = 1
+		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY tp.CustId;
+	GROUP BY tp.CustId, tp.IsLive;
 
 	SELECT td.CustID
 		,t.Username AS TraderName
@@ -93,6 +101,7 @@ BEGIN
 				THEN NULL
 			ELSE td.WinLossScore * 100 / td.SumCategory
 			END AS Score
+		,td.IsLive
 	FROM #TraderDetail AS td
 		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = td.CustID
 		INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId;

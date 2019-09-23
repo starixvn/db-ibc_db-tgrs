@@ -7,7 +7,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderPerformanceMonthly]
 	@Bettype			INT = -1,
 	@TraderName			VARCHAR(30) = '',
 	@LeagueName			VARCHAR(500) = '',
-	@LiveStatus			INT = 1,
+	@Market				SMALLINT = 1,
 	@Year				INT = 2018,
 	@Shift				INT = -1,
 	@Grade				INT = -1,
@@ -27,13 +27,14 @@ AS
 			- 20181129@Long: support filter by league [Redmine ID: #105513]
 			- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
 			- 20190118@Long: Extend the size of data type [Redmine ID: #108154]
- 
-	Param's Explanation:  	
+ 			- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+
+	Param's Explanation (filtered by):
+			- @Market:	-1 All; 0 Nonlive; 1 Live	
 			- @Bettype: -1 all bettype, x specific bettype
 			- @LiveStatus: -1 all status, 1 live, 0 non-live
 	Exam: 
-	  		EXEC  TGRS_Rpt_TraderPerformanceMonthly @Bettype = -1, @TraderName = '', @LiveStatus = -1, @Year = 2018 , @Shift = -1,
-	@Grade = -1
+	  		EXEC  TGRS_Rpt_TraderPerformanceMonthly @Bettype = -1, @TraderName = '', @LiveStatus = -1, @Year = 2018 , @Shift = -1, @Grade = -1
   
 */  
  
@@ -181,16 +182,18 @@ BEGIN
 		,	SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
 		,	SUM(tpm.BetCount) AS BetCount
 		,	SUM(tmc.MatchCount) AS MatchCount
+		,	tpm.IsLive
 	FROM dbo.TraderPerformance_Monthly tpm WITH (NOLOCK)
 		INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
 		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.EventDate = tmc.EventDate 
 			 AND tpm.LeagueId = tmc.LeagueId AND tpm.SportType = tmc.SportType
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
     WHERE tpm.EventDate BETWEEN @FirstHalfFromDate AND @FirstHalfToDate
-		AND tpm.BetType = @Bettype AND tpm.IsLive = @LiveStatus
+		AND tpm.BetType = @Bettype
+		AND (@Market = -1 OR tpm.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK)))) 
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK))))
-	GROUP BY tpm.CustId;
+	GROUP BY tpm.CustId, tpm.IsLive;
 
 	-- Sum for current year second-half
 	SELECT	tpm.CustId AS TraderID
@@ -198,13 +201,15 @@ BEGIN
 		,	SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
 		,	SUM(tpm.BetCount) AS BetCount
 		,	SUM(tmc.MatchCount) AS MatchCount
+		,	tpm.IsLive
 	FROM dbo.TraderPerformance_Monthly tpm WITH (NOLOCK)
 		INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
 		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.EventDate = tmc.EventDate 
 			 AND tpm.LeagueId = tmc.LeagueId AND tpm.SportType = tmc.SportType
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
     WHERE tpm.EventDate BETWEEN @SecondHalfFromDate AND @SecondHalfToDate
-		AND tpm.BetType = @Bettype AND tpm.IsLive = @LiveStatus
+		AND tpm.BetType = @Bettype
+		AND (@Market = -1 OR tpm.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
 	GROUP BY tpm.CustId;
@@ -216,6 +221,7 @@ BEGIN
 		,	SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
 		,	SUM(tpm.BetCount) AS BetCount
 		,	SUM(tmc.MatchCount) AS MatchCount
+		,	tpm.IsLive
 	FROM dbo.TraderPerformance_Yearly tpm WITH (NOLOCK)	
 		INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
 		INNER JOIN dbo.TraderMatchCount_Yearly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.Year = tmc.Year 
@@ -223,7 +229,7 @@ BEGIN
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
 	WHERE tpm.[Year] IN (@CurrentYear, @LastYear)
 		AND tmc.BetType = @Bettype
-		AND tmc.IsLive = @LiveStatus
+		AND (@Market = -1 OR tpm.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))		
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
 	GROUP BY tpm.CustId, tpm.Year;
@@ -235,6 +241,7 @@ BEGIN
 		,	SUM(tpm.WinLoss - tpm.Comm) AS WinLoss
 		,	SUM(tpm.BetCount) AS BetCount
 		,	SUM(tmc.MatchCount) AS MatchCount
+		,	tpm.IsLive
 	FROM dbo.TraderPerformance_Monthly tpm WITH (NOLOCK)	
 		INNER JOIN #tmpTrader t ON tpm.CustId = t.TraderId
 		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.EventDate = tmc.EventDate 
@@ -242,7 +249,7 @@ BEGIN
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
 	WHERE tpm.EventDate BETWEEN @FirstHalfFromDate AND @SecondHalfToDate
 		AND tmc.BetType = @Bettype
-		AND tmc.IsLive = @LiveStatus
+		AND (@Market = -1 OR tpm.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
 	GROUP BY tpm.CustId, tpm.EventDate;

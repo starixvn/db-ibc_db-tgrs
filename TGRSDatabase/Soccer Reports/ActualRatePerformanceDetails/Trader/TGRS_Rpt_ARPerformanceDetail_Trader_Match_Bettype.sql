@@ -1,10 +1,11 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Trader_Match_Bettype] 
-	@FromDate	DATE
-	,@ToDate	DATE
-	,@CustId	INT
-	,@MatchId	INT
-	,@Bettypes	VARCHAR(200) = '1,3,7,8'
-	,@IsExcludeLeagues	BIT = 1
+ALTER PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Trader_Match_Bettype] 
+		@FromDate			DATE
+	,	@ToDate				DATE
+	,	@CustId				INT
+	,	@MatchId			INT
+	,	@Bettypes			VARCHAR(200) = '1,3,7,8'
+	,	@IsExcludeLeagues	BIT = 1
+	,	@Market				SMALLINT = 1
 AS
 /*  
 	Created:	20190304@John
@@ -14,6 +15,10 @@ AS
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+
+	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
 
 	Exam: EXECUTE [TGRS_Rpt_ARPerformanceDetail_Trader_Match_Bettype] @FromDate='2019-02-29 00:00:00', @ToDate='2019-02-29 00:00:00', @CustId=14228019, @MatchId=16990574, @Bettypes='1,3,7,8'
 */
@@ -44,6 +49,7 @@ BEGIN
 		,WinLossScore		MONEY
 		,BetCount			INT
 		,SumCategory		MONEY
+		,IsLive				BIT
 	);
 
 	INSERT INTO #BettypeDetail (
@@ -56,6 +62,7 @@ BEGIN
 		,WinLossScore
 		,BetCount
 		,SumCategory
+		,IsLive
 	)
 	SELECT tp.BetType
 		,bt.TypeName
@@ -70,6 +77,7 @@ BEGIN
 				END) AS WinLossScore
 		,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 		,ISNULL(SUM(tp.StakeMYR_AR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
+		,tp.IsLive
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
 		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
@@ -85,11 +93,12 @@ BEGIN
 			SELECT bettype
 			FROM @BettypeList
 			)
-		AND tp.IsLive = 1
+		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND bt.[Disabled] = 0
 		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY tp.BetType
-		,bt.TypeName;
+		,bt.TypeName
+		,tp.IsLive;
 
 	SELECT bd.BetType
 		,bd.TypeName
@@ -103,6 +112,7 @@ BEGIN
 				THEN NULL
 			ELSE bd.WinLossScore * 100 / bd.SumCategory
 			END AS Score
+		,bd.IsLive
 	FROM #BettypeDetail AS bd;
 
 	DROP TABLE #BettypeDetail;

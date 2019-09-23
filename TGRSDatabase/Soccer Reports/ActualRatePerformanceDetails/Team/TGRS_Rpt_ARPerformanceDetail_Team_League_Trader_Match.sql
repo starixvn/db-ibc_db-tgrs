@@ -1,10 +1,11 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Team_League_Trader_Match] 
-	 @FromDate DATE
-	,@ToDate DATE
-	,@CustId INT
-	,@TeamId SMALLINT
-	,@LeagueId INT
-	,@IsExcludeLeagues	BIT = 1
+ALTER PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Team_League_Trader_Match] 
+		@FromDate			DATE
+	,	@ToDate				DATE
+	,	@CustId				INT
+	,	@TeamId				SMALLINT
+	,	@LeagueId			INT
+	,	@IsExcludeLeagues	BIT = 1
+	,	@Market				SMALLINT = 1
 AS
 /* 
 	Created:	20190304@John
@@ -32,6 +33,7 @@ BEGIN
 		,ISNULL(SUM(P.Juice_AR), 0) AS Juice
 		,ISNULL(SUM(P.WinLost_AR), 0) - ISNULL(SUM(P.Comm_AR), 0) AS WinLoss
 		,ISNULL(SUM(BetCount), 0) AS BetCount
+		,P.IsLive
 	FROM dbo.TraderPerformance P WITH (NOLOCK)
 		INNER JOIN dbo.Trader T WITH (NOLOCK) ON T.CustId = P.CustId
 		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
@@ -41,13 +43,14 @@ BEGIN
 		AND P.LeagueId = @LeagueId
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
-		AND P.IsLive = 1
+		AND (@Market = -1 OR P.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 	GROUP BY P.MatchId
 		,P.LeagueId
 		,P.HomeId
 		,P.AwayId
-		,P.EventDate;
+		,P.EventDate
+		,P.IsLive;
 END
 
 GO

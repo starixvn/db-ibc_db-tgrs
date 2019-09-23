@@ -1,8 +1,9 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Bettype_League] 
+ALTER PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Bettype_League] 
 		@FromDate				DATE
 	,	@ToDate					DATE
 	,	@Bettype				SMALLINT
 	,	@IsExcludeLeagues		BIT = 1
+	,	@Market					SMALLINT = 1
 AS
 /*  
 	Created:	20190304@John
@@ -12,6 +13,10 @@ AS
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]		
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+
+	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
 
 	Exam: 
 	  	 EXEC  TGRS_Rpt_ARPerformanceDetail_Bettype_League @FromDate = '2019-01-01', @ToDate= '2019-03-05', @Bettype = 1
@@ -30,6 +35,7 @@ BEGIN
 		,ISNULL(SUM(P.Juice_AR), 0) AS Juice
 		,ISNULL(SUM(P.WinLost_AR), 0) - ISNULL(SUM(P.Comm_AR), 0) AS WinLoss
 		,ISNULL(SUM(P.BetCount), 0) AS BetCount
+		,P.IsLive
 	FROM dbo.TraderPerformance P WITH (NOLOCK)
 	INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 	LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
@@ -37,10 +43,9 @@ BEGIN
 		AND P.EventDate BETWEEN @FromDate AND @ToDate		
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
-		AND P.IsLive = 1
+		AND (@Market = -1 OR P.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY P.LeagueId
-		,L.LeagueName;
+	GROUP BY P.LeagueId ,L.LeagueName, P.IsLive;
 END;
 
 GO

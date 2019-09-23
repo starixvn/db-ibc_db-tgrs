@@ -1,9 +1,10 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Trader] 
-	@Username VARCHAR(30) = ''
-	,@FromDate DATE
-	,@ToDate DATE
-	,@Bettypes VARCHAR(200) = '1,3,7,8'
-	,@IsExcludeLeagues	BIT = 1
+ALTER PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Trader] 
+		@Username			VARCHAR(30) = ''
+	,	@FromDate			DATE
+	,	@ToDate				DATE
+	,	@Bettypes			VARCHAR(200) = '1,3,7,8'
+	,	@IsExcludeLeagues	BIT = 1
+	,	@Market				SMALLINT = 1
 AS
 /*  
 	Created:	20190304@John
@@ -13,6 +14,10 @@ AS
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+
+	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
 
 	Example: EXECUTE [TGRS_Rpt_ARPerformanceDetail_Trader] @FromDate = '2019-02-01', @ToDate= '2019-03-05', @Bettypes = '1,3,7,8', @@Username ='A'
 */
@@ -33,6 +38,7 @@ BEGIN
 		,WinLossScore		MONEY
 		,BetCount			INT
 		,SumCategory		MONEY
+		,IsLive				BIT
 	);
 	
 	IF @Bettypes <> '0'
@@ -57,6 +63,7 @@ BEGIN
 		,WinLossScore
 		,BetCount
 		,SumCategory
+		,IsLive
 	)
 	SELECT tp.CustId
 		,COUNT(DISTINCT tp.LeagueId) AS LeagueCount
@@ -72,6 +79,7 @@ BEGIN
 				END) AS WinLossScore
 		,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 		,ISNULL(SUM(tp.StakeMYR_AR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
+		,tp.IsLive
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
 		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
@@ -85,9 +93,9 @@ BEGIN
 			FROM @BettypeList AS bl
 			)
 		AND (@Username IS NULL OR t.Username LIKE '%' + @Username + '%')
-		AND tp.IsLive = 1
+		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY tp.CustId;
+	GROUP BY tp.CustId, tp.IsLive;
 
 	SELECT td.CustId
 		,t.Username
@@ -106,6 +114,7 @@ BEGIN
 				THEN NULL
 			ELSE td.WinLossScore * 100 / td.SumCategory
 			END AS Score
+		,td.IsLive
 	FROM #TraderDetail AS td
 		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = td.CustId
 		INNER JOIN dbo.Team AS tm WITH (NOLOCK) ON t.TeamId = tm.TeamId;

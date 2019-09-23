@@ -1,8 +1,9 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Team] 
-	 @FromDate DATE
-	,@ToDate DATE
-	,@TeamIds VARCHAR(200) = '0'
-	,@IsExcludeLeagues	BIT = 1
+ALTER PROCEDURE [dbo].[TGRS_Rpt_ARPerformanceDetail_Team] 
+		@FromDate			DATE
+	,	@ToDate				DATE
+	,	@TeamIds			VARCHAR(200) = '0'
+	,	@IsExcludeLeagues	BIT = 1
+	,	@Market				SMALLINT = 1
 AS
 /* 
 	Created:	20190304@John
@@ -12,7 +13,11 @@ AS
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
-	
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+
+	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
+			
 	Example:	
 		EXECUTE	TGRS_Rpt_ARPerformanceDetail_Team @FromDate = '2019-02-22', @ToDate = '2019-03-05', @TeamIds = '0'
 
@@ -21,15 +26,16 @@ BEGIN
 	SET NOCOUNT ON;
 
 	CREATE TABLE #ScoreDetail (
-		CustID INT
+		 CustID INT
 		,WinLoss MONEY
 		,SumCategory MONEY
+		,IsLive	BIT
 	);
 
 	DECLARE @TeamList TABLE (TeamId SMALLINT);
 
 	DECLARE @Team TABLE (
-		TeamId SMALLINT
+		 TeamId SMALLINT
 		,TeamName NVARCHAR(50)
 		,TraderCount INT
 		,LeagueCount INT
@@ -40,6 +46,7 @@ BEGIN
 		,WinLoss MONEY
 		,BetCount INT
 		,Score MONEY
+		,IsLive BIT
 	);
 
 	IF @TeamIds <> '0'
@@ -52,13 +59,15 @@ BEGIN
 		FROM dbo.Team AS t WITH (NOLOCK);
 
 	INSERT INTO #ScoreDetail (
-		CustID
+		 CustID
 		,WinLoss
 		,SumCategory
+		,IsLive
 	)
 	SELECT tp.CustId
 		,ISNULL(SUM(tp.WinLost_AR), 0) - ISNULL(SUM(tp.Comm_AR), 0) AS WinLoss
 		,ISNULL(SUM(tp.StakeMYR_AR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
+		,tp.IsLive
 	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
 		INNER JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType
 			AND tm.WorkShift = tp.WorkShift
@@ -69,9 +78,9 @@ BEGIN
 			AND @ToDate
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
-		AND tp.IsLive = 1
+		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY tp.CustId;
+	GROUP BY tp.CustId, tp.IsLive;
 
 	WITH TeamDetail
 	AS (
@@ -80,10 +89,11 @@ BEGIN
 			,COUNT(DISTINCT tp.LeagueId) AS LeagueCount
 			,COUNT(DISTINCT tp.MatchId) AS MatchCount
 			,ISNULL(SUM(tp.StakeMYR_AR), 0) AS Turnover
-		,ISNULL(SUM(tp.StakeMYRJuice_AR), 0) AS TurnoverJuice
-		,ISNULL(SUM(tp.Juice_AR), 0) AS Juice
+			,ISNULL(SUM(tp.StakeMYRJuice_AR), 0) AS TurnoverJuice
+			,ISNULL(SUM(tp.Juice_AR), 0) AS Juice
 			,ISNULL(SUM(tp.WinLost_AR), 0) - ISNULL(SUM(tp.Comm_AR), 0) AS WinLoss
 			,ISNULL(SUM(tp.BetCount), 0) AS BetCount
+			,tp.IsLive
 		FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
 			INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
 			LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
@@ -95,9 +105,9 @@ BEGIN
 				FROM @TeamList AS tl
 				)
 			AND TN.[Disabled] = 0
-			AND tp.IsLive = 1
+			AND (@Market = -1 OR tp.IsLive = @Market)
 			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY t.TeamId
+		GROUP BY t.TeamId, tp.IsLive
 		)
 	INSERT INTO @Team (
 		TeamId
@@ -110,6 +120,7 @@ BEGIN
 		,Juice
 		,WinLoss
 		,BetCount
+		,IsLive
 	)
 	SELECT td.TeamId
 		,t.TeamName
@@ -121,24 +132,26 @@ BEGIN
 		,td.Juice
 		,td.WinLoss
 		,td.BetCount
+		,td.IsLive
 	FROM TeamDetail td
 		INNER JOIN dbo.Team AS t WITH (NOLOCK) ON t.TeamId = td.TeamId;
 	
 	WITH score AS (
 			SELECT t.TeamId
-				,AVG(CASE 
+					,AVG(CASE 
 						WHEN sd.SumCategory = 0
 							THEN NULL
 						ELSE sd.WinLoss * 100 / sd.SumCategory
 						END) AS Score
+					,sd.IsLive
 			FROM #ScoreDetail AS sd WITH (NOLOCK)
 			INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = sd.CustID
-			GROUP BY t.TeamId
+			GROUP BY t.TeamId, sd.IsLive
 			)
 	UPDATE t
 	SET t.Score = s.Score
 	FROM @Team AS t
-	INNER JOIN score AS s ON s.TeamId = t.TeamId;
+	INNER JOIN score AS s ON s.TeamId = t.TeamId AND s.IsLive = t.IsLive;
 
 	SELECT t.TeamId
 		,t.TeamName
@@ -151,6 +164,7 @@ BEGIN
 		,t.WinLoss
 		,t.BetCount
 		,t.Score
+		,t.IsLive
 	FROM @Team AS t;
 
 	DROP TABLE #ScoreDetail;

@@ -1,9 +1,10 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_SummaryTopWinLeague]  
-	@ReportType		TINYINT = 1,
-	@FromDate		DATE,
-	@ToDate			DATE,
-	@ViewPermission TINYINT = 0,
-	@IsExcludeLeagues	BIT = 1
+			@ReportType		TINYINT = 1
+		,	@FromDate		DATE
+		,	@ToDate			DATE
+		,	@ViewPermission TINYINT = 0
+		,	@IsExcludeLeagues	BIT = 1
+		,	@Market				SMALLINT = 1
 AS    
 /*  
  Created:	20140520@Sophia
@@ -12,18 +13,20 @@ AS
  Original:  
   
  Revisions:
-			20160322@Aaron: changed WinLost to WinLoss    
-			20171025@Harvey: add @ViewPermission param for data permission
-			20180912@Simon: add league exclusion
-   			
- Param's Explanation:  
-	@ReportType = 1: by Date
-			 = 2: By Month
-			 = 3: By Year
+			- 20160322@Aaron: changed WinLost to WinLoss    
+			- 20171025@Harvey: add @ViewPermission param for data permission
+			- 20180912@Simon: add league exclusion
+			- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 
-	@ViewPermission = 0: all bet types
-			 = 1: major bet types
-			 = 2: PHAIO bet types
+	Param's Explanation (filtered by):
+			- @Market:	-1 All; 0 Nonlive; 1 Live
+			- @ReportType = 1: by Date
+						  = 2: By Month
+						  = 3: By Year
+
+			- @ViewPermission = 0: all bet types
+							  = 1: major bet types
+							  = 2: PHAIO bet types
 
  Exam: 
 	EXEC TGRS_Rpt_SummaryTopWinLeague @FromDate = '2014-05-01', @ToDate = '2014-05-20' 
@@ -35,40 +38,39 @@ BEGIN
 	IF @ReportType	= 1 --- by date
 	BEGIN 	
 		SELECT  TOP 5 L.LeagueId, L.LeagueName, 
-				ISNULL(SUM(Stake),0) AS Turnover,  
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLoss, 
-				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))*100 /ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
+				ISNULL(SUM(S.Stake),0) AS Turnover,  
+				ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0) AS WinLoss, 
+				CASE WHEN  ISNULL(SUM(S.Stake),0) <> 0 THEN (ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0))*100 /ISNULL(SUM(S.Stake),0) ELSE NULL END AS Margin,
+				S.IsLive
 		FROM	dbo.SummaryByLeague_Daily S WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.League L WITH (NOLOCK) 
 					ON	S.LeagueId = L.LeagueId
-		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate	
-					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)			  
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY L.LeagueId, L.LeagueName
+		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate
+				AND (@Market = -1 OR S.IsLive = @Market)	
+				AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)			  
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		GROUP BY L.LeagueId, L.LeagueName, S.IsLive
 		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 	END
 	ELSE
 	BEGIN 
 		SELECT  TOP 5 L.LeagueId, L.LeagueName, 
-				ISNULL(SUM(Stake),0) AS Turnover,  
-				ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0) AS WinLoss, 
-				CASE WHEN  ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0))*100 /ISNULL(SUM(Stake),0) ELSE NULL END AS Margin 
+				ISNULL(SUM(S.Stake),0) AS Turnover,  
+				ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0) AS WinLoss, 
+				CASE WHEN  ISNULL(SUM(S.Stake),0) <> 0 THEN (ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0))*100 /ISNULL(SUM(S.Stake),0) ELSE NULL END AS Margin,
+				S.IsLive
 		FROM	dbo.SummaryByLeague_Monthly S WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.League L WITH (NOLOCK) 
 					ON	S.LeagueId = L.LeagueId
 		WHERE	 S.EventDate BETWEEN @FromDate AND @ToDate
-					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY L.LeagueId, L.LeagueName
+				AND (@Market = -1 OR S.IsLive = @Market)	
+				AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
+				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		GROUP BY L.LeagueId, L.LeagueName, S.IsLive
 		ORDER BY Margin DESC, WinLoss DESC, Turnover DESC
 
-	END
-END
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_SummaryTopWinLeague] TO [bodbTGRSNet]
-GO
-
- 
+	END;
+END;
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

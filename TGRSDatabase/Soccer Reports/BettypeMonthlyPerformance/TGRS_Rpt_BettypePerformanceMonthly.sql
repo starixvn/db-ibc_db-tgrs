@@ -1,14 +1,8 @@
-
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 ALTER PROCEDURE [dbo].[TGRS_Rpt_BettypePerformanceMonthly] 
 		@Year				INT
 	,	@BetTypes			NVARCHAR(MAX)
 	,	@IsExcludeLeagues	BIT = 0
+	,	@Market				SMALLINT = 1
 AS
 /*
 	Created: 20180719@CaseyHuynh
@@ -17,9 +11,11 @@ AS
 	Original:
 
 	Revisions:
-		- 20180911@Long: Support excluding Leagues from report [Redmine ID: #100322]
+		- 20180911@Long:		Support excluding Leagues from report [Redmine ID: #100322]
+		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 
 	Param's Explanation (filtered by):
+		- @Market:	-1 All; 0 Nonlive; 1 Live
 */
 BEGIN
 	SET NOCOUNT ON;	
@@ -51,6 +47,7 @@ BEGIN
 		, Winloss	MONEY
 		, BetCount	INT
 		, MatchCount INT
+		, IsLive BIT
 	 );
 
 	---===========2. PROCESS DATA==================================
@@ -66,7 +63,7 @@ BEGIN
 			INNER JOIN dbo.BetType AS bt WITH (NOLOCK) ON tbt.BetType = bt.BetType;
 
 	--2: GET BettypePerformance
-	INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount)
+	INSERT INTO #tmpBettypePerformance(BetType, BetTypeName, MonthNo, TurnOver, Winloss, BetCount, MatchCount, IsLive)
 	SELECT	sbt.BetType
 			, bt.BetTypeName
 			, MONTH(sbt.eventDate) AS MonthNo
@@ -74,11 +71,13 @@ BEGIN
 			, SUM(sbt.WinLost) - SUM(sbt.Comm) AS WinLoss
 			, SUM(sbt.BetCount) AS BetCount
 			, SUM(sbt.MatchCount) AS MatchCount
+			, sbt.IsLive
 	FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
 			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
 	WHERE	YEAR(sbt.EventDate) = @Year
+		AND (@Market = -1 OR sbt.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (sbt.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate);
+	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate), sbt.IsLive;
 	
 	---===========3. RETURN DATA===================================
 	--=============================================================
@@ -91,8 +90,9 @@ BEGIN
 			, bp.Winloss
 			, bp.BetCount
 			, bp.MatchCount
+			, bp.IsLive
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
-	ORDER BY MonthNo, BetType, bp.BetTypeName;
+	ORDER BY MonthNo, BetType, bp.BetTypeName, bp.IsLive;
 	
 	--2: RETURN BetType Performance - 1st Half Year
 	SELECT	bp.BetType
@@ -101,9 +101,10 @@ BEGIN
 			, SUM(bp.Winloss) AS Winloss
 			, SUM(bp.BetCount) AS BetCount
 			, SUM(bp.MatchCount) AS MatchCount
+			, bp.IsLive
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
 	WHERE	bp.MonthNo BETWEEN 1 AND 6
-	GROUP BY	bp.BetType, bp.BetTypeName
+	GROUP BY	bp.BetType, bp.BetTypeName, bp.IsLive
 	ORDER BY	bp.BetType;
 	
 	--3: RETURN BetType Performance - 2nd Half Year
@@ -113,9 +114,10 @@ BEGIN
 			, SUM(bp.Winloss) AS Winloss
 			, SUM(bp.BetCount) AS BetCount
 			, SUM(bp.MatchCount) AS MatchCount
+			, bp.IsLive
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
 	WHERE	bp.MonthNo BETWEEN 7 AND 12
-	GROUP BY	bp.BetType, bp.BetTypeName
+	GROUP BY	bp.BetType, bp.BetTypeName, bp.IsLive
 	ORDER BY	bp.BetType;
 	
 	--4: RETURN BetType Performance - Full Year
@@ -125,17 +127,12 @@ BEGIN
 			, SUM(bp.Winloss) AS Winloss
 			, SUM(bp.BetCount) AS BetCount
 			, SUM(bp.MatchCount) AS MatchCount
+			, bp.IsLive
 	FROM	#tmpBettypePerformance AS bp WITH (NOLOCK)
-	GROUP BY	bp.BetType, bp.BetTypeName
+	GROUP BY	bp.BetType, bp.BetTypeName, bp.IsLive
 	ORDER BY	bp.BetType;
 	
 END;
-
-GO
-GRANT EXECUTE ON [dbo].[TGRS_Rpt_BettypePerformanceMonthly] TO [bodbTGRSNet]
-GO
-GRANT VIEW DEFINITION ON [dbo].[TGRS_Rpt_BettypePerformanceMonthly] TO [bodbTGRSNet]
-GO
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
