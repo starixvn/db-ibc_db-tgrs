@@ -212,7 +212,7 @@ BEGIN
 		AND (@Market = -1 OR tpm.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
-	GROUP BY tpm.CustId;
+	GROUP BY tpm.CustId, tpm.IsLive;
 
 	-- Sum for current & last year
 	SELECT	tpm.CustId AS TraderID
@@ -232,7 +232,7 @@ BEGIN
 		AND (@Market = -1 OR tpm.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))		
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
-	GROUP BY tpm.CustId, tpm.Year;
+	GROUP BY tpm.CustId, tpm.Year, tpm.IsLive;
 
 	-- Sum for each month of current year
 	SELECT	tpm.CustId AS TraderID
@@ -252,7 +252,7 @@ BEGIN
 		AND (@Market = -1 OR tpm.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
-	GROUP BY tpm.CustId, tpm.EventDate;
+	GROUP BY tpm.CustId, tpm.EventDate, tpm.IsLive;
 END;
 
 GO
