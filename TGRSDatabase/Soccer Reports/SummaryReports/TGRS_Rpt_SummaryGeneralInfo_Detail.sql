@@ -52,28 +52,25 @@ BEGIN
 								IsLive		ASC
 							);
 
-	INSERT INTO #MatchCountByDate(
-			EventDate
-		,	MatchCount
-		,	IsLive
-	)
-	SELECT bm.EventDate
-		,	COUNT_BIG(bm.MatchCount) AS MatchCount
-		,	bm.IsLive
-	FROM dbo.SummaryByBetType_Monthly bm WITH(NOLOCK)
-		INNER JOIN dbo.BetType bt WITH(NOLOCK) on bm.BetType = bt.BetType
-	WHERE bm.EventDate BETWEEN @FromDate AND @ToDate
-		AND (@Market = -1 OR bm.IsLive = @Market)
-		AND (
-				@ViewPermission = 0
-				OR bt.BettypeGroup = @ViewPermission
-			)
-		AND (@IsExcludeLeagues = 0 OR (bm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-	GROUP BY bm.EventDate, bm.IsLive;
-
-
 	IF @ReportType = 2
 	BEGIN 
+
+		TRUNCATE TABLE #MatchCountByDate;
+		INSERT INTO #MatchCountByDate(
+				EventDate
+			,	MatchCount
+			,	IsLive )
+		SELECT bm.EventDate
+			,	COUNT_BIG(bm.MatchCount) AS MatchCount
+			,	bm.IsLive
+		FROM dbo.SummaryByBetType_Monthly bm WITH(NOLOCK)
+			INNER JOIN dbo.BetType bt WITH(NOLOCK) on bm.BetType = bt.BetType
+		WHERE bm.EventDate BETWEEN @FromDate AND @ToDate
+			AND (@Market = -1 OR bm.IsLive = @Market)
+			AND (@ViewPermission = 0 OR bt.BettypeGroup = @ViewPermission)
+			AND (@IsExcludeLeagues = 0 OR (bm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		GROUP BY bm.EventDate, bm.IsLive;
+
 		SELECT  S.EventDate,
 				ISNULL(SUM(S.Stake),0) AS Turnover,  
 				ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0) AS WinLost,  
@@ -84,15 +81,29 @@ BEGIN
 			INNER JOIN #MatchCountByDate m ON S.EventDate = m.EventDate	AND S.IsLive = m.IsLive	
 		WHERE S.EventDate BETWEEN @FromDate AND @ToDate
 			AND (@Market = -1 OR S.IsLive = @Market)	
-			AND (
-					@ViewPermission = 0
-					OR BettypeGroup = @ViewPermission
-				)
+			AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY S.EventDate, m.MatchCount, S.IsLive;
 	END	
 	ELSE 
-	BEGIN 
+	BEGIN
+
+		TRUNCATE TABLE #MatchCountByDate;
+		INSERT INTO #MatchCountByDate(
+				EventDate
+			,	MatchCount
+			,	IsLive )
+		SELECT tp.EventDate
+			,	COUNT_BIG(DISTINCT tp.MatchId) AS MatchCount
+			,	tp.IsLive
+		FROM dbo.TraderPerformance tp WITH(NOLOCK)
+			INNER JOIN dbo.BetType bt WITH(NOLOCK) on tp.BetType = bt.BetType
+		WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
+			AND (@Market = -1 OR tp.IsLive = @Market)
+			AND (@ViewPermission = 0 OR bt.BettypeGroup = @ViewPermission)
+			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		GROUP BY tp.EventDate, tp.IsLive;
+
 		SELECT  S.EventDate,
 				ISNULL(SUM(S.Stake),0) AS Turnover,  
 				ISNULL(SUM(S.WinLost),0) - ISNULL(SUM(S.Comm),0) AS WinLost,  
@@ -103,10 +114,7 @@ BEGIN
 			INNER JOIN #MatchCountByDate m ON S.EventDate = m.EventDate	AND S.IsLive = m.IsLive
 		WHERE S.EventDate BETWEEN @FromDate AND @ToDate	
 			AND (@Market = -1 OR S.IsLive = @Market)
-			AND (
-					@ViewPermission = 0
-					OR BettypeGroup = @ViewPermission
-				)
+			AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 			AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
 		GROUP BY S.EventDate, m.MatchCount, S.IsLive;
 	END 

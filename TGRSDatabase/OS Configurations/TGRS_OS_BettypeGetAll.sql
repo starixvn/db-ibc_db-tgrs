@@ -31,12 +31,3 @@ BEGIN
 		AND b.typeid NOT IN (901, 902, 903) -- bettrade
     
 END;
- /*   
-GO  
-GRANT EXECUTE ON [dbo].[TGRS_OS_BettypeGetAll] TO [bodbTGRSNet]  
-GO  
-GRANT VIEW DEFINITION ON [dbo].[TGRS_OS_BettypeGetAll] TO [bodbTGRSNet]  
-GO  
-*/
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet"  isFunction="0" isNested="0"></info>*/
