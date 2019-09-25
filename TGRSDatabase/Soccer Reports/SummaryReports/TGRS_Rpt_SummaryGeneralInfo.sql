@@ -90,7 +90,7 @@ BEGIN
 						OR BettypeGroup = @ViewPermission
 					)
 				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY S.IsLive;
+		GROUP BY m.MatchCount, S.IsLive;
 				
 	END
 	ELSE---- by date
@@ -110,7 +110,7 @@ BEGIN
 						OR BettypeGroup = @ViewPermission
 					)
 				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WITH(NOLOCK))))
-		GROUP BY S.IsLive;
+		GROUP BY m.MatchCount, S.IsLive;
 	END
 END
 
