@@ -18,6 +18,12 @@ INSERT INTO [dbo].[Trader](CustId,Username,EmployeeId,TeamId,Grade,CreatedDate,C
 VALUES(-1,'NonLiveUnassignedTrader','NonLiveUnassigned',255,255,GETDATE(),8,GETDATE(),8,0,GETDATE(),GETDATE(),NULL,8,GETDATE());
 GO
 
+INSERT INTO [dbo].[TraderGrade_History] (CustId, Grade, BeginDate)
+VALUES(-1, 255, GETDATE());
+
+INSERT INTO [dbo].[TraderTeam_History] (CustId, TeamId, BeginDate)
+VALUES(-1, 255, GETDATE());
+
 UPDATE tp WITH(ROWLOCK, UPDLOCK)
 SET tp.CustId = -1
 FROM [dbo].[TraderPerformance] AS tp
