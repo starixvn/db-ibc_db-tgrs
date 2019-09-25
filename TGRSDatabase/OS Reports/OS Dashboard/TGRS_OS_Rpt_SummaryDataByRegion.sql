@@ -38,24 +38,4 @@ BEGIN
 	LEFT JOIN dbo.OSRegion r WITH (NOLOCK) ON r.RegionId = lr.RegionId
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
 	GROUP BY r.RegionName;
-END
-/*   
-GO  
-GRANT EXECUTE ON [dbo].[TGRS_OS_Rpt_SummaryDataByRegion] TO [bodbTGRSNet]  
-GO  
-GRANT VIEW DEFINITION ON [dbo].[TGRS_OS_Rpt_SummaryDataByRegion] TO [bodbTGRSNet]  
-GO  
-*/
-GO
-
-SET QUOTED_IDENTIFIER OFF 
-GO
-SET ANSI_NULLS ON 
-GO
-
-
-GO 
- GRANT EXECUTE ON [dbo].[TGRS_OS_Rpt_SummaryDataByRegion] TO [bodbTGRSNet]
-GO 
- GRANT VIEW DEFINITION ON [dbo].[TGRS_OS_Rpt_SummaryDataByRegion] TO [bodbTGRSNet]
-GO 
+END;

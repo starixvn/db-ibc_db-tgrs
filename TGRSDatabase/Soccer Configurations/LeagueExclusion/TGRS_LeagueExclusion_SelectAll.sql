@@ -31,10 +31,3 @@ BEGIN
 		INNER JOIN bodb02.dbo.league AS l WITH(NOLOCK) ON l.leagueid = e.LeagueId
 	ORDER BY l.leaguename ASC;
 END;
-
-GO
-GRANT EXECUTE ON [dbo].[TGRS_LeagueExclusion_SelectAll] TO [bodbTGRSNet]
-GO
-GRANT VIEW DEFINITION ON [dbo].[TGRS_LeagueExclusion_SelectAll] TO [bodbTGRSNet]
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

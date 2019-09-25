@@ -66,25 +66,4 @@ BEGIN
 				ELSE NULL
 				END ASC
 	END
-END
-
-/*   
-GO  
-GRANT EXECUTE ON [dbo].[TGRS_OS_Rpt_SummaryTopTrader] TO [bodbTGRSNet]  
-GO  
-GRANT VIEW DEFINITION ON [dbo].[TGRS_OS_Rpt_SummaryTopTrader] TO [bodbTGRSNet]  
-GO  
-*/
-GO
-
-SET QUOTED_IDENTIFIER OFF 
-GO
-SET ANSI_NULLS ON 
-GO
-
-
-GO 
- GRANT EXECUTE ON [dbo].[TGRS_OS_Rpt_SummaryTopTrader] TO [bodbTGRSNet]
-GO 
- GRANT VIEW DEFINITION ON [dbo].[TGRS_OS_Rpt_SummaryTopTrader] TO [bodbTGRSNet]
-GO 
+END;

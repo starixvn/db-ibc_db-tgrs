@@ -37,24 +37,4 @@ BEGIN
 	FROM dbo.OSSummaryByLeague_Monthly tp WITH (NOLOCK)
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
 	GROUP BY tp.EventDate;
-END
-/*   
-GO  
-GRANT EXECUTE ON [dbo].[TGRS_OS_Rpt_SummaryDataByMonth] TO [bodbTGRSNet]  
-GO  
-GRANT VIEW DEFINITION ON [dbo].[TGRS_OS_Rpt_SummaryDataByMonth] TO [bodbTGRSNet]  
-GO  
-*/
-GO
-
-SET QUOTED_IDENTIFIER OFF 
-GO
-SET ANSI_NULLS ON 
-GO
-
-
-GO 
- GRANT EXECUTE ON [dbo].[TGRS_OS_Rpt_SummaryDataByMonth] TO [bodbTGRSNet]
-GO 
- GRANT VIEW DEFINITION ON [dbo].[TGRS_OS_Rpt_SummaryDataByMonth] TO [bodbTGRSNet]
-GO 
+END;
