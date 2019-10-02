@@ -6,12 +6,13 @@ Task : List of Benchmark by bettype
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
-	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
-					  Calculate average Margin of 3 years -> yesterday
-	- 20141121@Sophia:  Change the calculation of margin
+	- 20140728@Sophia:		Change Benchmark to percentage instead of decimal number		
+							Calculate average Margin of 3 years -> yesterday
+	- 20141121@Sophia:		Change the calculation of margin
+	- 20190919@John.Ngo:	Only Support Live Data [Redmine ID: 118959]
+
 Explanation : 
 	
-   
 */ 
 
 AS
@@ -41,6 +42,7 @@ BEGIN
 					 FROM	dbo.SummaryByBetType_Monthly P WITH (NOLOCK)  
 					 WHERE	P.EventDate BETWEEN @FromDate2 AND @ToDate
 							AND P.LeagueId = @LeagueId
+							AND P.IsLive = 1
 					 GROUP BY P.BetType								 
 					) P2  
 				ON	T.BetType = P2.BetType			 
@@ -48,6 +50,7 @@ BEGIN
 					 FROM	dbo.SummaryByBetType_Monthly P WITH (NOLOCK)  
 					 WHERE	P.EventDate BETWEEN @FromDate3 AND @ToDate
 							AND P.LeagueId = @LeagueId
+							AND P.IsLive = 1
 					 GROUP BY P.BetType							 
 					) P3  
 				ON	T.BetType = P3.BetType
@@ -55,6 +58,7 @@ BEGIN
 					 FROM	dbo.SummaryByBetType_Monthly P WITH (NOLOCK)  
 					 WHERE	P.EventDate BETWEEN @FromDate4 AND @ToDate
 							AND P.LeagueId = @LeagueId
+							AND P.IsLive = 1
 					 GROUP BY P.BetType							 
 					) P4 
 				ON	T.BetType = P4.BetType 			
@@ -67,6 +71,4 @@ BEGIN
 END
  
 GO
-GRANT EXECUTE ON [dbo].[TGRS_BenchmarkBetType_SelectAll] TO [bodbTGRSNet]
-GO
-	 
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

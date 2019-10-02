@@ -1,5 +1,4 @@
-﻿ 
-ALTER PROCEDURE [dbo].[TGRS_BenchmarkBetType_ProfitMargin]
+﻿ALTER PROCEDURE [dbo].[TGRS_BenchmarkBetType_ProfitMargin]
 	@LeagueId	INT	,
 	@BetType	SMALLINT,
 	@Type		SMALLINT = 2 
@@ -9,7 +8,9 @@ Task : Benchmark by BetType - Profit Margin
 DB: DBTGRS.bodb_TGRS
 
 Revisions:
-	- 20140728@Sophia: Calculate average Margin of 3 years -> yesterday
+	- 20140728@Sophia:		Calculate average Margin of 3 years -> yesterday
+	- 20190919@John.Ngo:	Only Support Live Data [Redmine ID: 118959]
+
 Explanation : 
 	@Type : 2 = Last 2 years 
 			3 =  Last 3 years
@@ -17,7 +18,6 @@ Explanation :
 
 Exam:
 	EXEC TGRS_BenchmarkBetType_ProfitMargin @LeagueId = -1, @BetType = 1, @Type = 2
-	
    
 */ 
 
@@ -49,12 +49,11 @@ BEGIN
 	WHERE	P.LeagueId = @LeagueId
 			AND P.BetType = @BetType
 			AND P.EventDate BETWEEN @FromDate AND @ToDate
+			AND P.IsLive = 1
 	GROUP BY P.LeagueId, P.BetType, P.WorkShift, YEAR(P.EventDate)
 	ORDER BY Year DESC, WorkShift		 
 
 END
  
 GO
-GRANT EXECUTE ON [dbo].[TGRS_BenchmarkBetType_ProfitMargin] TO [bodbTGRSNet]
-GO
-	
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

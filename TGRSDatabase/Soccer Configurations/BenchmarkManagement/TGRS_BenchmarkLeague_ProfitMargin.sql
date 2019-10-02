@@ -7,8 +7,9 @@ DB: DBTGRS.bodb_TGRS
 
 Revisions:
 	- 20140728@Sophia: average Margin of 3 years -> yesterday
-Explanation : 
-	
+	- 20190919@John.Ngo:	Only Support Live Data [Redmine ID: 118959]
+
+Explanation :
    
 */ 
 
@@ -25,12 +26,11 @@ BEGIN
 	FROM	dbo.SummaryByLeague_Monthly P WITH (NOLOCK)  
 	WHERE	P.LeagueId = @LeagueId
 			AND P.EventDate BETWEEN @FromDate AND @ToDate	
+			AND P.IsLive = 1
 	GROUP BY P.LeagueId, YEAR(P.EventDate)
 	ORDER BY Year DESC 		 
 
 END
  
 GO
-GRANT EXECUTE ON [dbo].[TGRS_BenchmarkLeague_ProfitMargin] TO [bodbTGRSNet]
-GO
-	
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

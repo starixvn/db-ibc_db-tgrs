@@ -1,5 +1,4 @@
-﻿ 
-ALTER PROCEDURE [dbo].[TGRS_BenchmarkLeague_SelectAll]
+﻿ALTER PROCEDURE [dbo].[TGRS_BenchmarkLeague_SelectAll]
 	@SportType SMALLINT = 1,
 	@DisplayMode TINYINT = 0, 
 	@ProgramId VARCHAR(10) = '',
@@ -12,10 +11,12 @@ Task : List of Benchmark by League
 DB:  DBTGRS.bodb_TGRS
 
 Revisions:
-	- 20140728@Sophia: Change Benchmark to percentage instead of decimal number		
-					   Calculate average Margin of 3 years -> yesterday
-	- 20141121@Sophia:  Change the param @MainMarket to get Other Market
-						Change the calculation of margin
+	- 20140728@Sophia:		Change Benchmark to percentage instead of decimal number		
+							Calculate average Margin of 3 years -> yesterday
+	- 20141121@Sophia:		Change the param @MainMarket to get Other Market
+							Change the calculation of margin
+	- 20190919@John.Ngo:	Only Support Live Data [Redmine ID: 118959]
+
 Explanation : 
 	@MainMarket =-1: All
 				= 1: Main 
@@ -24,7 +25,6 @@ Explanation :
 Test string:
 	EXEC TGRS_BenchmarkLeague_SelectAll_Xtest @DisplayMode=0,@CountryCode='',@SportType=1,@ProgramId='',@MainMarket=-1,@LeagueName=N''
    	
-   
 */ 
 
 AS
@@ -43,6 +43,7 @@ BEGIN
 						SELECT  CASE WHEN SUM(P.Stake) <> 0 THEN (SUM(P.WinLost)-SUM(P.Comm))* 100/SUM(P.Stake) ELSE NULL END AS Margin, P.LeagueId
 						FROM	dbo.SummaryByLeague_Monthly P WITH (NOLOCK)  
 						WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
+							AND P.IsLive = 1
 						GROUP BY P.LeagueId												 
 					) P  
 				ON	P.LeagueId = L.LeagueId
@@ -59,6 +60,4 @@ BEGIN
 END
  
 GO
-GRANT EXECUTE ON [dbo].[TGRS_BenchmarkLeague_SelectAll] TO [bodbTGRSNet]
-GO
-	 
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
