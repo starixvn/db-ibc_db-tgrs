@@ -94,6 +94,15 @@ ALTER TABLE [dbo].SummaryByTrader_Monthly
 ADD	[IsLive]		BIT NULL;
 GO
 
+DROP INDEX CIX_EventDate ON [dbo].SummaryByTrader_Monthly
+GO
+
+CREATE CLUSTERED INDEX CIX_EventDate_IsLive ON [dbo].SummaryByTrader_Monthly (
+	EventDate				ASC,
+	[IsLive]				ASC
+)
+GO
+
 
 
 
