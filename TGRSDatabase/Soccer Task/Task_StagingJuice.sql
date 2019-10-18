@@ -24,6 +24,7 @@ AS
 		- 20190116@John:		Fix date range for generating historical data [Redmine: #108008]
 		- 20190304@Long:		Calc Actual-rate values for Soccer [Redmine ID: 108920]
 		- 20190704@John.Ngo:	Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
+		- 20191018@John.Ngo:	Remove 'Select temp data' when debug = 1 [Redmine ID: 118959]
    		
 	Param's Explanation:
 		
@@ -1324,9 +1325,7 @@ BEGIN;
 	-- Start calculating juice and update to TraderPerformance table
 	IF	@Debug = 1
 	BEGIN;
-		SELECT	*
-		FROM	#tmpDataGroup WITH(NOLOCK)
-		ORDER BY MatchId, BetType, ScoreHDP, BetTeam DESC;
+		PRINT('Start calculating juice and update to TraderPerformance table');
 	END;
 
 	INSERT INTO #tmpJuice (EventDate, MatchId, BetType, ScoreHDP, StakeMYBeforeComm, StakeMY, Juice, StakeMYRJuice, StakeMYRTotal, 
@@ -1395,13 +1394,6 @@ BEGIN;
 			AND	temp1.BetTeam <> temp2.BetTeam
 	GROUP BY temp1.MatchId, temp1.BetType, temp1.EventDate, temp1.ScoreHDP;
 
-	IF	@Debug = 1
-	BEGIN;
-		SELECT	*
-		FROM	#tmpJuice
-		ORDER BY matchid, bettype;
-	END;
-
 	INSERT INTO	#tmpSumTotal (EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR)
 	SELECT	[EventDate]			= t.EventDate
 		,	[MatchId]			= t.MatchId
@@ -1452,3 +1444,6 @@ BEGIN;
 		RAISERROR('UPDATE TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 	END;
 END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
