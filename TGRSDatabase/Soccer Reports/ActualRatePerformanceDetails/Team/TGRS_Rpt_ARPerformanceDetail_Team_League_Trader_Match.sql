@@ -15,6 +15,7 @@ AS
 	 
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
     Example:
 		EXEC [TGRS_Rpt_ARPerformanceDetail_Team_League_Trader_Match] @FromDate = '2019-02-01', @ToDate= '2019-03-35', @CustID = 1530768, @TeamId= 5, @LeagueId = 8
@@ -37,6 +38,7 @@ BEGIN
 	FROM dbo.TraderPerformance P WITH (NOLOCK)
 		INNER JOIN dbo.Trader T WITH (NOLOCK) ON T.CustId = P.CustId
 		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.CustId = @CustId
 		AND T.TeamId = @TeamId
@@ -44,7 +46,7 @@ BEGIN
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND (@Market = -1 OR P.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY P.MatchId
 		,P.LeagueId
 		,P.HomeId

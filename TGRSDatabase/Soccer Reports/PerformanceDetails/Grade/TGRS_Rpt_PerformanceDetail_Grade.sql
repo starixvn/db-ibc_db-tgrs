@@ -23,6 +23,7 @@ AS
 		- 20180912@Simon:		add league exclusion
 		- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -90,16 +91,17 @@ BEGIN
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss		
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-	INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
-			ON	tm.BetType = tp.BetType
-			AND	tm.WorkShift = tp.WorkShift
-	LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
-			ON	s.Spread = tp.Spread
-			AND	s.Rate = tm.Rate
-			AND (@Market = -1 OR tp.IsLive = @Market)
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
+				ON	tm.BetType = tp.BetType
+				AND	tm.WorkShift = tp.WorkShift
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
+				ON	s.Spread = tp.Spread
+				AND	s.Rate = tm.Rate
+				AND (@Market = -1 OR tp.IsLive = @Market)
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY	tp.CustId, tp.Grade, tp.IsLive;
 
 	WITH GradeDetail AS (
@@ -116,10 +118,11 @@ BEGIN
 						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
 				END														AS Margin
 		FROM	dbo.TraderPerformance	AS tp WITH (NOLOCK)
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 			AND (@Market = -1 OR tp.IsLive = @Market)
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY	tp.Grade, tp.IsLive
 	)
 	INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLoss, BetCount, Margin, IsLive)

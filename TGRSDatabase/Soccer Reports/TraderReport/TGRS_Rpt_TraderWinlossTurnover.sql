@@ -20,6 +20,7 @@ AS
 		- 20190116@John:  Daily chart does not display on Trader Report [Redmine ID: 108008]
 		- 20190129@John:  Fix bug for League Exclusion [Redmine ID: 107809]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -57,10 +58,11 @@ SET NOCOUNT ON;
 		FROM dbo.TraderPerformance t (NOLOCK)
 			RIGHT JOIN @Date d ON t.EventDate = d.WLDate AND CustId = @TraderId
 			INNER JOIN Bettype bt WITH(NOLOCK) ON t.Bettype = bt.Bettype
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON t.LeagueId = le.LeagueId
 		WHERE (@ViewPermission = 0 OR bt.BettypeGroup = @ViewPermission)
 			AND (@Market = -1 OR t.IsLive = @Market)
 			AND bt.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM LeagueExclusion le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY d.WLDate, t.IsLive;
 	END
 	ELSE -- Report by date - month, month - month
@@ -86,9 +88,10 @@ SET NOCOUNT ON;
 				s.IsLive
 			FROM dbo.SummaryByTrader_Monthly s (NOLOCK)
 				RIGHT JOIN @Date d ON s.Eventdate = d.WLDate AND CustId = @TraderId
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON s.LeagueId = le.LeagueId
 			WHERE (@ViewPermission = 0 OR s.BettypeGroup = @ViewPermission)
 				AND (@Market = -1 OR s.IsLive = @Market)
-				AND (@IsExcludeLeagues = 0 OR (s.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 			GROUP BY d.WLDate, s.IsLive;
 		END
 		ELSE -- Report by date - month
@@ -106,6 +109,7 @@ SET NOCOUNT ON;
 						p.IsLive
 					FROM dbo.TraderPerformance p WITH(NOLOCK)
 						 INNER JOIN Bettype bt WITH(NOLOCK) ON p.Bettype = bt.Bettype
+						 LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON p.LeagueId = le.LeagueId
 					WHERE p.CustId = @TraderId
 						AND p.EventDate BETWEEN @FromDate AND @ToDate
 						AND (
@@ -114,7 +118,7 @@ SET NOCOUNT ON;
 							)
 						AND (@Market = -1 OR p.IsLive = @Market)
 						AND bt.[Disabled] = 0
-						AND (@IsExcludeLeagues = 0 OR (p.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 					GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, p.EventDate), 0), p.IsLive
 				) AS s
 				RIGHT JOIN @Date d ON s.EventDate = d.WLDate

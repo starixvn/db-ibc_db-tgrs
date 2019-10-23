@@ -15,6 +15,7 @@ AS
 		- 20171205@Simon:		get only Live data & Bettypes are not disabled
 		- 20180911@Long.Luu:	Support excluding Leagues from report [Redmine ID: #100322]
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
    			
 	Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -38,9 +39,10 @@ BEGIN
 		,	ISNULL(SUM(P.BetCount), 0) AS BetCount
 	INTO #TraderPerformanceTemp
 	FROM dbo.TraderPerformance AS P WITH (NOLOCK)
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND (@Market = -1 OR P.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY P.BetType, P.IsLive;
 
 	SELECT	P.BetType

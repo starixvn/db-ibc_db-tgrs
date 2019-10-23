@@ -28,6 +28,7 @@ AS
 			- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
 			- 20190118@Long: Extend the size of data type [Redmine ID: #108154]
  			- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+			- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 			- @Market:	-1 All; 0 Nonlive; 1 Live	
@@ -143,9 +144,10 @@ BEGIN
 	INSERT INTO #tmpTraderBettypes(CustId, BetType)
 	SELECT DISTINCT custid, bettype
 	FROM dbo.TraderPerformance_Yearly p1 WITH(NOLOCK)
-	WHERE (@IsExcludeLeagues = 0 
-		OR (p1.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		AND (@LeagueName = '' OR (p1.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK))));
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON p1.LeagueId = le.LeagueId
+		LEFT JOIN #tmpLeagues tle WITH(NOLOCK) ON p1.LeagueId = tle.LeagueId
+	WHERE (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+		AND (@LeagueName = '' OR tle.LeagueId IS NOT NULL);
 
 	INSERT INTO #tmpTraderProduct(
 			TraderID
@@ -188,11 +190,13 @@ BEGIN
 		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.EventDate = tmc.EventDate 
 			 AND tpm.LeagueId = tmc.LeagueId AND tpm.SportType = tmc.SportType
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tpm.LeagueId = le.LeagueId
+		LEFT JOIN #tmpLeagues tle WITH(NOLOCK) ON tpm.LeagueId = tle.LeagueId
     WHERE tpm.EventDate BETWEEN @FirstHalfFromDate AND @FirstHalfToDate
 		AND tpm.BetType = @Bettype
 		AND (@Market = -1 OR tpm.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK)))) 
-		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+		AND (@LeagueName = '' OR tle.LeagueId IS NOT NULL)
 	GROUP BY tpm.CustId, tpm.IsLive;
 
 	-- Sum for current year second-half
@@ -207,11 +211,13 @@ BEGIN
 		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.EventDate = tmc.EventDate 
 			 AND tpm.LeagueId = tmc.LeagueId AND tpm.SportType = tmc.SportType
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tpm.LeagueId = le.LeagueId
+		LEFT JOIN #tmpLeagues tle WITH(NOLOCK) ON tpm.LeagueId = tle.LeagueId
     WHERE tpm.EventDate BETWEEN @SecondHalfFromDate AND @SecondHalfToDate
 		AND tpm.BetType = @Bettype
 		AND (@Market = -1 OR tpm.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tpm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+		AND (@LeagueName = '' OR tle.LeagueId IS NOT NULL)
 	GROUP BY tpm.CustId, tpm.IsLive;
 
 	-- Sum for current & last year
@@ -227,11 +233,13 @@ BEGIN
 		INNER JOIN dbo.TraderMatchCount_Yearly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.Year = tmc.Year 
 			 AND tpm.LeagueId = tmc.LeagueId AND tpm.SportType = tmc.SportType
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tpm.LeagueId = le.LeagueId
+		LEFT JOIN #tmpLeagues tle WITH(NOLOCK) ON tpm.LeagueId = tle.LeagueId
 	WHERE tpm.[Year] IN (@CurrentYear, @LastYear)
 		AND tmc.BetType = @Bettype
 		AND (@Market = -1 OR tpm.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))		
-		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+		AND (@LeagueName = '' OR tle.LeagueId IS NOT NULL)
 	GROUP BY tpm.CustId, tpm.Year, tpm.IsLive;
 
 	-- Sum for each month of current year
@@ -247,11 +255,13 @@ BEGIN
 		INNER JOIN dbo.TraderMatchCount_Monthly tmc WITH (NOLOCK) ON tpm.CustId = tmc.CustId  AND tpm.EventDate = tmc.EventDate 
 			 AND tpm.LeagueId = tmc.LeagueId AND tpm.SportType = tmc.SportType
 			 AND tmc.BetType = tpm.BetType AND tmc.IsLive = tpm.IsLive
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tpm.LeagueId = le.LeagueId
+		LEFT JOIN #tmpLeagues tle WITH(NOLOCK) ON tpm.LeagueId = tle.LeagueId
 	WHERE tpm.EventDate BETWEEN @FirstHalfFromDate AND @SecondHalfToDate
 		AND tmc.BetType = @Bettype
 		AND (@Market = -1 OR tpm.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tmc.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-		AND (@LeagueName = '' OR (tpm.LeagueId IN (SELECT le.LeagueId FROM #tmpLeagues le WITH(NOLOCK)))) 
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+		AND (@LeagueName = '' OR tle.LeagueId IS NOT NULL)
 	GROUP BY tpm.CustId, tpm.EventDate, tpm.IsLive;
 END;
 

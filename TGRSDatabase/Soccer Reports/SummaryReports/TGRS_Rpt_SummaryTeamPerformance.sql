@@ -16,6 +16,7 @@ AS
    		- 20171024@Simon: Add ViewPermission param		
 		- 20180912@Simon: add league exclusion
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
  Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live 
@@ -42,13 +43,14 @@ BEGIN
 				S.IsLive
 		FROM	dbo.SummaryByTeam_Daily S WITH (NOLOCK)
 			INNER JOIN	dbo.Team T WITH (NOLOCK) ON	T.TeamId = S.TeamId
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON S.LeagueId = le.LeagueId
 		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
 				AND (@Market = -1 OR S.IsLive = @Market)
 				AND (
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY T.TeamId, T.TeamName, S.IsLive
 		ORDER BY Margin DESC
 	END
@@ -61,13 +63,14 @@ BEGIN
 				S.IsLive 
 		FROM	dbo.SummaryByTeam_Monthly S WITH (NOLOCK)
 			INNER JOIN	dbo.Team T WITH (NOLOCK) ON	T.TeamId = S.TeamId
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON S.LeagueId = le.LeagueId
 		WHERE	S.EventDate BETWEEN @FromDate AND @ToDate
 				AND (@Market = -1 OR S.IsLive = @Market)
 				AND (
 						@ViewPermission = 0
 						OR BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY T.TeamId, T.TeamName, S.IsLive
 		ORDER BY Margin DESC 
 	END

@@ -21,6 +21,7 @@ AS
 		- 20180912@Simon: add league exclusion
 		- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -94,6 +95,7 @@ BEGIN
 		,  tp.IsLive
 	FROM dbo.TraderPerformance tp WITH(NOLOCK)
 		INNER JOIN dbo.BetType bt WITH(NOLOCK) on tp.BetType = bt.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND (
 				@ViewPermission = 0
@@ -101,7 +103,7 @@ BEGIN
 			)
 		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND bt.[Disabled] = 0
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY tp.CustId, tp.IsLive;
 
 	IF @ReportType	= 1 --- by date
@@ -117,6 +119,7 @@ BEGIN
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)			
 			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = P.CustId
 			INNER JOIN dbo.Bettype bt WITH (NOLOCK) ON P.Bettype = bt.Bettype
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 		WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 			AND (
 					@ViewPermission = 0
@@ -124,7 +127,7 @@ BEGIN
 				)
 			AND (@Market = -1 OR P.IsLive = @Market)
 			AND bt.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY P.CustId, TR.Username, TR.TeamId, TR.Grade, P.IsLive;
 	END
 	ELSE  --- by month-year
@@ -139,14 +142,15 @@ BEGIN
 				SM.IsLive		
 		FROM	dbo.SummaryByTrader_Monthly SM WITH (NOLOCK)	
 			INNER JOIN dbo.Trader TR WITH (NOLOCK) ON TR.CustID = SM.CustId		
-			INNER JOIN #MatchCountByCustId m ON SM.CustId = m.CustId AND m.IsLive = sm.IsLive	
+			INNER JOIN #MatchCountByCustId m ON SM.CustId = m.CustId AND m.IsLive = sm.IsLive
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON SM.LeagueId = le.LeagueId
 		WHERE SM.EventDate BETWEEN @FromDate AND @ToDate
 			AND (@Market = -1 OR SM.IsLive = @Market)
 			AND (
 					@ViewPermission = 0
 					OR SM.BettypeGroup = @ViewPermission
 				)
-			AND (@IsExcludeLeagues = 0 OR (SM.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY SM.CustId, TR.Username, TR.TeamId, TR.Grade, m.MatchCount, SM.IsLive;	
 	END
 

@@ -1,4 +1,3 @@
-
 ALTER PROCEDURE [dbo].[TGRS_Rpt_NewPerformanceDetail_Grade_League]  	
 		@FromDate				DATE
 	,	@ToDate					DATE
@@ -17,6 +16,7 @@ AS
 		- 20171205@Simon:		get only Live data & Bettypes are not disabled
 		- 20180911@Long.Luu:	Support excluding Leagues from report [Redmine ID: #100322]  
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
  
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -42,12 +42,13 @@ BEGIN
 		INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON P.CustId = t.CustId
 		LEFT JOIN dbo.BetType AS TN WITH (NOLOCK) ON TN.BetType = P.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 	WHERE t.Grade = @Grade
 		AND P.EventDate BETWEEN @FromDate AND @ToDate
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND (@Market = -1 OR P.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY P.LeagueId
 		,	L.LeagueName
 		,	P.IsLive;

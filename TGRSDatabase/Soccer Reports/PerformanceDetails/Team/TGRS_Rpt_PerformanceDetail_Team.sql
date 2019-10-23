@@ -23,6 +23,7 @@ AS
 		- 20171205@Simon:		get only Live data & Bettypes are not disabled
 		- 20180912@Simon:		add league exclusion
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -104,10 +105,11 @@ BEGIN
 		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
 				ON	s.Spread = tp.Spread
 				AND	s.Rate = tm.Rate
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND (@Market = -1 OR tp.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY	tp.CustId, tp.IsLive;
 
 	WITH TeamDetail AS (
@@ -124,13 +126,13 @@ BEGIN
 						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
 				END														AS Margin
 		FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-		INNER JOIN	dbo.Trader AS t WITH (NOLOCK)
-				ON	t.CustId = tp.CustId
+			INNER JOIN	dbo.Trader AS t WITH (NOLOCK) ON	t.CustId = tp.CustId
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.BetType FROM @BettypeList AS bl)
 			AND	t.TeamId IN (SELECT tl.TeamId FROM @TeamList AS tl)
 			AND (@Market = -1 OR tp.IsLive = @Market)
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY	t.TeamId, tp.IsLive
 	)
 	INSERT INTO @Team (TeamId, TeamName, TraderCount, LeagueCount, MatchCount, Turnover, WinLoss, BetCount, Margin, IsLive)

@@ -16,6 +16,7 @@ AS
 		- 20180912@Simon:		add league exclusion
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191022@Long.Luu:	Showing betteam in case of betchoices are not mapped [Redmine ID: 121268]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -37,11 +38,12 @@ BEGIN
 		ISNULL(SUM(P.BetCount), 0)							AS BetCount
 	FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
 		LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = @Bettype
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 	WHERE	P.Bettype = @Bettype
 		AND P.EventDate BETWEEN @FromDate AND @ToDate
 		AND (@Market = -1 OR P.IsLive = @Market)
 		AND P.BetChoice = bcm.BetChoice
-		AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice),
 		P.IsLive;
 END;

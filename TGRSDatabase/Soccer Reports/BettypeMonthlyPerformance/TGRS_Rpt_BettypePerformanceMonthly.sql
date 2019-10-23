@@ -13,6 +13,7 @@ AS
 	Revisions:
 		- 20180911@Long:		Support excluding Leagues from report [Redmine ID: #100322]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -74,9 +75,10 @@ BEGIN
 			, sbt.IsLive
 	FROM	dbo.SummaryByBetType_Daily AS sbt	WITH (NOLOCK)
 			INNER JOIN #tmpBettype AS bt WITH (NOLOCK) ON sbt.BetType = bt.BetType
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON sbt.LeagueId = le.LeagueId
 	WHERE	YEAR(sbt.EventDate) = @Year
 		AND (@Market = -1 OR sbt.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (sbt.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY 	sbt.BetType, bt.BetTypeName, MONTH(sbt.eventDate), sbt.IsLive;
 	
 	---===========3. RETURN DATA===================================
