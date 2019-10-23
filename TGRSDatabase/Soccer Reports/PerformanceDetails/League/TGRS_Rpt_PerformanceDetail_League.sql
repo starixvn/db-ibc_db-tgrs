@@ -21,6 +21,7 @@ AS
 		- 20171205@Simon:		get only Live data & Bettypes are not disabled
 		- 20180912@Simon:		add league exclusion
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	 Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -57,10 +58,11 @@ BEGIN
 						ISNULL(SUM (BetCount), 0) AS BetCount
 					FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 						AND (@Market = -1 OR P.IsLive = @Market)
-						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 					GROUP BY P.LeagueId , L.LeagueName, P.IsLive 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)
@@ -83,11 +85,12 @@ BEGIN
 						ISNULL(SUM (BetCount), 0) AS BetCount
 					FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.Bettype IN (SELECT Bettype FROM @BettypeList)
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
 						AND (@Market = -1 OR P.IsLive = @Market)
-						AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 					GROUP BY P.LeagueId, L.LeagueName, P.IsLive 
 				) AS p 
 			WHERE  (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)

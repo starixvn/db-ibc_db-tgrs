@@ -15,6 +15,7 @@ AS
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -50,6 +51,7 @@ BEGIN
 		,ISNULL(SUM(BetCount), 0) AS BetCount
 		,tp.IsLive
 	FROM dbo.TraderPerformance tp WITH (NOLOCK)
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE tp.EventDate BETWEEN @FromDate
 			AND @ToDate
 		AND tp.CustId = @CustId
@@ -58,7 +60,7 @@ BEGIN
 			FROM @BettypeList
 			)
 		AND (@Market = -1 OR tp.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY tp.MatchId
 		,tp.LeagueId
 		,tp.HomeId

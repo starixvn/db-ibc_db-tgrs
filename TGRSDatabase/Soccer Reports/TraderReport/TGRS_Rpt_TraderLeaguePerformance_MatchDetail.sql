@@ -17,6 +17,7 @@ AS
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
 		- 20180912@Simon: add league exclusion
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -33,16 +34,16 @@ BEGIN
 		ISNULL(SUM(t.BetCount),0) AS BetCount,
 		CASE WHEN ISNULL(SUM(t.Stake), 0) <> 0 THEN (ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm),0)) * 100/SUM(t.Stake) ELSE NULL END AS Margin,
 		t.IsLive 
-	FROM
-		dbo.TraderPerformance t (NOLOCK)
+	FROM dbo.TraderPerformance t (NOLOCK)
 		INNER JOIN dbo.BetType b (NOLOCK) ON t.BetType = b.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON t.LeagueId = le.LeagueId
 	WHERE
 		t.CustId = @TraderId
 		AND t.MatchId = @MatchId
 		AND t.EventDate = @EventDate
 		AND (@Market = -1 OR t.IsLive = @Market)
 		AND b.[Disabled] = 0
-		AND (@IsExcludeLeagues = 0 OR (t.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY b.Bettype, b.TypeName, t.IsLive
 	ORDER BY Margin DESC;
 END;

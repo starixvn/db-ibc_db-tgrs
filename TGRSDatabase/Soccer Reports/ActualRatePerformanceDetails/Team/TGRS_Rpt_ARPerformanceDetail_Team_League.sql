@@ -14,6 +14,7 @@ AS
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -39,13 +40,14 @@ BEGIN
 		INNER JOIN bodb02.dbo.League L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 		INNER JOIN Trader T WITH (NOLOCK) ON T.CustId = P.CustId
 		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = P.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 	WHERE P.EventDate BETWEEN @FromDate
 			AND @ToDate
 		AND T.TeamId = @TeamId
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND (@Market = -1 OR P.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (L.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY P.LeagueId, L.LeagueName, P.IsLive;
 END
 

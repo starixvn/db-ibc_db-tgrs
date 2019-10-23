@@ -13,6 +13,7 @@ AS
 	Revisions:
 		- 20190304@John: Create new [Redmine ID: #108920]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -60,11 +61,12 @@ BEGIN
 		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
 			AND s.Rate = tm.Rate	
 		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND TN.MainDBBetType IN (1,3,7,8)
 		AND TN.[Disabled] = 0
 		AND (@Market = -1 OR tp.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY tp.CustId, tp.IsLive;
 
 	WITH GradeDetail
@@ -80,13 +82,14 @@ BEGIN
 			,ISNULL(SUM(tp.BetCount), 0) AS BetCount
 			,tp.IsLive
 		FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-		INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
-		LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+			INNER JOIN dbo.Trader AS t WITH (NOLOCK) ON t.CustId = tp.CustId
+			LEFT JOIN dbo.BetType TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 		WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND TN.MainDBBetType IN (1,3,7,8)
 			AND TN.[Disabled] = 0
 			AND (@Market = -1 OR tp.IsLive = @Market)
-			AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY t.Grade, tp.IsLive
 		)
 	INSERT INTO @Grade (

@@ -18,6 +18,7 @@ AS
 		- 20180912@Simon: add league exclusion
 		- 20190116@John: Fix excluding Leagues from report [Redmine ID: #108008]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -47,6 +48,7 @@ BEGIN
 				, P.IsLive
 			FROM dbo.TraderPerformance P WITH (NOLOCK)
 				INNER JOIN dbo.Bettype bt WITH (NOLOCK) ON P.Bettype = bt.Bettype
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 			WHERE EventDate BETWEEN @FromDate AND @ToDate
 				AND (
 						@ViewPermission = 0
@@ -54,7 +56,7 @@ BEGIN
 					)
 				AND bt.[Disabled] = 0
 				AND (@Market = -1 OR P.IsLive = @Market)
-				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 			GROUP BY P.CustId, P.IsLive
 			ORDER BY Margin DESC;
 
@@ -64,6 +66,7 @@ BEGIN
 				, P.IsLive
 			FROM dbo.TraderPerformance P WITH (NOLOCK)			 
 				INNER JOIN dbo.Bettype bt WITH (NOLOCK) ON P.Bettype = bt.Bettype
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 			WHERE EventDate BETWEEN @FromDate AND @ToDate
 				AND (
 						@ViewPermission = 0
@@ -71,7 +74,7 @@ BEGIN
 					)
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND bt.[Disabled] = 0
-				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 			GROUP BY P.CustId, P.IsLive
 			ORDER BY Margin ASC;
 			
@@ -79,33 +82,35 @@ BEGIN
 	ELSE  -- By Month, year
 		BEGIN
 			INSERT INTO @Top
-			SELECT  TOP 10 CustId
-				, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin
-				, IsLive
-			FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
-			WHERE 	EventDate BETWEEN @FromDate AND @ToDate
+			SELECT  TOP 10 sm.CustId
+				, CASE WHEN ISNULL(SUM(sm.Stake),0) <> 0 THEN (ISNULL(SUM(sm.WinLost),0) - ISNULL(SUM(sm.Comm),0)) *100 /ISNULL(SUM(sm.Stake),0)  ELSE NULL END AS Margin
+				, sm.IsLive
+			FROM	dbo.SummaryByTrader_Monthly sm WITH (NOLOCK)
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON sm.LeagueId = le.LeagueId		 
+			WHERE 	sm.EventDate BETWEEN @FromDate AND @ToDate
 				AND (@Market = -1 OR IsLive = @Market)
 				AND (
 						@ViewPermission = 0
-						OR BettypeGroup = @ViewPermission
+						OR sm.BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 			GROUP BY CustId, IsLive
 			ORDER BY Margin DESC
 
 			INSERT INTO @Bottom
-			SELECT  TOP 10 CustId
-				, CASE WHEN ISNULL(SUM(Stake),0) <> 0 THEN (ISNULL(SUM(WinLost),0) - ISNULL(SUM(Comm),0)) *100 /ISNULL(SUM(Stake),0)  ELSE NULL END AS Margin
-				, IsLive
-			FROM	dbo.SummaryByTrader_Monthly WITH (NOLOCK)			 
-			WHERE 	EventDate BETWEEN @FromDate AND @ToDate
+			SELECT  TOP 10 sm.CustId
+				, CASE WHEN ISNULL(SUM(sm.Stake),0) <> 0 THEN (ISNULL(SUM(sm.WinLost),0) - ISNULL(SUM(sm.Comm),0)) *100 /ISNULL(SUM(sm.Stake),0)  ELSE NULL END AS Margin
+				, sm.IsLive
+			FROM	dbo.SummaryByTrader_Monthly sm WITH (NOLOCK)
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON sm.LeagueId = le.LeagueId		 
+			WHERE 	sm.EventDate BETWEEN @FromDate AND @ToDate
 				AND (@Market = -1 OR IsLive = @Market)
 				AND (
 						@ViewPermission = 0
-						OR BettypeGroup = @ViewPermission
+						OR sm.BettypeGroup = @ViewPermission
 					)
-				AND (@IsExcludeLeagues = 0 OR (LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
-			GROUP BY CustId, IsLive
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+			GROUP BY sm.CustId, sm.IsLive
 			ORDER BY Margin ASC;
 		END;
 

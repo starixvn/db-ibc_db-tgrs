@@ -18,6 +18,7 @@ AS
 		- 20180912@Simon:		add league exclusion
 		- 20190116@John:		Fix excluding Leagues from report [Redmine ID: #108008]
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -154,17 +155,19 @@ BEGIN
 						SELECT MAX(ModifiedDate) AS ModifiedDate, LeagueId, BetType, WorkShift
 						FROM ( 
 								SELECT MAX(ModifiedDate) AS ModifiedDate, B.LeagueId, B.BetType, B.WorkShift 
-								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)		
+								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)	
+									LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON B.LeagueId = le.LeagueId	
 								WHERE  B.ModifiedDate BETWEEN @DateB AND @DateE
 									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
-									   AND (@IsExcludeLeagues = 0 OR (B.LeagueId NOT IN (SELECT B.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+									   AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 								GROUP BY  B.LeagueId, B.BetType, B.WorkShift
 								UNION 
 								SELECT MAX(ModifiedDate) AS ModifiedDate, B.LeagueId, B.BetType, B.WorkShift
-								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)		
+								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)
+									LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON B.LeagueId = le.LeagueId		
 								WHERE  B.ModifiedDate < @DateB
 									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
-									   AND (@IsExcludeLeagues = 0 OR (B.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+									   AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 								GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
 								) B
 						GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
@@ -183,17 +186,17 @@ BEGIN
 				ISNULL(SUM(P.Stake),0) AS Stake,
 				@DateB, @DateE, P.IsLive
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)
-			LEFT JOIN @BenchMark B  
-				ON B.LeagueId = P.LeagueId
+			LEFT JOIN @BenchMark B ON B.LeagueId = P.LeagueId
 					AND B.BetType = P.BetType 
 					AND B.WorkShift = P.WorkShift
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 		WHERE   P.EventDate BETWEEN @FromDate AND @ToDate
 				AND P.EventDate BETWEEN @DateB AND @DateE
 				AND P.CustId = @CustId
 				AND P.MatchId = @MatchId
 				AND P.IsLive = @Market
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)	
-				AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY  P.LeagueId, P.BetType, P.WorkShift, B.Benchmark, P.IsLive;
 		 
 		SELECT @i = @i + 1;

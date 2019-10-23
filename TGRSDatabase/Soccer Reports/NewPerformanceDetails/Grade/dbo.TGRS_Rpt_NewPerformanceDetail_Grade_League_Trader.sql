@@ -17,7 +17,8 @@ AS
 		- 20170316@Long.Luu:	apply TO's Leftover
 		- 20171205@Simon:		get only Live data & Bettypes are not disabled
 		- 20180911@Long.Luu:	Support excluding Leagues from report [Redmine ID: #100322] 
-		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959] 
+		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 	  			
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -75,13 +76,14 @@ BEGIN
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType AND tm.WorkShift = tp.WorkShift
 		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 		LEFT JOIN dbo.BetType AS TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND t.Grade = @Grade
 		AND tp.LeagueId = @LeagueId
 		AND TN.MainDBBetType IN (1, 3, 7, 8)
 		AND TN.[Disabled] = 0
 		AND (@Market = -1 OR tp.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY tp.CustId, tp.IsLive;
 
 	SELECT	td.CustID

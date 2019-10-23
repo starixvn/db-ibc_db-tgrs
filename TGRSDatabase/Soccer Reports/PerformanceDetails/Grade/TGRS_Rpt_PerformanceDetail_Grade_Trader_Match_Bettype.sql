@@ -1,4 +1,3 @@
-
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_Trader_Match_Bettype]  	
 	@FromDate			DATE,
 	@ToDate				DATE,
@@ -20,6 +19,7 @@ AS
 		- 20180912@Simon:		add league exclusion
 		- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	 Param's Explanation:
 		- @Market: -1 All; 0 Nonlive; 1 Live  	
@@ -86,13 +86,14 @@ BEGIN
 				ON	s.Spread = tp.Spread
 				AND	s.Rate = tm.Rate
 		LEFT JOIN dbo.BetType AS TN WITH (NOLOCK) ON TN.BetType = tp.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE	tp.CustId = @CustId		
 		AND tp.MatchId = @MatchId			
 		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.BetType IN (SELECT bettype FROM @BettypeList)
 		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND TN.[Disabled] = 0
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY	tp.BetType, TN.TypeName, tp.IsLive;	
 
 	SELECT	bd.BetType

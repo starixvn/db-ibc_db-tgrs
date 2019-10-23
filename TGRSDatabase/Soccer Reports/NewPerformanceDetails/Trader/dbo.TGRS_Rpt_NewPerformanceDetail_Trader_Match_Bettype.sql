@@ -18,6 +18,7 @@ AS
 		- 20171205@Simon:		get only Live data & Bettypes are not disabled
 		- 20180912@Simon:		add league exclusion
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		  				
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -90,13 +91,14 @@ BEGIN
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType AND tm.WorkShift = tp.WorkShift
 		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 		LEFT JOIN dbo.BetType AS bt WITH (NOLOCK) ON bt.BetType = tp.BetType
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE tp.CustId = @CustId
 		AND tp.MatchId = @MatchId
 		AND tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND tp.BetType IN (SELECT bettype FROM @BettypeList)
 		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND bt.[Disabled] = 0
-		AND (@IsExcludeLeagues = 0 OR (tp.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion AS le WITH(NOLOCK))))
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY tp.BetType
 		,	bt.TypeName
 		,	tp.IsLive;

@@ -17,6 +17,7 @@ AS
 		-20171025@Harvey: add @ViewPermission param for data permission
 		- 20180912@Simon: add league exclusion
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -44,13 +45,13 @@ BEGIN
 				CASE WHEN  ISNULL(SUM(S.Stake),0) <> 0 THEN (ISNULL(SUM(S.WinLost),0) -  ISNULL(SUM(S.Comm),0)) * 100/ ISNULL(SUM(S.Stake),0) ELSE NULL END AS Margin,
 				S.IsLive 
 		FROM	dbo.SummaryByBetType_Daily S WITH (NOLOCK)
-			INNER JOIN	dbo.BetType B WITH (NOLOCK) 
-					ON	S.BetType = B.BetType
+			INNER JOIN	dbo.BetType B WITH (NOLOCK)	ON	S.BetType = B.BetType
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON S.LeagueId = le.LeagueId
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 					AND (@Market = -1 OR S.IsLive = @Market)
 					AND B.[Disabled] = 0
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+					AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY B.BetType, B.TypeName, B.OrderId, S.IsLive
 		ORDER BY Margin DESC, B.OrderId
 
@@ -65,13 +66,13 @@ BEGIN
 				CASE WHEN  ISNULL(SUM(S.Stake),0) <> 0 THEN (ISNULL(SUM(S.WinLost),0) -  ISNULL(SUM(S.Comm),0)) * 100/ ISNULL(SUM(S.Stake),0) ELSE NULL END AS Margin,
 				S.IsLive 
 		FROM	dbo.SummaryByBetType_Monthly S WITH (NOLOCK)
-			INNER JOIN	dbo.BetType B WITH (NOLOCK) 
-					ON	S.BetType = B.BetType
+			INNER JOIN	dbo.BetType B WITH (NOLOCK) ON	S.BetType = B.BetType
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON S.LeagueId = le.LeagueId
 		WHERE	EventDate BETWEEN @FromDate AND @ToDate
 					AND (@ViewPermission = 0 OR BettypeGroup = @ViewPermission)
 					AND (@Market = -1 OR S.IsLive = @Market)
 					AND B.[Disabled] = 0
-					AND (@IsExcludeLeagues = 0 OR (S.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+					AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY B.BetType, B.TypeName, B.OrderId, S.IsLive
 		ORDER BY Margin DESC, B.OrderId
 

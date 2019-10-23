@@ -19,6 +19,7 @@ AS
 		- 20180912@Simon: add league exclusion
 		- 20190129@John:  Fix bug for League Exclusion [Redmine ID: 107809]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
+		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -44,6 +45,7 @@ BEGIN
 		FROM 
 			dbo.TraderPerformance P WITH(NOLOCK)
 			INNER JOIN Bettype bt WITH(NOLOCK) ON P.Bettype = bt.Bettype
+			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 		WHERE
 			P.CustId = @TraderId
 			AND P.EventDate BETWEEN @FromDate AND @ToDate
@@ -53,7 +55,7 @@ BEGIN
 				)
 			AND (@Market = -1 OR P.IsLive = @Market)
 			AND bt.[Disabled] = 0
-			AND (@IsExcludeLeagues = 0 OR (P.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY P.IsLive;
 	END
 	ELSE -- by month
@@ -65,6 +67,7 @@ BEGIN
 			ISNULL(SUM(sm.MatchCount), 0) AS MatchCount,
 			sm.IsLive
 		FROM dbo.SummaryByTrader_Monthly sm (NOLOCK)
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON sm.LeagueId = le.LeagueId
 		WHERE
 			sm.CustId = @TraderId
 			AND sm.EventDate BETWEEN @FromDate AND @ToDate
@@ -73,7 +76,7 @@ BEGIN
 					@ViewPermission = 0
 					OR BettypeGroup = @ViewPermission
 				)
-			AND (@IsExcludeLeagues = 0 OR (sm.LeagueId NOT IN (SELECT le.LeagueId FROM dbo.LeagueExclusion le WITH(NOLOCK))))
+			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		GROUP BY sm.IsLive;
 	END
 END;
