@@ -1,48 +1,31 @@
 ﻿
-ALTER FUNCTION  [dbo].[strSplit_Key] (
-	@string		NVARCHAR(4000), 
-	@splitter	CHAR(1)
-)
-RETURNS @res TABLE (val INT PRIMARY KEY)
+ALTER FUNCTION  [dbo].[strSplit_Key] ( @string NVARCHAR(MAX), @splitter CHAR( 1) )
+RETURNS TABLE
+WITH SCHEMABINDING
 AS
-/**
- * Created by	: Sophia
- * Date			: 20140526
- * Task			: 
- * DB			: DBTGRS.bodb_TGRS
- * Revisions	:
- *	• 20180709@CaseyHuynh: Update SP return Empty Table if @String is EMPTY
- * Parameters:
- *  
- */
-BEGIN
-	SET @string = ISNULL(@string,'')
-	IF (@string <> '')
-	BEGIN
-		IF SUBSTRING (@string, LEN(@string), 1) <> @splitter
-			SET @string = @string + @splitter;
+/*
+	Created: Unknow
+	Task : Split string
+	DB: DBCUST.CustDB
 
-		DECLARE 
-			@start		INT,
-			@word		NVARCHAR(4000), 
-			@charindex	INT, 
-			@i			INT;
+	Original:
 
-		SET @i = 1;
-		SET @start = 1;
-		SET @charindex = CHARINDEX(@splitter, @string, @start);
+	Revisions:
+		- 20191001@Patrick: Change to use xml instead temp # [Redmine: #118117]
 
-		WHILE (@charindex <> 0)
-			 BEGIN
-				SET @word = SUBSTRING(@string, @start, @charindex - @start);
-				SET @start = @charindex + 1;
-				SET @charindex = CHARINDEX( @splitter, @string, @start);
+	Param explanation:
+*/
 
-				INSERT INTO @res VALUES (@word);
+RETURN 
+(  
+    SELECT val = y.i.value('(./text())[1]', 'nvarchar(max)')
+    FROM 
+    ( 
+    SELECT x = CONVERT(XML, '<i>' 
+        + REPLACE(@string, @splitter, '</i><i>') 
+        + '</i>').query('.')
+    ) AS a CROSS APPLY x.nodes('i') AS y(i)
+);
 
-				SET @i = @i + 1;
-			 END;
-	END;
-	RETURN;
-END;
-
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="1" isNested="0"></info>*/

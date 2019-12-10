@@ -1,6 +1,12 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_MultipleMatches]
-	@FromDate			DATE,
-	@ToDate				DATE
+		@FromDate			DATE = '20191001'
+	,	@ToDate				DATE = '20191206'
+	,	@GradeIds			VARCHAR(200)  = '' -- All
+	,	@TeamIds			VARCHAR(200)  = '' -- All
+	,	@Bettypes			VARCHAR(2000) = '1,3,7,8'
+	,	@MultipleMatches	VARCHAR(200)  = '' -- All
+	,	@IsExcludeLeagues	BIT			  = 1
+	,	@Market				SMALLINT	  = 1
 AS    
 /*  
 	Created:	20191204@Long.Luu
@@ -19,6 +25,22 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 
+	DECLARE	@GradeList TABLE (
+			Grade			TINYINT PRIMARY KEY
+	);
+
+	DECLARE	@TeamList TABLE (
+			TeamId			SMALLINT PRIMARY KEY
+	);
+
+	DECLARE	@BettypeList TABLE (
+			BetType			SMALLINT PRIMARY KEY
+	);
+
+	DECLARE	@MultipleMatchesList TABLE (
+			MultipleMatchesId TINYINT PRIMARY KEY
+	);
+
 	IF	OBJECT_ID('tempdb..#tmpMatchesInfo') IS NOT NULL
 	BEGIN
 		DROP TABLE #tmpMatchesInfo;
@@ -28,6 +50,10 @@ BEGIN
 			CustId				INT NOT NULL
 		,	MatchId				INT NOT NULL
 		,	EventDate			DATETIME
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	BetCount			INT
+		,	Margin				MONEY
 		,	GlobalShowTime		SMALLDATETIME
 	);
 
@@ -78,11 +104,38 @@ BEGIN
 
 	CREATE TABLE	#tmpMatchesMultiple (
 			CustId				INT NOT NULL
+		,	Username			VARCHAR(50)
+		,	Grade				TINYINT
+		,	TeamId				SMALLINT
 		,	MatchGroup			INT
-		,	MatchCount			TINYINT
+		,	MultipleMatchCount	TINYINT
+		,   MatchList			VARCHAR(MAX)
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	BetCount			INT
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpMatchesMultiple_CustId ON #tmpMatchesMultiple (
+			CustId				ASC
+	);
+
+	CREATE NONCLUSTERED INDEX	#CIX_tmpMatchesMultiple_Grade ON #tmpMatchesMultiple (
+			Grade				ASC
+	);
+	
+	IF	OBJECT_ID('tempdb..#tmpMatchesInfoMultiple') IS NOT NULL
+	BEGIN
+		DROP TABLE #tmpMatchesInfoMultiple;
+	END;
+
+	CREATE TABLE	#tmpMatchesInfoMultiple (
+			CustId				INT NOT NULL
+		,	MatchGroup			INT
+		,	MatchId				INT NOT NULL
+		,	GlobalShowTime		SMALLDATETIME
+	);
+
+	CREATE CLUSTERED INDEX	#CIX_#tmpMatchesInfoMultiple_CustId ON #tmpMatchesInfoMultiple (
 			CustId				ASC
 	);
 
@@ -112,7 +165,7 @@ BEGIN
 			@BalanceUpDay	= BUDay
 		,	@MoveBetsDay	= MBDay
 	FROM #tmpDLBUMBData;
-
+	
 	-- Compute Date range
 	IF @FromDate < @BalanceUpDay
 	BEGIN
@@ -147,23 +200,57 @@ BEGIN
 		SELECT @IsGetDataFromOrigin = 1
 	END;
 
-	-- Get Trader-Match in range FROM-TO
-	INSERT INTO #tmpMatchesInfo(CustId, MatchId, EventDate)
-	SELECT DISTINCT t.[CustId]
-		,	t.[MatchId]
-		,	t.[EventDate]
-	FROM [bodb_TGRS].[dbo].[TraderPerformance] AS t WITH(NOLOCK)
-	WHERE t.CustId <> -1 
-	AND t.BetType IN (1,3,7,8)
-	AND t.EventDate BETWEEN @FromDate AND @ToDate
-	AND t.IsLive = 1;
+	IF	@GradeIds <> ''
+		 INSERT INTO @GradeList (Grade)
+		 SELECT ssk.val FROM dbo.strSplit_Key(@GradeIds, ',') ssk;
+	ELSE
+		 INSERT INTO @GradeList (Grade)
+		 SELECT DISTINCT t.Grade FROM dbo.Trader AS t WITH (NOLOCK);
+
+	IF	@TeamIds <> ''
+		 INSERT INTO @TeamList (TeamId)
+		 SELECT ssk.val FROM dbo.strSplit_Key(@TeamIds, ',') ssk;
+	ELSE 
+		 INSERT INTO @TeamList (TeamId)
+		 SELECT	t.TeamId FROM dbo.Team AS t WITH (NOLOCK);
+
+	IF	@Bettypes <> ''
+		 INSERT INTO @BettypeList (Bettype)
+		 SELECT ssk.val FROM dbo.strSplit_Key(@Bettypes, ',') ssk;
+	ELSE 
+		 INSERT INTO @BettypeList (bettype)
+		 SELECT bt.BetType FROM	dbo.BetType AS bt WITH (NOLOCK) WHERE bt.BetType IN (1,3,7,8);
+
+	IF	@MultipleMatches <> ''
+		 INSERT INTO @MultipleMatchesList (MultipleMatchesId)
+		 SELECT ssk.val FROM dbo.strSplit_Key(@MultipleMatches, ',') ssk;
+
+	-- Get Trader-Match in range
+	INSERT INTO #tmpMatchesInfo(CustId, MatchId, EventDate, Turnover, WinLoss, BetCount)
+	SELECT DISTINCT tp.CustId
+		,	tp.MatchId
+		,	tp.EventDate
+		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
+		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss
+		,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
+	FROM dbo.TraderPerformance AS tp WITH(NOLOCK)
+		INNER JOIN bodb02.dbo.League AS l WITH(NOLOCK) ON tp.LeagueId = l.LeagueId
+		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
+		INNER JOIN @BettypeList AS b ON b.Bettype = tp.BetType
+	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
+		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+		AND (@Market = -1 OR tp.IsLive = @Market)
+		AND tp.CustId <> 0
+	GROUP BY tp.CustId
+		,	tp.MatchId
+		,	tp.EventDate;
 
 	IF(@IsGetDataFromOrigin = 1)
 	BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
 		FROM #tmpMatchesInfo AS t
-		INNER JOIN bodb02.dbo.Match AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
+			INNER JOIN bodb02.dbo.Match AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
 	END;
 
 	IF(@IsGetDataFrom14 = 1)
@@ -171,7 +258,7 @@ BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
 		FROM #tmpMatchesInfo AS t
-		INNER JOIN bodb02.dbo.match14 AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
+			INNER JOIN bodb02.dbo.match14 AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
 	END;
 
 	IF(@IsGetDataFromBK = 1)
@@ -179,14 +266,15 @@ BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
 		FROM #tmpMatchesInfo AS t
-		INNER JOIN bodb_Archive.dbo.match_bk AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
+			INNER JOIN bodb_Archive.dbo.match_bk AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
 	END;
-
+	
 	-- Get all traders have traded in the report range
 	INSERT INTO #tmpTraders(CustId)
 	SELECT DISTINCT t. CustId
 	FROM #tmpMatchesInfo AS t WITH(NOLOCK);
 
+	-- Traverse through all traders, making recurive for each
 	DECLARE @CurrentTrader INT;
 	WHILE	EXISTS (SELECT 1 FROM #tmpTraders)
 	BEGIN
@@ -216,20 +304,51 @@ BEGIN
 				INNER JOIN #tmpMatches AS t1 WITH(NOLOCK) ON rs.OrderedIndex + 1 = t1.OrderedIndex
 			WHERE DATEDIFF(MINUTE, rs.GlobalShowTime, t1.GlobalShowTime) <= 30
 		)
-		INSERT INTO #tmpMatchesMultiple(CustId, MatchGroup, MatchCount)
-		SELECT DISTINCT CustId, MatchGroup, COUNT(1)
-		FROM rs 
-		GROUP BY CustId, MatchGroup;
+		INSERT INTO #tmpMatchesInfoMultiple(CustId, MatchGroup, MatchId, GlobalShowTime)
+		SELECT CustId, MatchGroup, MatchId, GlobalShowTime
+		FROM rs;
 
 		DELETE	t WITH(ROWLOCK)
 		FROM	#tmpTraders AS t
 		WHERE	t.CustId = @CurrentTrader;
 	END;
 
-	SELECT m.CustId, m.MatchCount, COUNT(1) AS MultipleTimes
+	INSERT INTO #tmpMatchesMultiple(CustId, Username, Grade, TeamId, MatchGroup, MultipleMatchCount, MatchList, Turnover, WinLoss, BetCount)
+	SELECT mm1.CustId, t.Username, t.Grade, t.TeamId, mm1.MatchGroup
+		,	COUNT (1) AS MultipleMatchCount
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), mm2.MatchId) 
+									FROM #tmpMatchesInfoMultiple mm2 WITH (NOLOCK)
+									WHERE mm1.CustId = mm2.CustId AND mm1.MatchGroup = mm2.MatchGroup
+									FOR XML PATH('')), 1, 1, '')	
+		,	SUM(mi.Turnover)							AS Turnover
+		,	SUM(mi.WinLoss)								AS WinLoss
+		,	SUM(mi.BetCount)							AS BetCount										
+	FROM #tmpMatchesInfoMultiple mm1 WITH (NOLOCK) 
+		INNER JOIN #tmpMatchesInfo mi WITH (NOLOCK) ON mm1.CustId = mi.CustId AND mm1.MatchId = mi.MatchId
+		INNER JOIN dbo.Trader AS t WITH(NOLOCK) ON mm1.CustId = t.CustId
+	WHERE (@GradeIds = '' OR t.Grade IN (SELECT Grade FROM @GradeList))
+		AND (@TeamIds = '' OR t.TeamId IN (SELECT TeamId FROM @TeamList))
+	GROUP BY mm1.CustId, t.Username, t.Grade, t.TeamId, mm1.MatchGroup;
+	
+	SELECT	m.CustId
+		,	m.Username
+		,	m.Grade
+		,	t.TeamName
+		,	m.MultipleMatchCount AS MultipleMatches
+		,	COUNT(1) AS MultipleTimes
+		,	STUFF((SELECT '#', CONVERT(VARCHAR(MAX), m2.MatchList) 
+									FROM #tmpMatchesMultiple m2 WITH (NOLOCK)
+									WHERE m.CustId = m2.CustId AND m.MultipleMatchCount = m2.MultipleMatchCount
+									FOR XML PATH('')), 1, 1, '') AS MatchList
+		,	SUM(m.Turnover) AS Turnover
+		,	SUM(m.WinLoss) AS Winloss
+		,	SUM(m.BetCount) AS BetCount
+		,	SUM(m.WinLoss) * 100 / SUM(m.Turnover) AS Margin
 	FROM #tmpMatchesMultiple AS m WITH(NOLOCK)
-	GROUP BY m.CustId, m.MatchCount
-	ORDER BY m.CustId DESC;
+		INNER JOIN dbo.Team AS t WITH(NOLOCK) ON m.TeamId = t.TeamId
+	WHERE (@MultipleMatches = '' OR m.MultipleMatchCount IN (SELECT MultipleMatchesId FROM @MultipleMatchesList))
+	GROUP BY m.CustId, m.Username, m.Grade, t.TeamName, m.MultipleMatchCount
+	ORDER BY m.Username, m.MultipleMatchCount ASC;
 END;
 
 GO
