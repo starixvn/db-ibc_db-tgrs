@@ -131,8 +131,8 @@ BEGIN
 	
 	INSERT INTO #tmpMatchesInfo(MatchId, MatchGroup)
 	SELECT s2.val, s1.rank
-	FROM bodb02.dbo.strSplit(@MatchIds, '#') s1
-	CROSS APPLY bodb02.dbo.strSplit(s1.val, ',') s2;
+	FROM dbo.strSplit_Key(@MatchIds, '#') s1
+	CROSS APPLY dbo.strSplit_Key(s1.val, ',') s2;
 
 	-- Get Trader-Match in range
 	INSERT INTO #tmpMatches(MatchId, EventDate, LeagueName, MatchGroup, Turnover, WinLoss, BetCount, Margin)
