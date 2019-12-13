@@ -1,7 +1,19 @@
-﻿
-ALTER FUNCTION  [dbo].[strSplit_Key] ( @string NVARCHAR(MAX), @splitter CHAR( 1) )
+﻿ALTER FUNCTION  [dbo].[strSplit_Key] ( @string NVARCHAR(MAX), @splitter CHAR( 1) )
 RETURNS @res TABLE ( id INT PRIMARY KEY, rank INT, val NVARCHAR(4000) )
+
 AS
+/*
+	Created: Long.Luu
+	Task : Split string
+	DB:	DBTGRS.bodb_TGRS
+	Original:
+
+	Revisions:
+		- 20191212@Long.Luu: Update Split string [Redmine: #118960]
+
+	Param explanation:
+*/
+
 BEGIN
      IF SUBSTRING(@string, LEN(@string), 1) <> @splitter
           SET @string = @string + @splitter
