@@ -50,7 +50,7 @@ BEGIN
 		,	MatchGroup			INT
 		,	HomeId				INT
 		,	AwayId				INT
-		,	LeagueName			NVARCHAR(50)
+		,	LeagueName			NVARCHAR(500)
 		,	Turnover			MONEY
 		,	WinLoss				MONEY
 		,	BetCount			INT
