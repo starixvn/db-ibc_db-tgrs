@@ -33,4 +33,4 @@ BEGIN
 END
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="1" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="" selecters="bodbTGRSNet" isFunction="1" isNested="1"></info>*/
