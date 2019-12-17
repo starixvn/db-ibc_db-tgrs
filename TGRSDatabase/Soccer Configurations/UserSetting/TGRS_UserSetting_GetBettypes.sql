@@ -1,6 +1,6 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_UserSetting_GetBettypes]
-	@UserId INT,
-	@BettypePermission INT
+﻿ALTER PROCEDURE [dbo].[TGRS_UserSetting_GetBettypes]
+		@UserId			INT
+	, 	@BettypePermission	INT
 /*
 	Creator: Simon
 	Date: 2017-11-27
@@ -9,6 +9,8 @@
 
 	Revision:
 		- 20171205@Simon: get only Live data & Bettypes are not disabled
+		- 20191212@JohnNgo: Update strSplit_Key [Redmine: #118960]
+
 	Param's Explanation:
 		@ViewPermission = 0: all bet types
 				 = 1: major bet types
@@ -35,7 +37,7 @@ BEGIN
 
 	
 	INSERT INTO #DefaultBettypes
-	SELECT * 
+	SELECT val 
 	FROM dbo.strSplit_Key(@Bettypes, ',');
 
 	SELECT 
@@ -50,10 +52,4 @@ BEGIN
 	DROP TABLE #DefaultBettypes;
 END
 
-/* 
-GO
-GRANT EXECUTE ON [dbo].[TGRS_UserSetting_GetBettypes] TO [bodbTGRSNet]
-GO
-GRANT VIEW DEFINITION ON [dbo].[TGRS_UserSetting_GetBettypes] TO [bodbTGRSNet]
-GO
-*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
