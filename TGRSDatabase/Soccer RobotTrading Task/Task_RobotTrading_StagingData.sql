@@ -433,7 +433,7 @@ BEGIN
 	FROM bodb02.dbo.custInfo AS c WITH(NOLOCK)
 	WHERE c.recommend = 52466;
 
-	TRUNCATE TABLE dbo.Staging_EventDate;
+	TRUNCATE TABLE dbo.RobotStaging_EventDate;
 
 	IF	@IsGetDataFromBK = 1
 	BEGIN
@@ -541,7 +541,7 @@ BEGIN
 
 		IF (@IsRunningJob = 1)
 		BEGIN
-			INSERT INTO dbo.Staging_EventDate (EventDate)
+			INSERT INTO dbo.RobotStaging_EventDate (EventDate)
 			SELECT WinlostDate FROM #tmpWinlossDates WITH(NOLOCK);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -551,7 +551,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From BK - Insert Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From BK - Insert RobotStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
 		
@@ -925,7 +925,7 @@ BEGIN
 
 		IF (@IsRunningJob = 1)
 		BEGIN
-			INSERT INTO dbo.Staging_EventDate (EventDate)
+			INSERT INTO dbo.RobotStaging_EventDate (EventDate)
 			SELECT WinlostDate FROM #tmpWinlossDates WITH(NOLOCK);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -935,7 +935,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From 14 - Insert RobotStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
 
@@ -1315,7 +1315,7 @@ BEGIN
 
 		IF (@IsRunningJob = 1)
 		BEGIN
-			INSERT INTO dbo.Staging_EventDate (EventDate)
+			INSERT INTO dbo.RobotStaging_EventDate (EventDate)
 			SELECT WinlostDate FROM #tmpWinlossDates WITH(NOLOCK);
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1325,7 +1325,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert Staging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From 14 - Insert RobotStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
 

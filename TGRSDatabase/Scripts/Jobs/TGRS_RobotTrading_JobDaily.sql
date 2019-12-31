@@ -185,7 +185,7 @@ BEGIN
 														BEGIN
 															SELECT @EventDate = (
 																	SELECT TOP 1 EventDate
-																	FROM [dbo].[Staging_EventDate] WITH (NOLOCK)
+																	FROM [dbo].[RobotStaging_EventDate] WITH (NOLOCK)
 																	WHERE EventDate > @EventDate
 																	ORDER BY EventDate ASC
 																	)
@@ -232,7 +232,7 @@ BEGIN
 														BEGIN
 															SELECT @Month = (
 																	SELECT TOP (1) DATEADD(DAY, 1 - DAY(EventDate), EventDate)
-																	FROM [dbo].[Staging_EventDate] WITH (NOLOCK)
+																	FROM [dbo].[RobotStaging_EventDate] WITH (NOLOCK)
 																	WHERE DATEADD(DAY, 1 - DAY(EventDate), EventDate) > @Month
 																	)
 
