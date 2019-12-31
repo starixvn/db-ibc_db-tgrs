@@ -476,7 +476,7 @@ BEGIN
 			,	[BetChoice]			= b.BetChoice 
 			,	[Is8RM]				= b.Is8RM
 		FROM	#tmpFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
-				LEFT JOIN #tmpTraders AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
+				INNER JOIN #tmpTraders AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.BetType = t.MainDBBetType
 				CROSS APPLY	(
