@@ -211,12 +211,12 @@ BEGIN
 			CustId				ASC
 	);
 
-	IF	OBJECT_ID('tempdb..#tmpStagingTraderPerformance') IS NOT NULL
+	IF	OBJECT_ID('tempdb..#tmpRobotTradingPerformance') IS NOT NULL
 	BEGIN
-		DROP TABLE	#tmpStagingTraderPerformance;
+		DROP TABLE	#tmpRobotTradingPerformance;
 	END;
 
-	CREATE TABLE	#tmpStagingTraderPerformance (
+	CREATE TABLE	#tmpRobotTradingPerformance (
 			TraderId			INT
 		,	CustId				INT
 		,	WorkShift			TINYINT
@@ -245,12 +245,12 @@ BEGIN
 		,	LeagueGroupId		SMALLINT
 	);
 	
-	CREATE CLUSTERED INDEX #CIX_tmpDLStagingTraderPerformanceIdx ON #tmpStagingTraderPerformance (
+	CREATE CLUSTERED INDEX #CIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
 			TraderId			ASC
 		,	EventDate			ASC
 	); 
 
-	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLStagingTraderPerformanceIdx ON #tmpStagingTraderPerformance (
+	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
 			CustId				ASC
 	);
 
@@ -447,7 +447,7 @@ BEGIN
 				b.EventDate, b.SportType, b.LeagueId, b.LeagueGroupId, b.HomeId, b.AwayId, b.LiveIndicator, b.BetChoice, b.Is8RM
 		FROM	#tmpFilteredBettransByBatch AS b WITH(NOLOCK);
 			
-		INSERT INTO	#tmpStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
+		INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
 			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, Is8RM)
 		SELECT	[TraderId]			= t.TraderId
 			,	[CustId]			= b.CustId
@@ -551,7 +551,7 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			RAISERROR('From Origin - Insert #tmpStagingTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			RAISERROR('From Origin - Insert #tmpRobotTradingPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		DELETE dbo.RobotTrading WHERE EventDate = @WinlostDate AND Bettype IN (SELECT BetType FROM #tmpFilteredBettypes WITH (NOLOCK));
@@ -579,7 +579,7 @@ BEGIN
 			,	[WinLoss_AR]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.ActualRate)
 			,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 			,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
-		FROM	#tmpStagingTraderPerformance AS t WITH(NOLOCK) 
+		FROM	#tmpRobotTradingPerformance AS t WITH(NOLOCK) 
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 		WHERE	t.EventDate = @WinlostDate
 		GROUP BY t.TraderId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId;
@@ -589,7 +589,7 @@ BEGIN
 
 		IF	@Debug = 1
 		BEGIN
-			RAISERROR('From Origin - Insert TraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			RAISERROR('From Origin - Insert RobotTrading - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
 		-- SUM DAILY
