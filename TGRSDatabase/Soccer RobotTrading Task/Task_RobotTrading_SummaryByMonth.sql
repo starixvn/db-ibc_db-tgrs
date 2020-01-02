@@ -122,7 +122,7 @@ BEGIN;
 				,	[BetCount]	
 				,	[MatchCount]
 			)
-			SELECT	[EventDate]		= @Month 
+			SELECT	[EventDate]		= @StartDate 
 				,	[BetType]		= t.[BetType]
 				,	[LeagueId]		= t.[LeagueId]
 				,	[LeagueGroupId] = t.[LeagueGroupId]

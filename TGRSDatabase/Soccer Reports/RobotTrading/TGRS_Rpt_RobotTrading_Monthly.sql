@@ -21,18 +21,17 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 
-	DECLARE @FromDateMonth	INT = DAY(@FromDate),
+	DECLARE @FromDateMonth	INT = MONTH(@FromDate),
 			@FromDateYear	INT = YEAR(@FromDate),
-			@ToDateMonth	INT = DAY(@ToDate),
+			@ToDateMonth	INT = MONTH(@ToDate),
 			@ToDateYear		INT = YEAR(@ToDate);
 
 	DECLARE @FirstMonthFromDate DATE = @FromDate,
 			@FirstMonthToDate	DATE,
-			@LastMonthFromDate	DATE = CAST('01' + CAST(@ToDateMonth AS VARCHAR) + CAST(@ToDateYear AS VARCHAR) AS DATE),
+			@LastMonthFromDate	DATE = CAST(CAST(@ToDateMonth AS VARCHAR) + '/01/' + CAST(@ToDateYear AS VARCHAR) AS DATE),
 			@LastMonthToDate	DATE = @ToDate,
-			@TheRestFromDate	DATE = CAST('01' + CAST((@FromDateMonth + 1) AS VARCHAR) + CAST(@FromDateYear AS VARCHAR) AS DATE),
+			@TheRestFromDate	DATE = CAST(CAST(MONTH(DATEADD(MONTH, 1, @FromDate)) AS VARCHAR) + '/01/' + CAST(YEAR(DATEADD(MONTH, 1, @FromDate)) AS VARCHAR) AS DATE),
 			@TheRestToDate		DATE;
-
 	SELECT	@FirstMonthToDate = DATEADD(DAY, -1, @TheRestFromDate)
 		,	@TheRestToDate = DATEADD(DAY, -1, @LastMonthFromDate);
 
@@ -73,80 +72,109 @@ BEGIN
 		INSERT INTO @LeagueGroups
 		VALUES(1);
 
-	-- 8RM performance
-	INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
-	SELECT	@FirstMonthFromDate
-		,	SUM(r.BetCount)
-		,	SUM(r.Stake_VR)
-		,	- SUM(r.WinLoss_VR - r.Comm_VR)
-		,	SUM(r.Stake_AR)
-		,	- SUM(r.WinLoss_AR - r.Comm_AR)
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
-	WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate
-		AND r.Is8RM = 1;
+	IF (DATEADD(MONTH, 2, @FromDate) >= @ToDate)
+	BEGIN
+		-- 8RM performance
+		INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	- SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	- SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+			AND r.Is8RM = 1
+		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
-	INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
-	SELECT	r.EventDate
-		,	SUM(r.BetCount)
-		,	SUM(r.Stake_VR)
-		,	- SUM(r.WinLoss_VR - r.Comm_VR)
-		,	SUM(r.Stake_AR)
-		,	- SUM(r.WinLoss_AR - r.Comm_AR)
-	FROM dbo.RobotTrading_Monthly AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
-	WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
-		AND r.Is8RM = 1
-	GROUP BY r.EventDate;
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
+	END
+	ELSE
+	BEGIN
+		-- 8RM performance
+		INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	@FirstMonthFromDate
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	- SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	- SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate
+			AND r.Is8RM = 1;
 
-	INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
-	SELECT	@LastMonthFromDate
-		,	SUM(r.BetCount)
-		,	SUM(r.Stake_VR)
-		,	- SUM(r.WinLoss_VR - r.Comm_VR)
-		,	SUM(r.Stake_AR)
-		,	- SUM(r.WinLoss_AR - r.Comm_AR)
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
-	WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate
-		AND r.Is8RM = 1;
+		INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	- SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	- SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading_Monthly AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
+			AND r.Is8RM = 1
+		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
+		INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	@LastMonthFromDate
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	- SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	- SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate
+			AND r.Is8RM = 1;
 
+		-- All others performance
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	@FirstMonthFromDate
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate;
 
-	-- All others performance
-	INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
-	SELECT	@FirstMonthFromDate
-		,	SUM(r.BetCount)
-		,	SUM(r.Stake_VR)
-		,	SUM(r.WinLoss_VR - r.Comm_VR)
-		,	SUM(r.Stake_AR)
-		,	SUM(r.WinLoss_AR - r.Comm_AR)
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
-	WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate;
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading_Monthly AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
+		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
-	INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
-	SELECT	r.EventDate
-		,	SUM(r.BetCount)
-		,	SUM(r.Stake_VR)
-		,	SUM(r.WinLoss_VR - r.Comm_VR)
-		,	SUM(r.Stake_AR)
-		,	SUM(r.WinLoss_AR - r.Comm_AR)
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
-	WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
-	GROUP BY r.EventDate;
-
-	INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
-	SELECT	@LastMonthFromDate
-		,	SUM(r.BetCount)
-		,	SUM(r.Stake_VR)
-		,	SUM(r.WinLoss_VR - r.Comm_VR)
-		,	SUM(r.Stake_AR)
-		,	SUM(r.WinLoss_AR - r.Comm_AR)
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
-	WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate;
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		SELECT	@LastMonthFromDate
+			,	SUM(r.BetCount)
+			,	SUM(r.Stake_VR)
+			,	SUM(r.WinLoss_VR - r.Comm_VR)
+			,	SUM(r.Stake_AR)
+			,	SUM(r.WinLoss_AR - r.Comm_AR)
+		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate;
+	END;
 
 	-- League & Match Count
 	SELECT COUNT(DISTINCT r.LeagueId) AS LeagueCount
@@ -177,7 +205,7 @@ BEGIN
 		,	CASE WHEN ISNULL(SUM(t.Stake_AR), 0) <> 0 THEN SUM(t.WinLoss_AR)*100/SUM(t.Stake_AR) ELSE NULL END AS Total_Margin_AR8RM
 	FROM #tmpTotalPerformance AS t WITH(NOLOCK)
 		INNER JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.RptMonth = r.RptMonth;
-
+		
 	-- Detailed by Bettype
 	SELECT	t.RptMonth
 		,	t.BetCount
@@ -202,7 +230,8 @@ BEGIN
 		,	t.WinLoss_AR AS Winloss_AR8RM
 		,	CASE WHEN ISNULL(t.Stake_AR, 0) <> 0 THEN t.WinLoss_AR*100/t.Stake_AR ELSE NULL END AS Margin_AR8RM
 	FROM #tmpTotalPerformance AS t WITH(NOLOCK)
-		INNER JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.RptMonth = r.RptMonth;
+		INNER JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.RptMonth = r.RptMonth
+	WHERE t.BetCount IS NOT NULL;
 
 	DROP TABLE #tmp8RMPerformance;
 	DROP TABLE #tmpTotalPerformance;
