@@ -57,6 +57,7 @@ BEGIN
 	CREATE TABLE	#tmpTotalPerformance (
 			RptMonth			DATE PRIMARY KEY
 		,   BetCount			INT
+		,   MatchCount			INT
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
 		,	Stake_AR			MONEY
@@ -88,9 +89,10 @@ BEGIN
 			AND r.Is8RM = 1
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
-		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
 			,	SUM(r.BetCount)
+			,	COUNT(DISTINCT r.MatchId)
 			,	SUM(r.Stake_VR)
 			,	SUM(r.WinLoss_VR - r.Comm_VR)
 			,	SUM(r.Stake_AR)
@@ -141,9 +143,10 @@ BEGIN
 			AND r.Is8RM = 1;
 
 		-- All others performance
-		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 		SELECT	@FirstMonthFromDate
 			,	SUM(r.BetCount)
+			,	COUNT(DISTINCT r.MatchId)
 			,	SUM(r.Stake_VR)
 			,	SUM(r.WinLoss_VR - r.Comm_VR)
 			,	SUM(r.Stake_AR)
@@ -152,21 +155,28 @@ BEGIN
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate;
 
-		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
 			,	SUM(r.BetCount)
+			,	SUM(mc.MatchCount)
 			,	SUM(r.Stake_VR)
 			,	SUM(r.WinLoss_VR - r.Comm_VR)
 			,	SUM(r.Stake_AR)
 			,	SUM(r.WinLoss_AR - r.Comm_AR)
 		FROM dbo.RobotTrading_Monthly AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			CROSS APPLY	(
+				SELECT	[MatchCount]	= CASE	WHEN r.Is8RM = 1 THEN 0
+											ELSE r.MatchCount
+										END
+				) AS mc
 		WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
-		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 		SELECT	@LastMonthFromDate
 			,	SUM(r.BetCount)
+			,	COUNT(DISTINCT r.MatchId)
 			,	SUM(r.Stake_VR)
 			,	SUM(r.WinLoss_VR - r.Comm_VR)
 			,	SUM(r.Stake_AR)
@@ -209,6 +219,7 @@ BEGIN
 	-- Detailed by Bettype
 	SELECT	t.RptMonth
 		,	t.BetCount
+		,	t.MatchCount
 
 		,	t.Stake_VR
 		,	t.WinLoss_VR

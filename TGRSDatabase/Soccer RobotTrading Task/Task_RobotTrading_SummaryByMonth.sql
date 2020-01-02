@@ -69,6 +69,45 @@ BEGIN;
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
 			,	t.[Is8RM];
+ 
+		DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
+		WHERE EventDate = @Month;
+
+		INSERT INTO [dbo].[RobotTrading_Monthly]
+		(
+				[TraderId]
+			,	[EventDate]
+			,	[LeagueId]
+			,	[LeagueGroupId]
+			,	[Is8RM]
+			,	[Stake_VR]
+			,	[WinLoss_VR]
+			,	[Comm_VR]
+			,	[Stake_AR]
+			,	[WinLoss_AR]
+			,	[Comm_AR]			
+			,	[BetCount]	
+			,	[MatchCount]
+		)
+		SELECT	[TraderId]		= t.TraderId
+			,	[EventDate]		= @Month 
+			,	[LeagueId]		= t.[LeagueId]
+			,	[LeagueGroupId] = t.[LeagueGroupId]
+			,	[Is8RM]			= t.[Is8RM]
+			,	[Stake_VR]		= SUM(t.[Stake_VR]) 
+			,	[WinLoss_VR]	= SUM(t.[WinLoss_VR]) 
+			,	[Comm_VR]		= SUM(t.[Comm_VR]) 
+			,	[Stake_AR]		= SUM(t.[Stake_AR]) 
+			,	[WinLoss_AR]	= SUM(t.[WinLoss_AR]) 
+			,	[Comm_AR]		= SUM(t.[Comm_AR]) 
+			,	[BetCount]		= SUM(t.[BetCount]) 
+			,	[MatchCount]	= COUNT(DISTINCT t.[MatchId]) 
+		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
+		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
+		 GROUP BY t.TraderId
+			,	t.[LeagueId]
+			,	t.[LeagueGroupId]
+			,	t.[Is8RM];
 	END
 	ELSE IF (@GenerateFromDate IS NOT NULL AND @GenerateToDate IS NOT NULL)
 	BEGIN
@@ -138,6 +177,45 @@ BEGIN;
 			 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 			 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 			 GROUP BY t.[BetType]
+				,	t.[LeagueId]
+				,	t.[LeagueGroupId]
+				,	t.[Is8RM];
+
+			DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
+			WHERE EventDate = @StartDate;
+
+			INSERT INTO [dbo].[RobotTrading_Monthly]
+			(
+					[TraderId]
+				,	[EventDate]
+				,	[LeagueId]
+				,	[LeagueGroupId]
+				,	[Is8RM]
+				,	[Stake_VR]
+				,	[WinLoss_VR]
+				,	[Comm_VR]
+				,	[Stake_AR]
+				,	[WinLoss_AR]
+				,	[Comm_AR]			
+				,	[BetCount]
+				,	[MatchCount]	
+			)
+			SELECT	[TraderId]		= t.TraderId
+				,	[EventDate]		= @StartDate 
+				,	[LeagueId]		= t.[LeagueId]
+				,	[LeagueGroupId] = t.[LeagueGroupId]
+				,	[Is8RM]			= t.[Is8RM]
+				,	[Stake_VR]		= SUM(t.[Stake_VR]) 
+				,	[WinLoss_VR]	= SUM(t.[WinLoss_VR]) 
+				,	[Comm_VR]		= SUM(t.[Comm_VR]) 
+				,	[Stake_AR]		= SUM(t.[Stake_AR]) 
+				,	[WinLoss_AR]	= SUM(t.[WinLoss_AR]) 
+				,	[Comm_AR]		= SUM(t.[Comm_AR]) 
+				,	[BetCount]		= SUM(t.[BetCount]) 
+				,	[MatchCount]	= COUNT(DISTINCT t.[MatchId]) 
+			 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
+			 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
+			 GROUP BY t.TraderId
 				,	t.[LeagueId]
 				,	t.[LeagueGroupId]
 				,	t.[Is8RM];
