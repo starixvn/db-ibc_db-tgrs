@@ -161,7 +161,7 @@ BEGIN;
 				,	[BetCount]	
 				,	[MatchCount]
 			)
-			SELECT	[EventDate]		= @StartDate 
+			SELECT	[EventDate]		= @WinLostDate 
 				,	[BetType]		= t.[BetType]
 				,	[LeagueId]		= t.[LeagueId]
 				,	[LeagueGroupId] = t.[LeagueGroupId]
@@ -182,7 +182,7 @@ BEGIN;
 				,	t.[Is8RM];
 
 			DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
-			WHERE EventDate = @StartDate;
+			WHERE EventDate = @WinLostDate;
 
 			INSERT INTO [dbo].[RobotTrading_Monthly]
 			(
@@ -201,7 +201,7 @@ BEGIN;
 				,	[MatchCount]	
 			)
 			SELECT	[TraderId]		= t.TraderId
-				,	[EventDate]		= @StartDate 
+				,	[EventDate]		= @WinLostDate 
 				,	[LeagueId]		= t.[LeagueId]
 				,	[LeagueGroupId] = t.[LeagueGroupId]
 				,	[Is8RM]			= t.[Is8RM]

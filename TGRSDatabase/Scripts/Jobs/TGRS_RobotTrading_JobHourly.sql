@@ -142,7 +142,7 @@ BEGIN
 					,	@step_name					= N'01. Robot Trading Staging Realtime Data'
 					,	@step_id					= @Loop
 					,	@cmdexec_success_code		= 0
-					,	@on_success_action			= 3
+					,	@on_success_action			= 1
 					,	@on_success_step_id			= 0
 					,	@on_fail_action				= 2
 					,	@on_fail_step_id			= 0
@@ -152,7 +152,7 @@ BEGIN
 					,	@subsystem					= N'TSQL'
 					,	@database_name				= N'bodb_TGRS'
 					,	@flags						= 0
-					,	@command					= N'EXECUTE	Task_RobotTrading_StagingDataRealTime;';
+					,	@command					= N'EXECUTE	dbo.Task_RobotTrading_StagingDataRealTime;';
 
 	IF	@@ERROR <> 0 OR @ReturnCode <> 0
 		GOTO QuitWithRollback;

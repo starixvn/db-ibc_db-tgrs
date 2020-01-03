@@ -152,7 +152,7 @@ BEGIN
 					,	@subsystem					= N'TSQL'
 					,	@database_name				= N'bodb_TGRS'
 					,	@flags						= 0
-					,	@command					= N'EXECUTE	Task_RobotTrading_StagingData;';
+					,	@command					= N'EXECUTE	dbo.Task_RobotTrading_StagingData;';
 
 	IF	@@ERROR <> 0 OR @ReturnCode <> 0
 		GOTO QuitWithRollback;
@@ -180,25 +180,25 @@ BEGIN
 					,	@subsystem					= N'TSQL'
 					,	@database_name				= N'bodb_TGRS'
 					,	@flags						= 0
-					,	@command					= N'DECLARE @EventDate DATE
-														WHILE (1 = 1)
-														BEGIN
-															SELECT @EventDate = (
-																	SELECT TOP 1 EventDate
-																	FROM [dbo].[RobotStaging_EventDate] WITH (NOLOCK)
-																	WHERE EventDate > @EventDate
-																	ORDER BY EventDate ASC
-																	)
+					,	@command					= N'DECLARE @EventDate DATE = ''1900-01-01'';
+WHILE (1 = 1)
+BEGIN
+	SELECT @EventDate = (
+			SELECT TOP 1 EventDate
+			FROM [dbo].[RobotStaging_EventDate] WITH (NOLOCK)
+			WHERE EventDate > @EventDate
+			ORDER BY EventDate ASC
+			)
 
-															IF @EventDate IS NULL
-															BEGIN
-																BREAK;
-															END
-															ELSE
-															BEGIN
-																EXECUTE [dbo].[Task_RobotTrading_SummaryByDate] @Date = @EventDate
-															END
-														END;'
+	IF @EventDate IS NULL
+	BEGIN
+		BREAK;
+	END
+	ELSE
+	BEGIN
+		EXECUTE [dbo].[Task_RobotTrading_SummaryByDate] @Date = @EventDate
+	END
+END;'
 					;
 
 	IF	@@ERROR <> 0 OR @ReturnCode <> 0
@@ -227,24 +227,24 @@ BEGIN
 					,	@subsystem					= N'TSQL'
 					,	@database_name				= N'bodb_TGRS'
 					,	@flags						= 0
-					,	@command					= N'DECLARE @Month DATE;
-														WHILE (1 = 1)
-														BEGIN
-															SELECT @Month = (
-																	SELECT TOP (1) DATEADD(DAY, 1 - DAY(EventDate), EventDate)
-																	FROM [dbo].[RobotStaging_EventDate] WITH (NOLOCK)
-																	WHERE DATEADD(DAY, 1 - DAY(EventDate), EventDate) > @Month
-																	)
+					,	@command					= N'DECLARE @Month DATE = ''1900-01-01'';
+WHILE (1 = 1)
+BEGIN
+	SELECT @Month = (
+			SELECT TOP (1) DATEADD(DAY, 1 - DAY(EventDate), EventDate)
+			FROM [dbo].[RobotStaging_EventDate] WITH (NOLOCK)
+			WHERE DATEADD(DAY, 1 - DAY(EventDate), EventDate) > @Month
+			)
 
-															IF @Month IS NULL
-															BEGIN
-																BREAK;
-															END
-															ELSE
-															BEGIN
-																EXECUTE [dbo].[Task_RobotTrading_SummaryByMonth] @Month = @Month
-															END
-														END;'
+	IF @Month IS NULL
+	BEGIN
+		BREAK;
+	END
+	ELSE
+	BEGIN
+		EXECUTE [dbo].[Task_RobotTrading_SummaryByMonth] @Month = @Month
+	END
+END;'
 						;
 
 	IF	@@ERROR <> 0 OR @ReturnCode <> 0
@@ -282,7 +282,7 @@ BEGIN
 						,	@freq_recurrence_factor		= 1
 						,	@active_start_date			= 20191227
 						,	@active_end_date			= 99991231
-						,	@active_start_time			= 010000
+						,	@active_start_time			= 030000
 						;
 
 	IF	@@ERROR <> 0 OR @ReturnCode <> 0
