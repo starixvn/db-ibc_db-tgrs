@@ -158,7 +158,6 @@ BEGIN
 		,	HomeId				INT
 		,	AwayId				INT
 		,	LiveIndicator		BIT
-		,   BetChoice			NVARCHAR(10) 
 		,	Is8RM				BIT
 	);
 		
@@ -196,8 +195,7 @@ BEGIN
 		,	LeagueGroupId		SMALLINT	
 		,	HomeId				INT
 		,	AwayId				INT
-		,	LiveIndicator		BIT
-		,   BetChoice			NVARCHAR(10) 
+		,	LiveIndicator		BIT 
 		,	Is8RM				BIT
 	);
 
@@ -240,7 +238,6 @@ BEGIN
 		,	VirtualRate			FLOAT
 		,	ActualRate			FLOAT
 		,	LiveIndicator		BIT
-		,   BetChoice			NVARCHAR(10) 
 		,	Is8RM				BIT
 		,	LeagueGroupId		SMALLINT
 	);
@@ -373,36 +370,21 @@ BEGIN
 		TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 		INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, 
 				VirtualRate, ActualRate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Stake, WinLost, SMAWinLost, MatchCode,
-				EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, BetChoice, Is8RM)
+				EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM)
 		SELECT	[TransId]			= b.transid
 			,	[CustId]			= b.custid
 			,	[MatchId]			= b.matchId
 			,	[WorkShift]			= m.WorkShift
 			,	[SpecialType]		= m.SpecialType
 			,	[WinlostDate]		= b.winlostdate
-			,	[Bettype]			= CASE	WHEN b.bettype = 1308
-												THEN 153
-											WHEN b.bettype = 1311
-												THEN 154
-											WHEN b.bettype = 1316
-												THEN 155
-											WHEN b.bettype = 465
-												THEN 458
-											WHEN b.bettype = 466
-												THEN 459
-											WHEN b.bettype = 124
-												THEN 5
-											WHEN b.bettype = 125
-												THEN 15
-											ELSE b.bettype
-										END
+			,	[Bettype]			= b.bettype
 			,	[Modds]				= b.modds
 			,	[VirtualRate]		= b.virtualrate
 			,	[ActualRate]		= b.actualrate
 			,	[Tpositiontaking]	= b.tpositiontaking
 			,	[Srecommend]		= b.srecommend
 			,	[Scomm]				= b.scomm
-			,	[ExtraPT]			= CASE WHEN m.eventdate < '20170221' THEN 0 ELSE es.ExtraPT END
+			,	[ExtraPT]			= es.ExtraPT
 			,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 			,	[WinLost]			= winlost - actual_stake
 			,	[SMAWinLost]		= awinlost + mwinlost + swinlost
@@ -414,7 +396,6 @@ BEGIN
 			,	[HomeId]			= m.HomeId
 			,	[AwayId]			= m.AwayId
 			,	[LiveIndicator]		= b.liveindicator
-			,	[BetChoice]			= b.betteam
 			,	[Is8RM]				= CASE WHEN t8.CustId IS NULL THEN 0 ELSE 1 END
 		FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
 				INNER JOIN #tmpScanningMatches AS m WITH (NOLOCK) ON b.matchid = m.matchid
@@ -441,14 +422,14 @@ BEGIN
 		TRUNCATE TABLE	#tmpFilteredBettransByBatch_Distinct;
 		INSERT INTO	#tmpFilteredBettransByBatch_Distinct (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, 
 				VirtualRate, ActualRate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Stake, WinLost, SMAWinLost, MatchCode, 
-				EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, BetChoice, Is8RM)
+				EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM)
 		SELECT	DISTINCT b.TransId, b.CustId, b.MatchId, b.WorkShift, b.SpecialType, b.WinlostDate, b.Bettype, b.Modds, 
 				b.VirtualRate, b.ActualRate, b.Tpositiontaking, b.Srecommend, b.Scomm, b.ExtraPT, b.Stake, b.WinLost, b.SMAWinLost, b.MatchCode, 
-				b.EventDate, b.SportType, b.LeagueId, b.LeagueGroupId, b.HomeId, b.AwayId, b.LiveIndicator, b.BetChoice, b.Is8RM
+				b.EventDate, b.SportType, b.LeagueId, b.LeagueGroupId, b.HomeId, b.AwayId, b.LiveIndicator, b.Is8RM
 		FROM	#tmpFilteredBettransByBatch AS b WITH(NOLOCK);
 			
 		INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
-			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, Is8RM)
+			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM)
 		SELECT	[TraderId]			= t.TraderId
 			,	[CustId]			= b.CustId
 			,	[WorkShift]			= ISNULL(b.WorkShift, 1)
@@ -473,7 +454,6 @@ BEGIN
 			,	[VirtualRate]		= b.virtualrate
 			,	[ActualRate]		= b.actualrate
 			,	[LiveIndicator]		= b.LiveIndicator
-			,	[BetChoice]			= b.BetChoice 
 			,	[Is8RM]				= b.Is8RM
 		FROM	#tmpFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
 				INNER JOIN #tmpTraders AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
@@ -540,7 +520,6 @@ BEGIN
 				,	b.tpositiontaking
 				,	b.virtualrate
 				,	b.actualrate
-				,	b.BetChoice
 				,	b.LiveIndicator
 				,	b.Is8RM
 				,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
