@@ -13,9 +13,10 @@ AS
 	Revisions:		
 		- 20190627@John.Ngo: Void/Recover bet now support up to 7 days, so Data Daily & Summary need to regenerate data changes within 7 days as well [Redmine ID: 115780]
 		- 20191018@John.Ngo: Update logic generate data [Redmine ID: 118959]
+		- 20200106@John.Ngo: Update generate data for RT3 [Redmine ID: 123714]
 
 	Param's Explanation (filtered by):
-		@Flagged: 0 - All, 1 - For Soccer, 2 - For OS
+		@Flagged: 0 - All, 1 - For Soccer, 2 - For OS, 3 - For RT3
 */
 BEGIN SET NOCOUNT ON;
 
@@ -220,6 +221,82 @@ BEGIN
 	END;
 END;
 -- End Regenerate TGRS Data for OS
+
+-- Start Regenerate RT3 Data
+IF (@Flagged = 0 OR @Flagged = 3)
+BEGIN
+	INSERT INTO	#EventDate (EventDate)
+	SELECT	tally.EventDate
+	FROM	(
+		SELECT	[NoDays] = DATEDIFF(DAY, @FromDate, @ToDate) + 1
+	) cnt
+	CROSS APPLY	(
+		SELECT	TOP(cnt.NoDays)
+				[EventDate] = DATEADD(DAY, ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) - 1, @FromDate)
+		FROM		(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x10(n)
+		CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x100(n)
+		CROSS APPLY	(VALUES (0), (0), (0), (0), (0), (0), (0), (0), (0), (0)) x1000(n)
+	) tally;
+
+	WHILE (1 = 1)
+	BEGIN
+		SELECT	TOP(1)
+				@StartDate = DATEADD(DAY, 1 - DAY(EventDate), EventDate)
+		FROM	#EventDate AS ed WITH (NOLOCK)
+		WHERE	ed.isDone = 0
+		ORDER BY EventDate DESC;
+
+		SELECT @EndDate = DATEADD(DD, -1 ,DATEADD(MM, 1, @StartDate));
+
+		IF NOT EXISTS (SELECT TOP(1) ed.isDone FROM #EventDate AS ed WHERE ed.isDone = 0)
+			BREAK;
+
+		WHILE (1 = 1)
+		BEGIN
+			SELECT TOP(1) @EventDate = EventDate
+			FROM	#EventDate AS ed
+			WHERE	ed.isDone = 0
+				AND EventDate BETWEEN @StartDate AND @EndDate
+			ORDER BY EventDate DESC;
+
+			IF	@@ROWCOUNT = 0
+				BREAK;
+
+			-- Step 1: Daily
+			IF	@Debug = 1
+			BEGIN
+				SELECT	@Msg = 'Run Job Task_RobotTrading_StagingData @GenerateFromDate = ' + CONVERT(NVARCHAR, @EventDate, 120) + N', @GenerateToDate  = ' + CONVERT(NVARCHAR, @EventDate, 120);
+				RAISERROR(@Msg, 0, 0) WITH NOWAIT;
+			END;
+
+			EXECUTE dbo.Task_RobotTrading_StagingData @Debug = @Debug, @GenerateFromDate = @EventDate, @GenerateToDate = @EventDate;
+
+			-- Step 2: Job Task_RobotTrading_SummaryByDate after calc daily
+			IF	@Debug = 1
+			BEGIN
+				SELECT	@Msg = 'Run Job Task_RobotTrading_SummaryByDate @EventDate = ' + CONVERT(NVARCHAR, @EventDate, 120);
+				RAISERROR(@Msg, 0, 0) WITH NOWAIT;
+			END;
+
+			EXECUTE dbo.Task_RobotTrading_SummaryByDate @Date = @EventDate
+
+			UPDATE #EventDate SET isDone = 1
+			WHERE EventDate = @EventDate AND isDone = 0;
+		END;
+
+		-- Step 3: Sum Monthly
+		IF	@Debug = 1
+		BEGIN
+				SELECT	@Msg = 'Run Job Task_RobotTrading_SummaryByMonth @GenerateFromDate = ' + CONVERT(NVARCHAR, @StartDate, 120) + N', @GenerateToDate  = ' + CONVERT(NVARCHAR, @EndDate, 120);
+				RAISERROR(@Msg, 0, 0) WITH NOWAIT;
+		END;
+
+		EXECUTE dbo.Task_RobotTrading_SummaryByMonth @GenerateFromDate = @StartDate, @GenerateToDate = @EndDate;
+
+	END;
+
+END;
+-- End Regenerate RT3 Data
 
 END;
 

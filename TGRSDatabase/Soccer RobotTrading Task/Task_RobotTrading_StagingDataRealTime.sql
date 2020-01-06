@@ -29,7 +29,7 @@ BEGIN
 		,	@Msg					NVARCHAR(MAX)
 		,	@Date					NVARCHAR(250);
 
-	DECLARE @Today					SMALLDATETIME;
+	DECLARE @Today					SMALLDATETIME = GETDATE();
 
 	DECLARE	@WinlostDate			DATE;
 	DECLARE @CurrentDate			DATE = CONVERT(DATE, GETDATE());
