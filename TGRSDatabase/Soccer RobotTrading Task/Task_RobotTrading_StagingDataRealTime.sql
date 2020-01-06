@@ -269,6 +269,8 @@ BEGIN
 				@WinLostDate = d.winlostdate
 		FROM	#tmpWinlossDates AS d
 		ORDER BY winlostdate ASC;
+		
+		SELECT @Date = CONVERT(NVARCHAR, @WinlostDate, 120);
 
 		-- STAGING DATA
 		-- GET Scanned Match List: Completed Soccer Match
@@ -364,8 +366,6 @@ BEGIN
 					AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
 			) AS t
 		GROUP BY t.SuperId, t.FromDate, t.ToDate;
-
-		SELECT @Date = CONVERT(NVARCHAR, @WinlostDate, 120);
 
 		TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 		INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, 
@@ -653,6 +653,45 @@ BEGIN
 		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 		 GROUP BY t.[BetType]
+			,	t.[LeagueId]
+			,	t.[LeagueGroupId]
+			,	t.[Is8RM];
+
+			DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
+		WHERE EventDate = @StartDate;
+
+		INSERT INTO [dbo].[RobotTrading_Monthly]
+		(
+				[TraderId]
+			,	[EventDate]
+			,	[LeagueId]
+			,	[LeagueGroupId]
+			,	[Is8RM]
+			,	[Stake_VR]
+			,	[WinLoss_VR]
+			,	[Comm_VR]
+			,	[Stake_AR]
+			,	[WinLoss_AR]
+			,	[Comm_AR]			
+			,	[BetCount]	
+			,	[MatchCount]
+		)
+		SELECT	[TraderId]		= t.TraderId
+			,	[EventDate]		= @StartDate 
+			,	[LeagueId]		= t.[LeagueId]
+			,	[LeagueGroupId] = t.[LeagueGroupId]
+			,	[Is8RM]			= t.[Is8RM]
+			,	[Stake_VR]		= SUM(t.[Stake_VR]) 
+			,	[WinLoss_VR]	= SUM(t.[WinLoss_VR]) 
+			,	[Comm_VR]		= SUM(t.[Comm_VR]) 
+			,	[Stake_AR]		= SUM(t.[Stake_AR]) 
+			,	[WinLoss_AR]	= SUM(t.[WinLoss_AR]) 
+			,	[Comm_AR]		= SUM(t.[Comm_AR]) 
+			,	[BetCount]		= SUM(t.[BetCount]) 
+			,	[MatchCount]	= COUNT(DISTINCT t.[MatchId]) 
+		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
+		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
+		 GROUP BY t.TraderId
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
 			,	t.[Is8RM];

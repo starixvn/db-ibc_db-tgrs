@@ -125,10 +125,13 @@ CREATE CLUSTERED INDEX CIX_RobotTrading_BettypeMonthly_EventDateBettype ON [dbo]
 	[Is8RM]				ASC
 )
 GO
-----===================C. ALTER TABLES=========================
-----===========================================================
+
 CREATE TABLE [dbo].[RobotStaging_EventDate](
 	[EventDate]			DATE NOT NULL
 ) ON [DATA]
 GO
+
+----===================C. ALTER TABLES=========================
+----===========================================================
+
 
