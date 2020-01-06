@@ -39,7 +39,7 @@ BEGIN
 		DROP TABLE	#tmpFilteredBettypes;
 
 	CREATE TABLE	#tmpFilteredBettypes (
-			BetType					SMALLINT PRIMARY KEY
+			BetType					SMALLINT PRIMARY KEY CLUSTERED
 	);
 
 	INSERT INTO #tmpFilteredBettypes(BetType)
@@ -51,7 +51,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmpScanningMatches (
-			MatchId			INT NOT NULL
+			MatchId			INT NOT NULL PRIMARY KEY CLUSTERED
 		,	EventDate		DATETIME
 		,	KickOffTime		DATETIME
 		,	WorkShift		TINYINT
@@ -64,10 +64,6 @@ BEGIN
 		,	LeagueName		NVARCHAR(100)
 		,	HomeName		NVARCHAR(100)
 		,	SpecialType		INT				
-	);
-	
-	CREATE CLUSTERED INDEX	#CIX_tmpDLScannedMatches_MatchId ON #tmpScanningMatches (
-			MatchId			ASC
 	);
 	
 	CREATE NONCLUSTERED INDEX #NIX_tmpDLScannedMatches_EventDate ON #tmpScanningMatches (
@@ -102,7 +98,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmp8RMMembers (
-			CustId			INT PRIMARY KEY
+			CustId			INT PRIMARY KEY CLUSTERED
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpWinlossDates') IS NOT NULL
@@ -163,50 +159,12 @@ BEGIN
 		
 	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatch_CustId ON #tmpFilteredBettransByBatch (
 			CustId				ASC
-	);
-	
-	IF	OBJECT_ID('tempdb..#tmpFilteredBettransByBatch_Distinct') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpFilteredBettransByBatch_Distinct;
-	END;
+	);	
 
-	CREATE TABLE	#tmpFilteredBettransByBatch_Distinct (
-			TransId				BIGINT
-		,	CustId				INT
-		,	MatchId				INT
-		,	WorkShift			INT
-		,	WinlostDate			SMALLDATETIME
-		,	Bettype				SMALLINT
-		,	SpecialType			INT
-		,	Modds				SMALLMONEY
-		,	VirtualRate			FLOAT
-		,	ActualRate			FLOAT
-		,	Tpositiontaking		SMALLMONEY
-		,	Srecommend			INT
-		,	Scomm				MONEY
-		,	ExtraPT				DECIMAL(12, 8)
-		,	Stake				MONEY
-		,	WinLost				MONEY
-		,	SMAWinLost			MONEY
-		,	MatchCode			VARCHAR(100)
-		,	EventDate			DATETIME
-		,	SportType			INT
-		,	LeagueId			INT
-		,	LeagueGroupId		SMALLINT	
-		,	HomeId				INT
-		,	AwayId				INT
-		,	LiveIndicator		BIT 
-		,	Is8RM				BIT
-	);
-
-	CREATE CLUSTERED INDEX	#CIX_tmpDLFilteredBettransByBatch_DistinctIdx ON #tmpFilteredBettransByBatch_Distinct (
+	CREATE NONCLUSTERED INDEX	#IX_tmpDLFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
 			WinlostDate			ASC
 		,	MatchId				ASC
 		,	BetType				ASC
-	);
-
-	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLFilteredBettransByBatch_DistinctIdx ON #tmpFilteredBettransByBatch_Distinct (
-			CustId				ASC
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpRobotTradingPerformance') IS NOT NULL
@@ -268,7 +226,7 @@ BEGIN
 		SELECT	TOP(1)
 				@WinLostDate = d.winlostdate
 		FROM	#tmpWinlossDates AS d
-		ORDER BY winlostdate ASC;
+		ORDER BY winlostdate DESC;
 		
 		SELECT @Date = CONVERT(NVARCHAR, @WinlostDate, 120);
 
@@ -419,14 +377,12 @@ BEGIN
 		END;
 
 		-- "DISTINCT" Prevent Page Splits
-		TRUNCATE TABLE	#tmpFilteredBettransByBatch_Distinct;
-		INSERT INTO	#tmpFilteredBettransByBatch_Distinct (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, 
-				VirtualRate, ActualRate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Stake, WinLost, SMAWinLost, MatchCode, 
-				EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM)
-		SELECT	DISTINCT b.TransId, b.CustId, b.MatchId, b.WorkShift, b.SpecialType, b.WinlostDate, b.Bettype, b.Modds, 
-				b.VirtualRate, b.ActualRate, b.Tpositiontaking, b.Srecommend, b.Scomm, b.ExtraPT, b.Stake, b.WinLost, b.SMAWinLost, b.MatchCode, 
-				b.EventDate, b.SportType, b.LeagueId, b.LeagueGroupId, b.HomeId, b.AwayId, b.LiveIndicator, b.Is8RM
-		FROM	#tmpFilteredBettransByBatch AS b WITH(NOLOCK);
+		DELETE b WITH(ROWLOCK)
+		FROM	(	
+					SELECT *, ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+					FROM #tmpFilteredBettransByBatch
+				) AS b
+		WHERE b.rn > 1;
 			
 		INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
 			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM)
@@ -455,7 +411,7 @@ BEGIN
 			,	[ActualRate]		= b.actualrate
 			,	[LiveIndicator]		= b.LiveIndicator
 			,	[Is8RM]				= b.Is8RM
-		FROM	#tmpFilteredBettransByBatch_Distinct AS b WITH (NOLOCK)
+		FROM	#tmpFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpTraders AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.BetType = t.MainDBBetType
@@ -533,7 +489,10 @@ BEGIN
 			RAISERROR('From Origin - Insert #tmpRobotTradingPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		DELETE dbo.RobotTrading WHERE EventDate = @WinlostDate AND Bettype IN (SELECT BetType FROM #tmpFilteredBettypes WITH (NOLOCK));
+		DELETE r WITH(ROWLOCK) 
+		FROM dbo.RobotTrading AS r
+			INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
+		WHERE EventDate = @WinlostDate;
 
 		INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
 			Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount)
