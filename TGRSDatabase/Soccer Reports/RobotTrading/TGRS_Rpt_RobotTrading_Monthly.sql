@@ -69,6 +69,17 @@ BEGIN
 		INSERT INTO @LeagueGroups(LeagueGroupId)
 		SELECT val 
 		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
+
+		IF CHARINDEX('6', @LeagueGroupIds) > 0
+		BEGIN
+			DELETE FROM @LeagueGroups
+			WHERE LeagueGroupId = 6;
+
+			INSERT INTO @LeagueGroups(LeagueGroupId)
+			SELECT DISTINCT l.LeagueGroupID
+			FROM bodb02.dbo.league AS l WITH(NOLOCK)
+			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5);
+		END;
 	ELSE 
 		INSERT INTO @LeagueGroups
 		VALUES(1);
