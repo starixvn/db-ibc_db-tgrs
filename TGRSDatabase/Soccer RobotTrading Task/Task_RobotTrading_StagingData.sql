@@ -545,7 +545,7 @@ BEGIN
 				,	[Tpositiontaking]	= b.tpositiontaking
 				,	[Srecommend]		= b.srecommend
 				,	[Scomm]				= b.scomm
-				,	[ExtraPT]			= CASE WHEN m.eventdate < '20170221' THEN 0 ELSE es.ExtraPT END
+				,	[ExtraPT]			= es.ExtraPT
 				,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 				,	[WinLost]			= winlost - actual_stake
 				,	[SMAWinLost]		= awinlost + mwinlost + swinlost
