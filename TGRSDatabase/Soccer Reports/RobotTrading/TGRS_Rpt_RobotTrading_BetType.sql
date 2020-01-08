@@ -51,6 +51,7 @@ BEGIN
 
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
 	IF @LeagueGroupIds <> ''
+	BEGIN
 		INSERT INTO @LeagueGroups(LeagueGroupId)
 		SELECT val 
 		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
@@ -65,9 +66,12 @@ BEGIN
 			FROM bodb02.dbo.league AS l WITH(NOLOCK)
 			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5);
 		END;
+	END
 	ELSE 
+	BEGIN
 		INSERT INTO @LeagueGroups
 		VALUES(1);
+	END;
 
 	DECLARE @Bettypes AS TABLE (BettypeId SMALLINT PRIMARY KEY CLUSTERED);
 	INSERT INTO @Bettypes(BettypeId)
