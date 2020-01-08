@@ -261,6 +261,8 @@ BEGIN
 	-- No input date range: Default job run
 	IF (@IsRunningJob = 1)
 		BEGIN
+			TRUNCATE TABLE dbo.RobotStaging_EventDate;
+		
 			SELECT @GenerateToDate = @Yesterday;
 
 			IF @BeforeMoveBetsDay = 1
@@ -382,8 +384,6 @@ BEGIN
 	SELECT c.custid
 	FROM bodb02.dbo.custInfo AS c WITH(NOLOCK)
 	WHERE c.recommend = 52466;
-
-	TRUNCATE TABLE dbo.RobotStaging_EventDate;
 
 	IF	@IsGetDataFromBK = 1
 	BEGIN
