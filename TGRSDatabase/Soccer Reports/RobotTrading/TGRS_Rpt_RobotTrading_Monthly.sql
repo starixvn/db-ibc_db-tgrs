@@ -41,7 +41,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmp8RMPerformance (
-			RptMonth			DATE PRIMARY KEY
+			RptMonth			DATE PRIMARY KEY CLUSTERED
 		,   BetCount			INT
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
@@ -55,7 +55,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmpTotalPerformance (
-			RptMonth			DATE PRIMARY KEY
+			RptMonth			DATE PRIMARY KEY CLUSTERED
 		,   BetCount			INT
 		,   MatchCount			INT
 		,	Stake_VR			MONEY
@@ -64,7 +64,7 @@ BEGIN
 		,	WinLoss_AR			MONEY
 	);	
 
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT)
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED);
 	IF @LeagueGroupIds <> ''
 		INSERT INTO @LeagueGroups(LeagueGroupId)
 		SELECT val 
@@ -84,6 +84,10 @@ BEGIN
 		INSERT INTO @LeagueGroups
 		VALUES(1);
 
+	DECLARE @Bettypes AS TABLE (BettypeId SMALLINT PRIMARY KEY CLUSTERED);
+	INSERT INTO @Bettypes(BettypeId)
+	VALUES (1), (3), (7), (8);
+	
 	IF (DATEADD(MONTH, 2, @FromDate) >= @ToDate)
 	BEGIN
 		-- 8RM performance
@@ -96,6 +100,7 @@ BEGIN
 			,	- SUM(r.WinLoss_AR - r.Comm_AR)
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 			AND r.Is8RM = 1
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
@@ -110,6 +115,7 @@ BEGIN
 			,	SUM(r.WinLoss_AR - r.Comm_AR)
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 	END
@@ -125,6 +131,7 @@ BEGIN
 			,	- SUM(r.WinLoss_AR - r.Comm_AR)
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate
 			AND r.Is8RM = 1;
 
@@ -135,8 +142,9 @@ BEGIN
 			,	- SUM(r.WinLoss_VR - r.Comm_VR)
 			,	SUM(r.Stake_AR)
 			,	- SUM(r.WinLoss_AR - r.Comm_AR)
-		FROM dbo.RobotTrading_Monthly AS r WITH(NOLOCK)
+		FROM dbo.RobotTrading_BetTypeMonthly AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
 			AND r.Is8RM = 1
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
@@ -150,6 +158,7 @@ BEGIN
 			,	- SUM(r.WinLoss_AR - r.Comm_AR)
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate
 			AND r.Is8RM = 1;
 
@@ -164,6 +173,7 @@ BEGIN
 			,	SUM(r.WinLoss_AR - r.Comm_AR)
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate;
 
 		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
@@ -174,8 +184,9 @@ BEGIN
 			,	SUM(r.WinLoss_VR - r.Comm_VR)
 			,	SUM(r.Stake_AR)
 			,	SUM(r.WinLoss_AR - r.Comm_AR)
-		FROM dbo.RobotTrading_Monthly AS r WITH(NOLOCK)
+		FROM dbo.RobotTrading_BetTypeMonthly AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 			CROSS APPLY	(
 				SELECT	[MatchCount]	= CASE	WHEN r.Is8RM = 1 THEN 0
 											ELSE r.MatchCount
@@ -194,6 +205,7 @@ BEGIN
 			,	SUM(r.WinLoss_AR - r.Comm_AR)
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate;
 	END;
 
@@ -202,6 +214,7 @@ BEGIN
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
 
 	-- Total

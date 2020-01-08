@@ -27,7 +27,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmp8RMPerformance (
-			BetType				SMALLINT PRIMARY KEY
+			BetType				SMALLINT PRIMARY KEY CLUSTERED
 		,   BetCount			INT
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
@@ -41,7 +41,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmpTotalPerformance (
-			BetType				SMALLINT PRIMARY KEY
+			BetType				SMALLINT PRIMARY KEY CLUSTERED
 		,   BetCount			INT
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
@@ -49,7 +49,7 @@ BEGIN
 		,	WinLoss_AR			MONEY
 	);	
 
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT)
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
 	IF @LeagueGroupIds <> ''
 		INSERT INTO @LeagueGroups(LeagueGroupId)
 		SELECT val 
@@ -69,6 +69,10 @@ BEGIN
 		INSERT INTO @LeagueGroups
 		VALUES(1);
 
+	DECLARE @Bettypes AS TABLE (BettypeId SMALLINT PRIMARY KEY CLUSTERED);
+	INSERT INTO @Bettypes(BettypeId)
+	VALUES (1), (3), (7), (8);
+
 	INSERT INTO #tmp8RMPerformance(BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT	r.BetType
 		,	SUM(r.BetCount)
@@ -78,6 +82,7 @@ BEGIN
 		,	- SUM(r.WinLoss_AR - r.Comm_AR)
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 		AND r.Is8RM = 1
 	GROUP BY r.BetType;
@@ -91,6 +96,7 @@ BEGIN
 		,	SUM(r.WinLoss_AR - r.Comm_AR)
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 	GROUP BY r.BetType;
 
@@ -99,6 +105,7 @@ BEGIN
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
 
 	-- Total
