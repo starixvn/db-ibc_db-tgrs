@@ -314,6 +314,12 @@ BEGIN
 			RAISERROR('From Origin - Insert #tmpTraders - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
+		-- REMOVE Scanned Match List: if not existing any Trader
+		DELETE	sm
+		FROM	#tmpScanningMatches AS sm WITH (ROWLOCK)
+				LEFT JOIN #tmpTraders AS td WITH (NOLOCK) ON sm.MatchId = td.MatchId
+		WHERE	td.MatchId IS NULL;
+
 		-- ExtraPT
 		INSERT INTO #ExtraPTSportbooks
 		SELECT t.SuperId, SUM(t.ExtraPT) AS ExtraPT, t.FromDate, t.ToDate

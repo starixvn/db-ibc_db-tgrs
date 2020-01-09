@@ -469,6 +469,12 @@ BEGIN
 			RAISERROR('From BK - Insert #tmpTraders - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 	
+		-- REMOVE Scanned Match List: if not existing any Trader
+		DELETE	sm
+		FROM	#tmpScanningMatches AS sm WITH (ROWLOCK)
+				LEFT JOIN #tmpTraders AS td WITH (NOLOCK) ON sm.MatchId = td.MatchId
+		WHERE	td.MatchId IS NULL;
+
 		INSERT INTO	#tmpWinlossDates (WinlostDate)
 		SELECT	tally.winlostdate
 		FROM	(
@@ -836,6 +842,12 @@ BEGIN
 			RAISERROR('From 14 - Insert #tmpTraders - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
+		-- REMOVE Scanned Match List: if not existing any Trader
+		DELETE	sm
+		FROM	#tmpScanningMatches AS sm WITH (ROWLOCK)
+				LEFT JOIN #tmpTraders AS td WITH (NOLOCK) ON sm.MatchId = td.MatchId
+		WHERE	td.MatchId IS NULL;
+
 		INSERT INTO	#tmpWinlossDates (WinlostDate)
 		SELECT	tally.winlostdate
 		FROM	(
@@ -1210,6 +1222,12 @@ BEGIN
 		BEGIN
 			RAISERROR('From Origin - Insert #tmpTraders - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
+
+		-- REMOVE Scanned Match List: if not existing any Trader
+		DELETE	sm
+		FROM	#tmpScanningMatches AS sm WITH (ROWLOCK)
+				LEFT JOIN #tmpTraders AS td WITH (NOLOCK) ON sm.MatchId = td.MatchId
+		WHERE	td.MatchId IS NULL;
 
 		INSERT INTO	#tmpWinlossDates (WinlostDate)
 		SELECT	tally.winlostdate
