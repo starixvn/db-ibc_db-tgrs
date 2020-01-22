@@ -11,6 +11,7 @@ AS
   
 	Revisions: 	
    		- 20191227@Long.Luu:	Created [Redmine ID: 123714]
+		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
 
 	Param's Explanation:  	
 
@@ -107,6 +108,7 @@ BEGIN
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 			AND r.Is8RM = 1
+			AND r.[Type] = 1
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
 		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
@@ -121,6 +123,7 @@ BEGIN
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+			AND r.[Type] = 1
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 	END
 	ELSE
@@ -137,7 +140,8 @@ BEGIN
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate
-			AND r.Is8RM = 1;
+			AND r.Is8RM = 1
+			AND r.[Type] = 1;
 
 		INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
@@ -151,6 +155,7 @@ BEGIN
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
 			AND r.Is8RM = 1
+			AND r.[Type] = 1
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
 		INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
@@ -164,7 +169,8 @@ BEGIN
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate
-			AND r.Is8RM = 1;
+			AND r.Is8RM = 1
+			AND r.[Type] = 1;
 
 		-- All others performance
 		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
@@ -178,7 +184,8 @@ BEGIN
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate;
+		WHERE r.EventDate BETWEEN @FirstMonthFromDate AND @FirstMonthToDate
+			AND r.[Type] = 1;
 
 		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 		SELECT	CAST(MONTH(r.EventDate) AS VARCHAR) + '/01/' + CAST(YEAR(r.EventDate) AS VARCHAR) AS DATE
@@ -197,6 +204,7 @@ BEGIN
 										END
 				) AS mc
 		WHERE r.EventDate BETWEEN @TheRestFromDate AND @TheRestToDate
+			AND r.[Type] = 1
 		GROUP BY YEAR(r.EventDate), MONTH(r.EventDate);
 
 		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
@@ -210,7 +218,8 @@ BEGIN
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-		WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate;
+		WHERE r.EventDate BETWEEN @LastMonthFromDate AND @LastMonthToDate
+			AND r.[Type] = 1;
 	END;
 
 	-- League & Match Count
@@ -219,7 +228,8 @@ BEGIN
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+		AND r.[Type] = 1;
 
 	-- Total
 	SELECT	SUM(t.Stake_VR) AS Total_Stake_VR

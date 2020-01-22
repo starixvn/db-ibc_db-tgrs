@@ -10,6 +10,7 @@ AS
   
 	Revisions:
 		- 20191217@Long.Luu:	Created [Redmine ID: 118959]
+		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
    		
 	Param's Explanation:
 
@@ -83,6 +84,7 @@ BEGIN
 		,	MainDBBetType	INT
 		,	TeamId			INT
 		,	Grade			TINYINT
+		,	[Type]			TINYINT
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpDLTraderIdx ON #tmpTraders (
@@ -198,6 +200,7 @@ BEGIN
 		,	LiveIndicator		BIT
 		,	Is8RM				BIT
 		,	LeagueGroupId		SMALLINT
+		,	[Type]				TINYINT
 	);
 	
 	CREATE CLUSTERED INDEX #CIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
@@ -288,7 +291,7 @@ BEGIN
 											AND b.Currency NOT IN (20, 27, 28)
 											AND b.ruben <> 1);		
 		
-		INSERT INTO	#tmpTraders (TraderId, LeagueId, MatchId, EventDate, MainDBBetType, TeamId, Grade)
+		INSERT INTO	#tmpTraders (TraderId, LeagueId, MatchId, EventDate, MainDBBetType, TeamId, Grade, [Type])
 		SELECT	DISTINCT
 				[TraderId]		= a.TraderID
 			,	[LeagueId]		= m.LeagueId
@@ -297,6 +300,7 @@ BEGIN
 			,	[MainDBBetType] = a.bettype
 			,	[TeamId]		= td_T.TeamId
 			,	[Grade]			= td_G.Grade
+			,	[Type]			= a.[Type]
 		FROM	bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK)
 				INNER JOIN #tmpScanningMatches AS m WITH (NOLOCK) ON m.MatchId = a.Matchid
 				LEFT JOIN dbo.TraderGrade_History AS td_G WITH (NOLOCK) ON	td_G.CustID = a.TraderID
@@ -304,7 +308,7 @@ BEGIN
 				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
 					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
 		WHERE	m.EventDate = @WinLostDate
-				AND a.[Type] = 1;
+		;
 		
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
@@ -392,7 +396,7 @@ BEGIN
 		WHERE b.rn > 1;
 			
 		INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
-			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM)
+			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM, [Type])
 		SELECT	[TraderId]			= t.TraderId
 			,	[CustId]			= b.CustId
 			,	[WorkShift]			= ISNULL(b.WorkShift, 1)
@@ -418,6 +422,7 @@ BEGIN
 			,	[ActualRate]		= b.actualrate
 			,	[LiveIndicator]		= b.LiveIndicator
 			,	[Is8RM]				= b.Is8RM
+			,	[Type]				= t.[Type]
 		FROM	#tmpFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpTraders AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
@@ -485,6 +490,7 @@ BEGIN
 				,	b.actualrate
 				,	b.LiveIndicator
 				,	b.Is8RM
+				,	t.[Type]
 				,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 				;
 
@@ -502,7 +508,7 @@ BEGIN
 		WHERE EventDate = @WinlostDate;
 
 		INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
-			Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount)
+			Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type])
 		SELECT	[TraderId]			= t.TraderId
 			,	[WorkShift]			= t.WorkShift
 			,	[MatchId]			= t.MatchId
@@ -524,6 +530,7 @@ BEGIN
 			,	[WinLoss_AR]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.ActualRate)
 			,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 			,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
+			,	[Type]				= t.[Type]
 		FROM	#tmpRobotTradingPerformance AS t WITH(NOLOCK) 
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 		WHERE	t.EventDate = @WinlostDate
@@ -556,6 +563,7 @@ BEGIN
 			,	[Comm_AR]			
 			,	[BetCount]	
 			,	[MatchCount]
+			,   [Type]
 		)
 		SELECT	[EventDate]		= @Date 
 			,	[BetType]		= t.[BetType]
@@ -570,12 +578,14 @@ BEGIN
 			,	[Comm_AR]		= SUM(t.[Comm_AR]) 
 			,	[BetCount]		= SUM(t.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT [MatchId])
+			,	[Type]			= t.[Type]
 		FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 		WHERE t.EventDate = @WinlostDate
 		GROUP BY t.[BetType]
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
-			,	t.[Is8RM];
+			,	t.[Is8RM]
+			,	t.[Type];
 
 		-- SUM MONTHLY
 		DECLARE @StartDate		DATE
@@ -602,6 +612,7 @@ BEGIN
 			,	[Comm_AR]			
 			,	[BetCount]	
 			,	[MatchCount]
+			,	[Type]
 		)
 		SELECT	[EventDate]		= @StartDate 
 			,	[BetType]		= t.[BetType]
@@ -616,14 +627,16 @@ BEGIN
 			,	[Comm_AR]		= SUM(t.[Comm_AR]) 
 			,	[BetCount]		= SUM(t.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT t.[MatchId])
+			,	[Type]			= t.[Type]
 		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 		 GROUP BY t.[BetType]
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
-			,	t.[Is8RM];
+			,	t.[Is8RM]
+			,	t.[Type];
 
-			DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
+		DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
 		WHERE EventDate = @StartDate;
 
 		INSERT INTO [dbo].[RobotTrading_Monthly]
@@ -641,6 +654,7 @@ BEGIN
 			,	[Comm_AR]			
 			,	[BetCount]	
 			,	[MatchCount]
+			,	[Type]
 		)
 		SELECT	[TraderId]		= t.TraderId
 			,	[EventDate]		= @StartDate 
@@ -654,13 +668,15 @@ BEGIN
 			,	[WinLoss_AR]	= SUM(t.[WinLoss_AR]) 
 			,	[Comm_AR]		= SUM(t.[Comm_AR]) 
 			,	[BetCount]		= SUM(t.[BetCount]) 
-			,	[MatchCount]	= COUNT(DISTINCT t.[MatchId]) 
+			,	[MatchCount]	= COUNT(DISTINCT t.[MatchId])
+			,	[Type]			= t.[Type]
 		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 		 GROUP BY t.TraderId
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
-			,	t.[Is8RM];
+			,	t.[Is8RM]
+			,	t.[Type];
 
 		DELETE	d WITH(ROWLOCK)
 		FROM	#tmpWinlossDates AS d
