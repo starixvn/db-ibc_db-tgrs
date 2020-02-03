@@ -108,8 +108,8 @@ BEGIN
 		,	CASE WHEN ISNULL(SUM(t.WinLoss_VR), 0) <> 0 THEN SUM(t.WinLoss_VR)*100/SUM(t.Stake_VR) ELSE NULL END AS Total_Margin_VR
 
 		,	SUM(ABS(t.Stake_AR - t.Stake_VR)) AS Total_Stake_VAR
-		,	ABS(SUM(t.WinLoss_AR - t.WinLoss_VR)) AS Total_Winloss_VAR
-		,	CASE WHEN ISNULL(SUM(ABS(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN ABS(SUM(t.WinLoss_AR - t.WinLoss_VR))*100/SUM(ABS(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Total_Margin_VAR
+		,	SUM(t.WinLoss_AR - t.WinLoss_VR) AS Total_Winloss_VAR
+		,	CASE WHEN ISNULL(SUM(ABS(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN SUM(t.WinLoss_AR - t.WinLoss_VR)*100/SUM(ABS(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Total_Margin_VAR
 
 		,	SUM(t.Stake_AR - r.Stake_AR) AS Total_Stake_AR
 		,	SUM(t.WinLoss_AR + r.WinLoss_AR) AS Total_Winloss_AR
@@ -136,8 +136,8 @@ BEGIN
 		,	CASE WHEN ISNULL(SUM(t.WinLoss_VR), 0) <> 0 THEN SUM(t.WinLoss_VR)*100/SUM(t.Stake_VR) ELSE NULL END AS Margin_VR
 
 		,	ABS(SUM(t.Stake_AR - t.Stake_VR)) AS Stake_VAR
-		,	ABS(SUM(t.WinLoss_AR - t.WinLoss_VR)) AS Winloss_VAR
-		,	CASE WHEN ISNULL(ABS(SUM(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN ABS(SUM(t.WinLoss_AR - t.WinLoss_VR))*100/ABS(SUM(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Margin_VAR
+		,	SUM(t.WinLoss_AR - t.WinLoss_VR) AS Winloss_VAR
+		,	CASE WHEN ISNULL(ABS(SUM(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN SUM(t.WinLoss_AR - t.WinLoss_VR)*100/ABS(SUM(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Margin_VAR
 
 		,	SUM(t.Stake_AR - r.Stake_AR) AS Stake_AR
 		,	SUM(t.WinLoss_AR + r.WinLoss_AR) AS Winloss_AR
@@ -165,8 +165,8 @@ BEGIN
 		,	CASE WHEN ISNULL(SUM(t.WinLoss_VR), 0) <> 0 THEN SUM(t.WinLoss_VR)*100/SUM(t.Stake_VR) ELSE NULL END AS Margin_VR
 
 		,	ABS(SUM(t.Stake_AR - t.Stake_VR)) AS Stake_VAR
-		,	ABS(SUM(t.WinLoss_AR - t.WinLoss_VR)) AS Winloss_VAR
-		,	CASE WHEN ISNULL(ABS(SUM(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN ABS(SUM(t.WinLoss_AR - t.WinLoss_VR))*100/ABS(SUM(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Margin_VAR
+		,	SUM(t.WinLoss_AR - t.WinLoss_VR) AS Winloss_VAR
+		,	CASE WHEN ISNULL(ABS(SUM(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN SUM(t.WinLoss_AR - t.WinLoss_VR)*100/ABS(SUM(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Margin_VAR
 
 		,	SUM(t.Stake_AR - r.Stake_AR) AS Stake_AR
 		,	SUM(t.WinLoss_AR + r.WinLoss_AR) AS Winloss_AR
@@ -193,8 +193,8 @@ BEGIN
 		,	CASE WHEN ISNULL(SUM(t.WinLoss_VR), 0) <> 0 THEN SUM(t.WinLoss_VR)*100/SUM(t.Stake_VR) ELSE NULL END AS Margin_VR
 
 		,	ABS(SUM(t.Stake_AR - t.Stake_VR)) AS Stake_VAR
-		,	ABS(SUM(t.WinLoss_AR - t.WinLoss_VR)) AS Winloss_VAR
-		,	CASE WHEN ISNULL(ABS(SUM(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN ABS(SUM(t.WinLoss_AR - t.WinLoss_VR))*100/ABS(SUM(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Margin_VAR
+		,	SUM(t.WinLoss_AR - t.WinLoss_VR) AS Winloss_VAR
+		,	CASE WHEN ISNULL(ABS(SUM(t.Stake_AR - t.Stake_VR)), 0) <> 0 THEN SUM(t.WinLoss_AR - t.WinLoss_VR)*100/ABS(SUM(t.Stake_AR - t.Stake_VR)) ELSE NULL END AS Margin_VAR
 
 		,	SUM(t.Stake_AR - r.Stake_AR) AS Stake_AR
 		,	SUM(t.WinLoss_AR + r.WinLoss_AR) AS Winloss_AR
