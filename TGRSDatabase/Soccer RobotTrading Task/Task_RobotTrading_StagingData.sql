@@ -26,6 +26,7 @@ BEGIN
 	-- INITIALIZE --
 	*/
 	-- Common variables
+	-- Common variables
 	DECLARE	@Begin					DATETIME = GETDATE()
 		,	@RowCount				INT
 		,	@Duration				INT
@@ -124,9 +125,8 @@ BEGIN
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpDLTraderIdx ON #tmpTraders (
-			TraderId		ASC
+			MatchId			ASC
 		,	EventDate		ASC
-		,	MatchId			ASC
 		,	MainDBBetType	ASC
 	);
 
@@ -240,8 +240,7 @@ BEGIN
 	);
 	
 	CREATE CLUSTERED INDEX #CIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
-			TraderId			ASC
-		,	EventDate			ASC
+			EventDate			ASC
 	); 
 
 	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
@@ -668,32 +667,6 @@ BEGIN
 												END
 						) AS ca
 			WHERE	b.winlostdate = @WinlostDate
-			GROUP BY	t.TraderId
-					,	b.custid
-					,	ISNULL(b.WorkShift, 1)
-					,	b.matchId
-					,	b.matchCode
-					,	b.EventDate
-					,	b.SportType
-					,	b.LeagueId
-					,	b.LeagueGroupId
-					,	b.HomeId
-					,	b.AwayId
-					,	t.TeamId
-					,	t.Grade
-					,	ca.BetType
-					,	b.Stake
-					,	b.WinLost
-					,	b.SMAWinLost
-					,	b.scomm
-					,	ISNULL(b.ExtraPT, 0)
-					,	b.tpositiontaking
-					,	b.virtualrate
-					,	b.actualrate
-					,	b.LiveIndicator
-					,	b.Is8RM
-					,	t.[Type]
-					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1047,32 +1020,6 @@ BEGIN
 												END
 						) AS ca
 			WHERE	b.winlostdate = @WinlostDate
-			GROUP BY	t.TraderId
-					,	b.custid
-					,	ISNULL(b.WorkShift, 1)
-					,	b.matchId
-					,	b.matchCode
-					,	b.EventDate
-					,	b.SportType
-					,	b.LeagueId
-					,	b.LeagueGroupId
-					,	b.HomeId
-					,	b.AwayId
-					,	t.TeamId
-					,	t.Grade
-					,	ca.BetType
-					,	b.Stake
-					,	b.WinLost
-					,	b.SMAWinLost
-					,	b.scomm
-					,	ISNULL(b.ExtraPT, 0)
-					,	b.tpositiontaking
-					,	b.virtualrate
-					,	b.actualrate
-					,	b.LiveIndicator
-					,	b.Is8RM
-					,	t.[Type]
-					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
 
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1276,7 +1223,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately --
-				RAISERROR('From 14 - Insert RobotStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From Origin - Insert RobotStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
 
@@ -1432,32 +1379,6 @@ BEGIN
 												END
 						) AS ca
 			WHERE	b.winlostdate = @WinlostDate
-			GROUP BY	t.TraderId
-					,	b.custid
-					,	ISNULL(b.WorkShift, 1)
-					,	b.MatchId
-					,	b.MatchCode
-					,	b.EventDate
-					,	b.SportType
-					,	b.LeagueId
-					,	b.LeagueGroupId
-					,	b.HomeId
-					,	b.AwayId
-					,	t.TeamId
-					,	t.Grade
-					,	ca.BetType
-					,	b.Stake
-					,	b.WinLost
-					,	b.SMAWinLost
-					,	b.scomm
-					,	ISNULL(b.ExtraPT, 0)
-					,	b.tpositiontaking
-					,	b.virtualrate
-					,	b.actualrate
-					,	b.LiveIndicator
-					,	b.Is8RM
-					,	t.[Type]
-					,	b.transid -- should not be removed since there is a case that extraPT is changed in the range of time --> duplicate row
 					;
 
 			SELECT	@RowCount	= @@ROWCOUNT
