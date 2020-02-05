@@ -26,7 +26,6 @@ BEGIN
 	-- INITIALIZE --
 	*/
 	-- Common variables
-	-- Common variables
 	DECLARE	@Begin					DATETIME = GETDATE()
 		,	@RowCount				INT
 		,	@Duration				INT

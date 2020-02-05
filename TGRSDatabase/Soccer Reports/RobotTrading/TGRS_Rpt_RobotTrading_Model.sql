@@ -26,7 +26,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmp8RMPerformance (
-			LeagueId			INT PRIMARY KEY CLUSTERED
+			LeagueId			INT
 		,	MatchCount			INT
 		,   BetCount			INT
 		,	Stake_VR			MONEY
@@ -34,7 +34,11 @@ BEGIN
 		,	Stake_AR			MONEY
 		,	WinLoss_AR			MONEY
 		,	[Type]				TINYINT
-	);	
+		,	PRIMARY KEY CLUSTERED (
+				LeagueId		ASC
+			,	[Type]			ASC
+		)
+	);
 
 	IF	OBJECT_ID('tempdb..#tmpTotalPerformance') IS NOT NULL
 	BEGIN
@@ -42,7 +46,7 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmpTotalPerformance (
-			LeagueId			INT PRIMARY KEY CLUSTERED
+			LeagueId			INT
 		,	MatchCount			INT
 		,   BetCount			INT
 		,	Stake_VR			MONEY
@@ -50,6 +54,10 @@ BEGIN
 		,	Stake_AR			MONEY
 		,	WinLoss_AR			MONEY
 		,	[Type]				TINYINT
+		,	PRIMARY KEY CLUSTERED (
+				LeagueId		ASC
+			,	[Type]			ASC
+		)
 	);	
 	
 	-- RT3 No Trader Performance ('Italy Serie B' -- 30, 'ENGLISH LEAGUE ONE' -- 81, 'GERMANY 3RD LIGA' -- 4412, 'SCOTLAND PREMIERSHIP' -- 41565)
