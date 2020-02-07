@@ -9,6 +9,7 @@ AS
   
 	Revisions:
 		- 20191224@Long.Luu:	Created [Redmine ID: 118959]
+		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
    		
 	Param's Explanation:
 
@@ -37,6 +38,7 @@ BEGIN;
 		,	[Comm_AR]			
 		,	[BetCount]	
 		,	[MatchCount]
+		,	[Type]
 	)
 	SELECT	[EventDate]		= @Date 
 		,	[BetType]		= t.[BetType]
@@ -51,12 +53,14 @@ BEGIN;
 		,	[Comm_AR]		= SUM(t.[Comm_AR]) 
 		,	[BetCount]		= SUM(t.[BetCount]) 
 		,	[MatchCount]	= COUNT(DISTINCT [MatchId])
+		,	[Type]			= t.[Type]
 	FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 	WHERE t.EventDate = @Date
 	GROUP BY t.[BetType]
 		,	t.[LeagueId]
 		,	t.[LeagueGroupId]
-		,	t.[Is8RM];
+		,	t.[Is8RM]
+		,	t.[Type];
 END;
 
 GO
