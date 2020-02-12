@@ -10,6 +10,7 @@ AS
 	Revisions:
 		- 20191224@Long.Luu:	Created [Redmine ID: 118959]
 		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
+		- 20200210@John.Ngo:	[TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
    		
 	Param's Explanation:
 
@@ -39,6 +40,7 @@ BEGIN;
 		,	[BetCount]	
 		,	[MatchCount]
 		,	[Type]
+		,	[TypeSiteId]
 	)
 	SELECT	[EventDate]		= @Date 
 		,	[BetType]		= t.[BetType]
@@ -54,13 +56,15 @@ BEGIN;
 		,	[BetCount]		= SUM(t.[BetCount]) 
 		,	[MatchCount]	= COUNT(DISTINCT [MatchId])
 		,	[Type]			= t.[Type]
+		,	[TypeSiteId]	= t.[TypeSiteId]
 	FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 	WHERE t.EventDate = @Date
 	GROUP BY t.[BetType]
 		,	t.[LeagueId]
 		,	t.[LeagueGroupId]
 		,	t.[Is8RM]
-		,	t.[Type];
+		,	t.[Type]
+		,	t.[TypeSiteId];
 END;
 
 GO

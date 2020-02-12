@@ -13,6 +13,7 @@ AS
 	Revisions:
 		- 20191224@Long.Luu:	Created [Redmine ID: 118959]
 		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
+		- 20200210@John.Ngo:	[TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
    		
 	Param's Explanation:
 
@@ -51,6 +52,7 @@ BEGIN;
 			,	[BetCount]	
 			,	[MatchCount]
 			,	[Type]
+			,	[TypeSiteId]
 		)
 		SELECT	[EventDate]		= @Month 
 			,	[BetType]		= t.[BetType]
@@ -66,13 +68,15 @@ BEGIN;
 			,	[BetCount]		= SUM(t.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT t.[MatchId])
 			,	[Type]			= t.[Type]
+			,	[TypeSiteId]	= t.[TypeSiteId]
 		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 		 GROUP BY t.[BetType]
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
 			,	t.[Is8RM]
-			,	t.[Type];
+			,	t.[Type]
+			,	t.[TypeSiteId];
  
 		DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
 		WHERE EventDate = @Month;
@@ -93,6 +97,7 @@ BEGIN;
 			,	[BetCount]	
 			,	[MatchCount]
 			,	[Type]
+			,	[TypeSiteId]
 		)
 		SELECT	[TraderId]		= t.TraderId
 			,	[EventDate]		= @Month 
@@ -108,13 +113,15 @@ BEGIN;
 			,	[BetCount]		= SUM(t.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT t.[MatchId])
 			,	[Type]			= t.[Type]
+			,	[TypeSiteId]	= t.[TypeSiteId]
 		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 		 GROUP BY t.TraderId
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
 			,	t.[Is8RM]
-			,	t.[Type];
+			,	t.[Type]
+			,	t.[TypeSiteId];
 	END
 	ELSE IF (@GenerateFromDate IS NOT NULL AND @GenerateToDate IS NOT NULL)
 	BEGIN
@@ -168,6 +175,7 @@ BEGIN;
 				,	[BetCount]	
 				,	[MatchCount]
 				,	[Type]
+				,	[TypeSiteId]
 			)
 			SELECT	[EventDate]		= @WinLostDate 
 				,	[BetType]		= t.[BetType]
@@ -183,13 +191,15 @@ BEGIN;
 				,	[BetCount]		= SUM(t.[BetCount]) 
 				,	[MatchCount]	= COUNT(DISTINCT t.[MatchId])
 				,	[Type]			= t.[Type]
+				,	[TypeSiteId]	= t.[TypeSiteId]
 			 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 			 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 			 GROUP BY t.[BetType]
 				,	t.[LeagueId]
 				,	t.[LeagueGroupId]
 				,	t.[Is8RM]
-				,	t.[Type];
+				,	t.[Type]
+				,	t.[TypeSiteId];
 
 			DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
 			WHERE EventDate = @WinLostDate;
@@ -210,6 +220,7 @@ BEGIN;
 				,	[BetCount]
 				,	[MatchCount]
 				,	[Type]
+				,	[TypeSiteId]
 			)
 			SELECT	[TraderId]		= t.TraderId
 				,	[EventDate]		= @WinLostDate 
@@ -225,13 +236,15 @@ BEGIN;
 				,	[BetCount]		= SUM(t.[BetCount]) 
 				,	[MatchCount]	= COUNT(DISTINCT t.[MatchId])
 				,	[Type]			= t.[Type]
+				,	[TypeSiteId]	= t.[TypeSiteId]
 			 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
 			 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
 			 GROUP BY t.TraderId
 				,	t.[LeagueId]
 				,	t.[LeagueGroupId]
 				,	t.[Is8RM]
-				,	t.[Type];
+				,	t.[Type]
+				,	t.[TypeSiteId];
 
 			DELETE	d
 			FROM	#tmpWinlostDate AS d

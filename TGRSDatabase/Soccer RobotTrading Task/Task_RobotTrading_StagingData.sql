@@ -12,8 +12,9 @@ AS
 	Original:
   
 	Revisions:
-		- 20191217@Long.Luu:	Created [Redmine ID: 118959]
-		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
+		- 20191217@Long.Luu: Created [Redmine ID: 118959]
+		- 20200120@John.Ngo: [TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
+		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
    		
 	Param's Explanation:
 
@@ -54,7 +55,58 @@ BEGIN
 
 	INSERT INTO #tmpFilteredBettypes(BetType)
 	SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
-		
+	
+	-- Update isActive of Site when they were changed from the original data
+	IF EXISTS (	SELECT TOP (1) 1 
+				FROM dbo.FilteredSite fs WITH (NOLOCK)
+					INNER JOIN bodb02.dbo.[Site] si WITH(NOLOCK) ON fs.SiteId = si.siteid
+				WHERE fs.IsActive <> si.isActive)
+	BEGIN 
+		UPDATE fs
+		SET fs.IsActive = si.isActive
+		FROM dbo.FilteredSite fs WITH (NOLOCK)
+			INNER JOIN bodb02.dbo.[Site] si WITH(NOLOCK) ON fs.SiteId = si.siteid
+		WHERE fs.IsActive <> si.isActive;
+	END;
+
+	-- Insert new Site
+	IF EXISTS (	SELECT TOP (1) 1 
+				FROM [bodb02].[dbo].[Site] si (NOLOCK)
+					LEFT JOIN  dbo.FilteredSite fs WITH (NOLOCK) ON si.siteid = fs.SiteId
+				WHERE fs.SiteId IS NULL)
+	BEGIN
+	   INSERT INTO dbo.FilteredSite(SiteId, [Site], IsDeposite, TypeSiteDesc, TypeSiteId, IsActive)
+	   SELECT   si.siteid
+			,	si.[Site]
+			,	si.isDeposit
+			,	CASE WHEN si.[site] = 'CN88' THEN 'CN88'
+					 WHEN si.isDeposit = 1 THEN 'Cash'
+					 ELSE 'Nova'
+				END AS TypeSiteDesc
+			,	CASE WHEN si.[site] = 'CN88' THEN 1
+					 WHEN si.isDeposit = 1 THEN 2
+					 ELSE 3
+				END AS TypeSiteId
+			,	si.isActive
+		FROM [bodb02].[dbo].[Site] si (NOLOCK)
+			LEFT JOIN  dbo.FilteredSite fs WITH (NOLOCK) ON si.siteid = fs.SiteId
+		WHERE fs.SiteId IS NULL;
+	END;
+	
+	-- Customer Site
+	IF	OBJECT_ID('tempdb..#tmpCustomerSite') IS NOT NULL
+		DROP TABLE	#tmpCustomerSite;
+
+	CREATE TABLE	#tmpCustomerSite (
+			CustId		INT PRIMARY KEY CLUSTERED
+		,	[Site]		VARCHAR(20)
+		,	TypeSiteId	TINYINT
+	);
+
+	CREATE NONCLUSTERED INDEX	#IX_tmpCustomerSite_Site ON #tmpCustomerSite (
+			[Site]				ASC
+	);
+
 	-- BU & MB
 	DECLARE @tmpBUMBData TABLE (
 			BUDay	SMALLDATETIME
@@ -103,7 +155,7 @@ BEGIN
 		,	SpecialType		INT				
 	);
 	
-	CREATE NONCLUSTERED INDEX #NIX_tmpDLScannedMatches_EventDate ON #tmpScanningMatches (
+	CREATE NONCLUSTERED INDEX #IX_tmpDLScannedMatches_EventDate ON #tmpScanningMatches (
 			EventDate		ASC
 	);
 
@@ -212,6 +264,7 @@ BEGIN
 	CREATE TABLE	#tmpRobotTradingPerformance (
 			TraderId			INT
 		,	CustId				INT
+		,	Srecommend			INT
 		,	WorkShift			TINYINT
 		,	MatchId				INT
 		,	MatchCode			VARCHAR(100)
@@ -242,7 +295,7 @@ BEGIN
 			EventDate			ASC
 	); 
 
-	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
+	CREATE NONCLUSTERED INDEX	#IX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
 			CustId				ASC
 	);
 
@@ -594,11 +647,12 @@ BEGIN
 						FROM #tmpFilteredBettransByBatch
 					) AS b
 			WHERE b.rn > 1;
-			
-			INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
+
+			INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, Srecommend, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
 				Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM, [Type])
 			SELECT	[TraderId]			= t.TraderId
 				,	[CustId]			= b.CustId
+				,	[Srecommend]		= b.Srecommend
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.MatchId
 				,	[MatchCode]			= b.MatchCode
@@ -677,13 +731,44 @@ BEGIN
 				RAISERROR('From BK - Insert #tmpRobotTradingPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
+			-- Customer Site
+			INSERT INTO #tmpCustomerSite (CustId, [Site])
+			SELECT DISTINCT rt.CustId, c.[site]
+			FROM #tmpRobotTradingPerformance rt WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) ON rt.Srecommend = c.custid
+			WHERE c.custid > 0;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+			
+			IF	@Debug = 1
+			BEGIN
+				RAISERROR('From BK - Insert #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+			
+			UPDATE ct
+			SET ct.TypeSiteId = fs.TypeSiteId
+			FROM #tmpCustomerSite ct WITH (NOLOCK)
+				INNER JOIN dbo.FilteredSite fs WITH (NOLOCK) ON ct.[Site] = fs.[Site]
+			WHERE fs.SiteId > 0;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+			
+			IF	@Debug = 1
+			BEGIN
+				RAISERROR('From BK - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+
 			DELETE r WITH(ROWLOCK) 
 			FROM dbo.RobotTrading AS r
 				INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
 			WHERE EventDate = @WinlostDate;
 
 			INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
-				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type])
+				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type], TypeSiteId)
 			SELECT	[TraderId]			= t.TraderId
 				,	[WorkShift]			= t.WorkShift
 				,	[MatchId]			= t.MatchId
@@ -706,10 +791,12 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Type]				= t.[Type]
+				,	[TypeSiteId]		= c.TypeSiteId
 			FROM	#tmpRobotTradingPerformance AS t WITH(NOLOCK)
+					INNER JOIN #tmpCustomerSite AS c WITH(NOLOCK) ON t.CustId = c.CustId
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 			WHERE	t.EventDate = @WinlostDate
-			GROUP BY t.TraderId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId, t.[Type];
+			GROUP BY t.TraderId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId, t.[Type], c.TypeSiteId;
 
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -735,6 +822,7 @@ BEGIN
 
 			TRUNCATE TABLE #tmpRobotTradingPerformance;
 			TRUNCATE TABLE #tmpFilteredBettransByBatch;
+			TRUNCATE TABLE #tmpCustomerSite;
 		END;
 	END;
 
@@ -948,10 +1036,11 @@ BEGIN
 					) AS b
 			WHERE b.rn > 1;
 			
-			INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
+			INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, Srecommend, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
 				Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM, [Type])
 			SELECT	[TraderId]			= t.TraderId
 				,	[CustId]			= b.CustId
+				,	[Srecommend]		= b.Srecommend
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.MatchId
 				,	[MatchCode]			= b.MatchCode
@@ -1029,13 +1118,44 @@ BEGIN
 				RAISERROR('From 14 - Insert #tmpRobotTradingPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
+			-- Customer Site
+			INSERT INTO #tmpCustomerSite (CustId, [Site])
+			SELECT DISTINCT rt.CustId, c.[site]
+			FROM #tmpRobotTradingPerformance rt WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) ON rt.Srecommend = c.custid
+			WHERE c.custid > 0;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+			
+			IF	@Debug = 1
+			BEGIN
+				RAISERROR('From 14 - Insert #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+			
+			UPDATE ct
+			SET ct.TypeSiteId = fs.TypeSiteId
+			FROM #tmpCustomerSite ct WITH (NOLOCK)
+				INNER JOIN dbo.FilteredSite fs WITH (NOLOCK) ON ct.[Site] = fs.[Site]
+			WHERE fs.SiteId > 0;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+			
+			IF	@Debug = 1
+			BEGIN
+				RAISERROR('From 14 - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+
 			DELETE r WITH(ROWLOCK) 
 			FROM dbo.RobotTrading AS r
 				INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
 			WHERE EventDate = @WinlostDate;
 
 			INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
-				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type])
+				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type], TypeSiteId)
 			SELECT	[TraderId]			= t.TraderId
 				,	[WorkShift]			= t.WorkShift
 				,	[MatchId]			= t.MatchId
@@ -1058,10 +1178,12 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Type]				= t.[Type]
+				,	[TypeSiteId]		= c.TypeSiteId
 			FROM	#tmpRobotTradingPerformance AS t WITH(NOLOCK)
+					INNER JOIN #tmpCustomerSite AS c WITH(NOLOCK) ON t.CustId = c.CustId
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 			WHERE	t.EventDate = @WinlostDate
-			GROUP BY t.TraderId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId, t.[Type];
+			GROUP BY t.TraderId, t.WorkShift, t.matchId, t.matchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId, t.[Type], c.TypeSiteId;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1087,6 +1209,7 @@ BEGIN
 
 			TRUNCATE TABLE #tmpRobotTradingPerformance;
 			TRUNCATE TABLE #tmpFilteredBettransByBatch;
+			TRUNCATE TABLE #tmpCustomerSite;
 		END;
 	END;
 	
@@ -1307,10 +1430,11 @@ BEGIN
 					) AS b
 			WHERE b.rn > 1;
 			
-			INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
+			INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, Srecommend, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
 				Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM, [Type])
 			SELECT	[TraderId]			= t.TraderId
 				,	[CustId]			= b.CustId
+				,	[Srecommend]		= b.Srecommend
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
 				,	[MatchId]			= b.MatchId
 				,	[MatchCode]			= b.MatchCode
@@ -1388,13 +1512,44 @@ BEGIN
 				RAISERROR('From Origin - Insert #tmpRobotTradingPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
+			-- Customer Site
+			INSERT INTO #tmpCustomerSite (CustId, [Site])
+			SELECT DISTINCT rt.CustId, c.[site]
+			FROM #tmpRobotTradingPerformance rt WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) ON rt.Srecommend = c.custid
+			WHERE c.custid > 0;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+			
+			IF	@Debug = 1
+			BEGIN
+				RAISERROR('From Origin - Insert #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+			
+			UPDATE ct
+			SET ct.TypeSiteId = fs.TypeSiteId
+			FROM #tmpCustomerSite ct WITH (NOLOCK)
+				INNER JOIN dbo.FilteredSite fs WITH (NOLOCK) ON ct.[Site] = fs.[Site]
+			WHERE fs.SiteId > 0;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+			
+			IF	@Debug = 1
+			BEGIN
+				RAISERROR('From Origin - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+
 			DELETE r WITH(ROWLOCK) 
 			FROM dbo.RobotTrading AS r
 				INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
 			WHERE EventDate = @WinlostDate;
 
 			INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
-				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type])
+				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type], TypeSiteId)
 			SELECT	[TraderId]			= t.TraderId
 				,	[WorkShift]			= t.WorkShift
 				,	[MatchId]			= t.MatchId
@@ -1417,10 +1572,12 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Type]				= t.[Type]
-			FROM	#tmpRobotTradingPerformance AS t WITH(NOLOCK) 
+				,	[TypeSiteId]		= c.TypeSiteId
+			FROM	#tmpRobotTradingPerformance AS t WITH(NOLOCK)
+					INNER JOIN #tmpCustomerSite AS c WITH(NOLOCK) ON t.CustId = c.CustId
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 			WHERE	t.EventDate = @WinlostDate
-			GROUP BY t.TraderId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId, t.[Type];
+			GROUP BY t.TraderId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId, t.[Type], c.TypeSiteId;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1446,6 +1603,7 @@ BEGIN
 
 			TRUNCATE TABLE #tmpRobotTradingPerformance;
 			TRUNCATE TABLE #tmpFilteredBettransByBatch;
+			TRUNCATE TABLE #tmpCustomerSite;
 		END;
 	END;
 END;
