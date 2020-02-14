@@ -52,6 +52,7 @@ BEGIN
 	CREATE TABLE	#tmpTotalPerformance (
 			BetType				SMALLINT
 		,   BetCount			INT
+		,   MatchCount			INT
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
 		,	Stake_AR			MONEY
@@ -120,9 +121,10 @@ BEGIN
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 	GROUP BY r.BetType, r.TypeSiteId;
 
-	INSERT INTO #tmpTotalPerformance(BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
+	INSERT INTO #tmpTotalPerformance(BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
 	SELECT r.BetType
 		,	SUM(r.BetCount)
+		,	COUNT(DISTINCT r.MatchId)
 		,	SUM(r.Stake_VR)
 		,	SUM(r.WinLoss_VR - r.Comm_VR)
 		,	SUM(r.Stake_AR)
@@ -174,6 +176,7 @@ BEGIN
 	-- Detailed by Bettype
 	SELECT	t.BetType
 		,	t.BetCount
+		,	t.MatchCount
 
 		,	t.Stake_VR
 		,	t.WinLoss_VR
