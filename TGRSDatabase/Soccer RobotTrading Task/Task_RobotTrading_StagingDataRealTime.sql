@@ -9,8 +9,8 @@ AS
 	Original:
   
 	Revisions:
-		- 20191217@Long.Luu:	Created [Redmine ID: 118959]
-		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
+		- 20191217@Long.Luu: Created [Redmine ID: 118959]
+		- 20200120@John.Ngo: [TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
    		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
 
 	Param's Explanation:
@@ -36,7 +36,14 @@ BEGIN
 	DECLARE	@WinlostDate			DATE;
 	DECLARE @CurrentDate			DATE = CONVERT(DATE, GETDATE());
 	DECLARE @CurrentDateBefore1Hour DATE =  CONVERT(DATE, DATEADD(HOUR, -1, GETDATE()));
-	
+
+	IF	OBJECT_ID('tempdb..#tmpDLFilteredBettypes') IS NOT NULL
+	DROP TABLE	#tmpDLFilteredBettypes;
+
+	CREATE TABLE	#tmpDLFilteredBettypes (
+			BetType					SMALLINT PRIMARY KEY CLUSTERED
+	);
+
 	IF	OBJECT_ID('tempdb..#tmpFilteredBettypes') IS NOT NULL
 		DROP TABLE	#tmpFilteredBettypes;
 
@@ -545,12 +552,20 @@ BEGIN
 		BEGIN
 			RAISERROR('From Origin - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 		END;
+		
+		-- Delete Bettype
+		TRUNCATE TABLE #tmpDLFilteredBettypes;
+
+		INSERT INTO #tmpDLFilteredBettypes(BetType)
+		SELECT	DISTINCT rt.BetType
+		FROM	#tmpRobotTradingPerformance AS rt WITH(NOLOCK);
 
 		DELETE r WITH(ROWLOCK) 
 		FROM dbo.RobotTrading AS r
-			INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
+			INNER JOIN #tmpDLFilteredBettypes AS b ON r.BetType = b.BetType
 		WHERE EventDate = @WinlostDate;
 
+		-- Insert RobotTrading
 		INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
 			Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type], TypeSiteId)
 		SELECT	[TraderId]			= t.TraderId

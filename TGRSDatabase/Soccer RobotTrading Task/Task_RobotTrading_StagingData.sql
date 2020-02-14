@@ -46,6 +46,13 @@ BEGIN
 		SELECT @IsRunningJob = 1
 	END
 	
+	IF	OBJECT_ID('tempdb..#tmpDLFilteredBettypes') IS NOT NULL
+	DROP TABLE	#tmpDLFilteredBettypes;
+
+	CREATE TABLE	#tmpDLFilteredBettypes (
+			BetType					SMALLINT PRIMARY KEY CLUSTERED
+	);
+
 	IF	OBJECT_ID('tempdb..#tmpFilteredBettypes') IS NOT NULL
 		DROP TABLE	#tmpFilteredBettypes;
 
@@ -762,11 +769,19 @@ BEGIN
 				RAISERROR('From BK - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
+			-- Delete Bettype
+			TRUNCATE TABLE #tmpDLFilteredBettypes;
+
+			INSERT INTO #tmpDLFilteredBettypes(BetType)
+			SELECT	DISTINCT rt.BetType
+			FROM	#tmpRobotTradingPerformance AS rt WITH(NOLOCK);
+
 			DELETE r WITH(ROWLOCK) 
 			FROM dbo.RobotTrading AS r
-				INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
+				INNER JOIN #tmpDLFilteredBettypes AS b ON r.BetType = b.BetType
 			WHERE EventDate = @WinlostDate;
 
+			-- Insert RobotTrading
 			INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
 				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type], TypeSiteId)
 			SELECT	[TraderId]			= t.TraderId
@@ -1149,11 +1164,19 @@ BEGIN
 				RAISERROR('From 14 - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
+			-- Delete Bettype
+			TRUNCATE TABLE #tmpDLFilteredBettypes;
+
+			INSERT INTO #tmpDLFilteredBettypes(BetType)
+			SELECT	DISTINCT rt.BetType
+			FROM	#tmpRobotTradingPerformance AS rt WITH(NOLOCK);
+
 			DELETE r WITH(ROWLOCK) 
 			FROM dbo.RobotTrading AS r
-				INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
+				INNER JOIN #tmpDLFilteredBettypes AS b ON r.BetType = b.BetType
 			WHERE EventDate = @WinlostDate;
 
+			-- Insert RobotTrading
 			INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
 				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type], TypeSiteId)
 			SELECT	[TraderId]			= t.TraderId
@@ -1543,11 +1566,19 @@ BEGIN
 				RAISERROR('From Origin - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
+			-- Delete Bettype
+			TRUNCATE TABLE #tmpDLFilteredBettypes;
+
+			INSERT INTO #tmpDLFilteredBettypes(BetType)
+			SELECT	DISTINCT rt.BetType
+			FROM	#tmpRobotTradingPerformance AS rt WITH(NOLOCK);
+
 			DELETE r WITH(ROWLOCK) 
 			FROM dbo.RobotTrading AS r
-				INNER JOIN #tmpFilteredBettypes AS b ON r.BetType = b.BetType
+				INNER JOIN #tmpDLFilteredBettypes AS b ON r.BetType = b.BetType
 			WHERE EventDate = @WinlostDate;
 
+			-- Insert RobotTrading
 			INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
 				Is8RM, LeagueGroupId, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, BetCount, [Type], TypeSiteId)
 			SELECT	[TraderId]			= t.TraderId
