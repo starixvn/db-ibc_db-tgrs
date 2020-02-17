@@ -63,43 +63,27 @@ BEGIN
 	INSERT INTO #tmpFilteredBettypes(BetType)
 	SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
 	
-	-- Update isActive of Site when they were changed from the original data
-	IF EXISTS (	SELECT TOP (1) 1 
-				FROM dbo.FilteredSite fs WITH (NOLOCK)
-					INNER JOIN bodb02.dbo.[Site] si WITH(NOLOCK) ON fs.SiteId = si.siteid
-				WHERE fs.IsActive <> si.isActive)
-	BEGIN 
-		UPDATE fs
-		SET fs.IsActive = si.isActive
-		FROM dbo.FilteredSite fs WITH (NOLOCK)
-			INNER JOIN bodb02.dbo.[Site] si WITH(NOLOCK) ON fs.SiteId = si.siteid
-		WHERE fs.IsActive <> si.isActive;
-	END;
-
-	-- Insert new Site
-	IF EXISTS (	SELECT TOP (1) 1 
-				FROM [bodb02].[dbo].[Site] si (NOLOCK)
-					LEFT JOIN  dbo.FilteredSite fs WITH (NOLOCK) ON si.siteid = fs.SiteId
-				WHERE fs.SiteId IS NULL)
-	BEGIN
-	   INSERT INTO dbo.FilteredSite(SiteId, [Site], IsDeposite, TypeSiteDesc, TypeSiteId, IsActive)
-	   SELECT   si.siteid
+	-- Insert/Update Site when they were changed from the original data
+	MERGE dbo.FilteredSite WITH (ROWLOCK) fs
+	USING bodb02.dbo.[Site] AS si WITH (NOLOCK)
+	ON fs.SiteId = si.siteid
+	WHEN MATCHED AND fs.IsActive <> si.isActive THEN 
+		UPDATE SET fs.IsActive = si.isActive
+	WHEN NOT MATCHED THEN 
+		INSERT (SiteId, [Site], IsDeposite, TypeSiteDesc, TypeSiteId, IsActive)
+		VALUES (si.siteid
 			,	si.[Site]
 			,	si.isDeposit
 			,	CASE WHEN si.[site] = 'CN88' THEN 'CN88'
-					 WHEN si.isDeposit = 1 THEN 'Cash'
-					 ELSE 'Nova'
-				END AS TypeSiteDesc
+						WHEN si.isDeposit = 1 THEN 'Cash'
+						ELSE 'Nova'
+				END
 			,	CASE WHEN si.[site] = 'CN88' THEN 1
-					 WHEN si.isDeposit = 1 THEN 2
-					 ELSE 3
-				END AS TypeSiteId
-			,	si.isActive
-		FROM [bodb02].[dbo].[Site] si (NOLOCK)
-			LEFT JOIN  dbo.FilteredSite fs WITH (NOLOCK) ON si.siteid = fs.SiteId
-		WHERE fs.SiteId IS NULL;
-	END;
-	
+						WHEN si.isDeposit = 1 THEN 2
+						ELSE 3
+				END
+			,	si.isActive);
+
 	-- Customer Site
 	IF	OBJECT_ID('tempdb..#tmpCustomerSite') IS NOT NULL
 		DROP TABLE	#tmpCustomerSite;
