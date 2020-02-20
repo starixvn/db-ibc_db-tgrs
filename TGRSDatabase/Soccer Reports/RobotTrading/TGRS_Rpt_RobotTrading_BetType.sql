@@ -139,7 +139,7 @@ BEGIN
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 	GROUP BY r.BetType, r.TypeSiteId;
 
-	-- League & Match Count
+	-- LeagueCount & MatchCount
 	SELECT COUNT(DISTINCT r.LeagueId) AS LeagueCount
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
@@ -149,6 +149,19 @@ BEGIN
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+
+	-- BetType, BetCount & MatchCount
+	SELECT r.BetType
+		,	SUM(r.BetCount)	AS BetCount
+		,	COUNT(DISTINCT r.MatchId) AS MatchCount
+	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+		AND r.[Type] = @Model
+		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+	GROUP BY r.BetType;
 
 	-- Total
 	SELECT	SUM(t.Stake_VR) AS Total_Stake_VR

@@ -285,6 +285,19 @@ BEGIN
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
 
+	-- RptMonth, BetCount & MatchCount
+	SELECT	CAST(YEAR(r.EventDate) AS VARCHAR) + '-' + CAST(MONTH(r.EventDate) AS VARCHAR) + '-01' AS RptMonth
+		,	SUM(r.BetCount) AS BetCount
+		,	COUNT(DISTINCT r.MatchId) AS MatchCount
+	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+		AND r.[Type] = @Model
+		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+	GROUP BY CAST(YEAR(r.EventDate) AS VARCHAR) + '-' + CAST(MONTH(r.EventDate) AS VARCHAR) + '-01';
+
 	-- Total
 	SELECT	SUM(t.Stake_VR) AS Total_Stake_VR
 		,	SUM(t.WinLoss_VR) AS Total_WinLoss_VR
