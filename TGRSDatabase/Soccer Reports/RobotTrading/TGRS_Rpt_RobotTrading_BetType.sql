@@ -1,7 +1,9 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_RobotTrading_BetType]
-	@FromDate			DATE,
-	@ToDate				DATE,
-	@LeagueGroupIds		VARCHAR(2000) =  '1'
+		@FromDate			DATE
+	,	@ToDate				DATE
+	,	@Model				TINYINT =  3
+	,	@LeagueGroupIds		VARCHAR(2000) =  '1'
+	,	@TypeSiteIds		VARCHAR(200) =  ''
 AS    
 /*  
 	Created:	20191227@Long.Luu
@@ -10,11 +12,12 @@ AS
 	Original:  
   
 	Revisions: 	
-   		- 20191227@Long.Luu:	Created [Redmine ID: 123714]
-		- 20200120@John.Ngo:	[TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
+   		- 20191227@Long.Luu: Created [Redmine ID: 123714]
+		- 20200120@John.Ngo: [TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
+		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
 
-	Param's Explanation:  	
-
+	Param's Explanation: 
+		- @Model =  3: TA, 1: RT3
 	Exam: 
   
 */  
@@ -28,12 +31,17 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmp8RMPerformance (
-			BetType				SMALLINT PRIMARY KEY CLUSTERED
+			BetType				SMALLINT
 		,   BetCount			INT
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
 		,	Stake_AR			MONEY
 		,	WinLoss_AR			MONEY
+		,	TypeSiteId			TINYINT
+		,	PRIMARY KEY CLUSTERED (
+				BetType			ASC
+			,	TypeSiteId		ASC
+		)
 	);	
 
 	IF	OBJECT_ID('tempdb..#tmpTotalPerformance') IS NOT NULL
@@ -42,12 +50,18 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmpTotalPerformance (
-			BetType				SMALLINT PRIMARY KEY CLUSTERED
+			BetType				SMALLINT
 		,   BetCount			INT
+		,   MatchCount			INT
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
 		,	Stake_AR			MONEY
 		,	WinLoss_AR			MONEY
+		,	TypeSiteId			TINYINT
+		,	PRIMARY KEY CLUSTERED (
+				BetType			ASC
+			,	TypeSiteId		ASC
+		)
 	);	
 
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
@@ -78,43 +92,76 @@ BEGIN
 	INSERT INTO @Bettypes(BettypeId)
 	VALUES (1), (3), (7), (8);
 
-	INSERT INTO #tmp8RMPerformance(BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+	DECLARE @FilterSite AS TABLE (TypeSiteId TINYINT PRIMARY KEY CLUSTERED, TypeSiteDesc VARCHAR(20));
+	INSERT INTO @FilterSite(TypeSiteId, TypeSiteDesc)
+	SELECT DISTINCT TypeSiteId, TypeSiteDesc FROM dbo.FilteredSite WITH(NOLOCK);
+
+	IF @TypeSiteIds <> ''
+	BEGIN
+		DECLARE @TypeSites AS TABLE (TypeSiteId TINYINT PRIMARY KEY CLUSTERED);
+		INSERT INTO @TypeSites(TypeSiteId)
+		SELECT val FROM dbo.strSplit_Key(@TypeSiteIds,',');
+	END;
+
+	INSERT INTO #tmp8RMPerformance(BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
 	SELECT	r.BetType
 		,	SUM(r.BetCount)
 		,	SUM(r.Stake_VR)
 		,	- SUM(r.WinLoss_VR - r.Comm_VR)
 		,	SUM(r.Stake_AR)
 		,	- SUM(r.WinLoss_AR - r.Comm_AR)
+		,	r.TypeSiteId
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 		AND r.Is8RM = 1
-		AND r.[Type] = 1
-	GROUP BY r.BetType;
+		AND r.[Type] = @Model
+		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+	GROUP BY r.BetType, r.TypeSiteId;
 
-	INSERT INTO #tmpTotalPerformance(BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+	INSERT INTO #tmpTotalPerformance(BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
 	SELECT r.BetType
 		,	SUM(r.BetCount)
+		,	COUNT(DISTINCT r.MatchId)
 		,	SUM(r.Stake_VR)
 		,	SUM(r.WinLoss_VR - r.Comm_VR)
 		,	SUM(r.Stake_AR)
 		,	SUM(r.WinLoss_AR - r.Comm_AR)
+		,	r.TypeSiteId
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
-		AND r.[Type] = 1
-	GROUP BY r.BetType;
+		AND r.[Type] = @Model
+		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+	GROUP BY r.BetType, r.TypeSiteId;
 
-	-- League & Match Count
+	-- LeagueCount & MatchCount
 	SELECT COUNT(DISTINCT r.LeagueId) AS LeagueCount
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
-		AND r.[Type] = 1;
+		AND r.[Type] = @Model
+		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+
+	-- BetType, BetCount & MatchCount
+	SELECT r.BetType
+		,	SUM(r.BetCount)	AS BetCount
+		,	COUNT(DISTINCT r.MatchId) AS MatchCount
+	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+		AND r.[Type] = @Model
+		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+	GROUP BY r.BetType;
 
 	-- Total
 	SELECT	SUM(t.Stake_VR) AS Total_Stake_VR
@@ -137,11 +184,12 @@ BEGIN
 		,	SUM(t.WinLoss_AR) AS Total_Winloss_AR8RM
 		,	CASE WHEN ISNULL(SUM(t.Stake_AR), 0) <> 0 THEN SUM(t.WinLoss_AR)*100/SUM(t.Stake_AR) ELSE NULL END AS Total_Margin_AR8RM
 	FROM #tmpTotalPerformance AS t WITH(NOLOCK)
-		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.BetType = r.BetType;
+		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.BetType = r.BetType AND t.TypeSiteId = r.TypeSiteId;
 
 	-- Detailed by Bettype
 	SELECT	t.BetType
 		,	t.BetCount
+		,	t.MatchCount
 
 		,	t.Stake_VR
 		,	t.WinLoss_VR
@@ -162,8 +210,11 @@ BEGIN
 		,	t.Stake_AR AS Stake_AR8RM
 		,	t.WinLoss_AR AS Winloss_AR8RM
 		,	CASE WHEN ISNULL(t.Stake_AR, 0) <> 0 THEN t.WinLoss_AR*100/t.Stake_AR ELSE NULL END AS Margin_AR8RM
+		,	t.TypeSiteId
+		,	fs.TypeSiteDesc
 	FROM #tmpTotalPerformance AS t WITH(NOLOCK)
-		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.BetType = r.BetType;
+		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.BetType = r.BetType AND t.TypeSiteId = r.TypeSiteId
+		INNER JOIN @FilterSite AS fs ON t.TypeSiteId = fs.TypeSiteId;
 
 	DROP TABLE #tmp8RMPerformance;
 	DROP TABLE #tmpTotalPerformance;
