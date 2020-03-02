@@ -1,6 +1,6 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_MultipleMatches]
-		@FromDate			DATE = '20191001'
-	,	@ToDate				DATE = '20191206'
+		@FromDate			DATE = '20200101'
+	,	@ToDate				DATE = '20200203'
 	,	@GradeIds			VARCHAR(200)  = '' -- All
 	,	@TeamIds			VARCHAR(200)  = '' -- All
 	,	@Bettypes			VARCHAR(2000) = '1,3,7,8'
@@ -16,10 +16,12 @@ AS
   
 	Revisions: 	
    		- 20191204@Long.Luu:	Created [Remine Id: 118960]
+		- 20200228@John.Ngo:	Enhance Multiple Match report - Combine betdaq match & support special products [Remine Id: 125929]
 
 	Param's Explanation:  	
 
-	Exam:   
+	Exam:  EXECUTE dbo.TGRS_Rpt_MultipleMatches @FromDate = '20200101',	@ToDate = '20200203', @GradeIds = '', @TeamIds = '', @Bettypes = '1,3,7,8'
+			, @MultipleMatches = '', @IsExcludeLeagues = 1,	@Market = 1
 */  
  
 BEGIN 
@@ -49,17 +51,49 @@ BEGIN
 	CREATE TABLE	#tmpMatchesInfo (
 			CustId				INT NOT NULL
 		,	MatchId				INT NOT NULL
+		,	MatchCode			NVARCHAR (50)
+		,	ParentId			INT
+		,	LeagueId			INT
+		,	HomeId				INT
+		,	AwayId				INT
 		,	EventDate			DATETIME
 		,	Turnover			MONEY
 		,	WinLoss				MONEY
 		,	BetCount			INT
-		,	Margin				MONEY
 		,	GlobalShowTime		SMALLDATETIME
+		,	GroupId				INT
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpMatchesInfo_CustIdMatchId ON #tmpMatchesInfo (
 			CustId				ASC
 		,	MatchId				ASC
+	);
+
+	CREATE NONCLUSTERED INDEX	#CIX_tmpMatchesInfo_GroupId ON #tmpMatchesInfo (
+			GroupId				ASC
+	);
+
+	IF	OBJECT_ID('tempdb..#tmpMatchesInfoGroup') IS NOT NULL
+	BEGIN
+		DROP TABLE #tmpMatchesInfoGroup;
+	END;
+
+	CREATE TABLE	#tmpMatchesInfoGroup (
+			CustId				INT NOT NULL
+		,	MatchIdList			VARCHAR(MAX)
+		,	ParentId			INT
+		,	LeagueId			INT
+		,	EventDate			DATETIME
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	BetCount			INT
+		,	GlobalShowTime		SMALLDATETIME
+		,	GroupId				INT
+	);
+
+	CREATE CLUSTERED INDEX	#CIX_tmpMatchesInfoGroup_CustIdMatchId ON #tmpMatchesInfoGroup (
+			CustId				ASC
+		,	GroupId				ASC
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpMatches') IS NOT NULL
@@ -69,6 +103,7 @@ BEGIN
 
 	CREATE TABLE	#tmpMatches (
 			CustId				INT NOT NULL
+		,	MatchIdList			VARCHAR(MAX)
 		,	MatchId				INT NOT NULL
 		,	EventDate			DATETIME
 		,	GlobalShowTime		SMALLDATETIME	
@@ -109,10 +144,11 @@ BEGIN
 		,	TeamId				SMALLINT
 		,	MatchGroup			INT
 		,	MultipleMatchCount	TINYINT
-		,   MatchList			VARCHAR(MAX)
+		,   MatchIdList			VARCHAR(MAX)
 		,	Turnover			MONEY
 		,	WinLoss				MONEY
 		,	BetCount			INT
+		,   GroupIdList			VARCHAR(MAX)
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpMatchesMultiple_CustId ON #tmpMatchesMultiple (
@@ -131,6 +167,7 @@ BEGIN
 	CREATE TABLE	#tmpMatchesInfoMultiple (
 			CustId				INT NOT NULL
 		,	MatchGroup			INT
+		,   MatchIdList			VARCHAR(MAX)
 		,	MatchId				INT NOT NULL
 		,	GlobalShowTime		SMALLDATETIME
 	);
@@ -138,6 +175,13 @@ BEGIN
 	CREATE CLUSTERED INDEX	#CIX_#tmpMatchesInfoMultiple_CustId ON #tmpMatchesInfoMultiple (
 			CustId				ASC
 	);
+
+	IF	OBJECT_ID('tempdb..#tmpParentMatch') IS NOT NULL
+	BEGIN
+		DROP TABLE #tmpParentMatch;
+	END;
+
+	CREATE TABLE #tmpParentMatch (MatchId INT)
 
 	-- Initialize date range
 	DECLARE @IsGetDataFromOrigin	BIT = 0
@@ -226,13 +270,17 @@ BEGIN
 		 SELECT ssk.val FROM dbo.strSplit_Key(@MultipleMatches, ',') ssk;
 
 	-- Get Trader-Match in range
-	INSERT INTO #tmpMatchesInfo(CustId, MatchId, EventDate, Turnover, WinLoss, BetCount)
+	INSERT INTO #tmpMatchesInfo(CustId, MatchId, MatchCode, LeagueId, HomeId, AwayId, EventDate, Turnover, WinLoss, BetCount)
 	SELECT DISTINCT tp.CustId
 		,	tp.MatchId
+		,	tp.MatchCode
+		,	tp.LeagueId
+		,	tp.HomeId
+		,	tp.AwayId
 		,	tp.EventDate
 		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss
-		,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
+		,	ISNULL(SUM(tp.BetCount), 0)							    AS BetCount
 	FROM dbo.TraderPerformance AS tp WITH(NOLOCK)
 		INNER JOIN bodb02.dbo.League AS l WITH(NOLOCK) ON tp.LeagueId = l.LeagueId
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
@@ -243,32 +291,94 @@ BEGIN
 		AND tp.CustId <> 0
 	GROUP BY tp.CustId
 		,	tp.MatchId
+		,	tp.MatchCode
+		,	tp.LeagueId
+		,	tp.HomeId
+		,	tp.AwayId
 		,	tp.EventDate;
 
 	IF(@IsGetDataFromOrigin = 1)
 	BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
+		,	t.ParentId = m.ParentID
 		FROM #tmpMatchesInfo AS t
-			INNER JOIN bodb02.dbo.Match AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
+			INNER JOIN bodb02.dbo.Match AS m WITH(NOLOCK) ON t.MatchId = m.matchid
 	END;
 
 	IF(@IsGetDataFrom14 = 1)
 	BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
+		,	t.ParentId = m.ParentID
 		FROM #tmpMatchesInfo AS t
-			INNER JOIN bodb02.dbo.match14 AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
+			INNER JOIN bodb02.dbo.match14 AS m WITH(NOLOCK) ON t.MatchId = m.matchid
 	END;
 
 	IF(@IsGetDataFromBK = 1)
 	BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
+		,	t.ParentId = m.ParentID
 		FROM #tmpMatchesInfo AS t
-			INNER JOIN bodb_Archive.dbo.match_bk AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
+			INNER JOIN bodb_Archive.dbo.match_bk AS m WITH(NOLOCK) ON t.MatchId = m.matchid
 	END;
 	
+	-- 1. Update GroupId with ParentId IS NOT NULL
+	UPDATE t
+	SET t.GroupId = m.Matchid
+	FROM #tmpMatchesInfo t
+		CROSS APPLY (
+			SELECT m.MatchId, ROW_NUMBER() OVER(PARTITION BY m.ParentId ORDER BY m.MatchId) AS Row_Num
+			FROM #tmpMatchesInfo m
+			WHERE t.ParentId = m.ParentId AND t.LeagueId = m.LeagueId
+		) m
+	WHERE t.ParentId IS NOT NULL
+	  AND m.Row_Num = 1;
+	
+	-- 2. Update GroupId with betdaq matchid = Main matchid	
+	UPDATE c
+	SET c.GroupId = p.MatchId
+	OUTPUT INSERTED.GroupId INTO #tmpParentMatch
+	FROM #tmpMatchesInfo c
+		INNER JOIN #tmpMatchesInfo p ON c.LeagueId = p.LeagueId AND c.HomeId = p.HomeId AND c.AwayId = p.AwayId
+	WHERE c.MatchCode LIKE '%betdaq%'
+		AND c.GroupId IS NULL
+
+	UPDATE p
+	SET p.GroupId = pm.MatchId
+	FROM #tmpMatchesInfo p
+		INNER JOIN #tmpParentMatch pm ON p.MatchId = pm.MatchId
+	
+	-- 3. Update GroupId with ParentId IS NULL
+	UPDATE p
+	SET p.GroupId = p.MatchId
+	FROM #tmpMatchesInfo p
+	WHERE GroupId IS NULL
+
+	-- Group MatchId
+	INSERT INTO #tmpMatchesInfoGroup(CustId, MatchIdList, ParentId, LeagueId, EventDate, Turnover, WinLoss, BetCount, GlobalShowTime, GroupId)
+	SELECT tpm.CustId
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), tpm2.MatchId) 
+									FROM #tmpMatchesInfo tpm2 WITH (NOLOCK)
+									WHERE tpm.CustId = tpm2.CustId AND tpm.GroupId = tpm2.GroupId
+									FOR XML PATH('')), 1, 1, '')
+		,	tpm.ParentId
+		,	tpm.LeagueId
+		,	tpm.EventDate
+		,	SUM(tpm.Turnover)
+		,	SUM(tpm.WinLoss)
+		,	SUM(tpm.BetCount)
+		,	tpm.GlobalShowTime
+		,	tpm.GroupId
+	FROM #tmpMatchesInfo AS tpm WITH(NOLOCK)
+	GROUP BY tpm.CustId
+		,	tpm.ParentId
+		,	tpm.LeagueId
+		,	tpm.EventDate
+		,	tpm.GlobalShowTime
+		,	tpm.GroupId;
+
 	-- Get all traders have traded in the report range
 	INSERT INTO #tmpTraders(CustId)
 	SELECT DISTINCT t. CustId
@@ -283,29 +393,29 @@ BEGIN
 	
 		TRUNCATE TABLE #tmpMatches;
 
-		INSERT INTO #tmpMatches(CustId, MatchId, EventDate, GlobalShowTime, OrderedIndex)
-		SELECT m.CustId, m.MatchId, m.EventDate, m.GlobalShowTime, ROW_NUMBER() OVER (ORDER BY m.GlobalShowTime)
-		FROM #tmpMatchesInfo AS m WITH(NOLOCK)
+		INSERT INTO #tmpMatches(CustId, MatchIdList, MatchId, EventDate, GlobalShowTime, OrderedIndex)
+		SELECT m.CustId, m.MatchIdList, m.GroupId, m.EventDate, m.GlobalShowTime, ROW_NUMBER() OVER (ORDER BY m.GlobalShowTime)
+		FROM #tmpMatchesInfoGroup AS m WITH(NOLOCK)
 		WHERE m.CustId = @CurrentTrader;
 
 		;WITH rs AS
 		(
-			SELECT	t1.CustId, t1.MatchId, t1.EventDate, t1.GlobalShowTime, t1.OrderedIndex
+			SELECT	t1.CustId, t1.MatchIdList, t1.MatchId, t1.EventDate, t1.GlobalShowTime, t1.OrderedIndex
 				,	1 AS MatchOrder, ROW_NUMBER() OVER (ORDER BY t1.GlobalShowTime) AS MatchGroup
 			FROM #tmpMatches AS t1 WITH(NOLOCK)
 				LEFT JOIN #tmpMatches AS t2 WITH(NOLOCK) ON t1.OrderedIndex - 1 = t2.OrderedIndex 
-			WHERE DATEDIFF(MINUTE, t2.GlobalShowTime, t1.GlobalShowTime) > 30 OR t2.matchid IS NULL
+			WHERE DATEDIFF(MINUTE, t2.GlobalShowTime, t1.GlobalShowTime) > 30 OR t2.MatchId IS NULL
 
 			UNION ALL
 
-			SELECT	t1.CustId, t1.MatchId, t1.EventDate, t1.GlobalShowTime, t1.OrderedIndex
+			SELECT	t1.CustId, t1.MatchIdList, t1.MatchId, t1.EventDate, t1.GlobalShowTime, t1.OrderedIndex
 				,	rs.MatchOrder + 1, rs.MatchGroup
 			FROM rs 
 				INNER JOIN #tmpMatches AS t1 WITH(NOLOCK) ON rs.OrderedIndex + 1 = t1.OrderedIndex
 			WHERE DATEDIFF(MINUTE, rs.GlobalShowTime, t1.GlobalShowTime) <= 30
 		)
-		INSERT INTO #tmpMatchesInfoMultiple(CustId, MatchGroup, MatchId, GlobalShowTime)
-		SELECT CustId, MatchGroup, MatchId, GlobalShowTime
+		INSERT INTO #tmpMatchesInfoMultiple(CustId, MatchGroup, MatchIdList, MatchId, GlobalShowTime)
+		SELECT CustId, MatchGroup, MatchIdList, MatchId, GlobalShowTime
 		FROM rs;
 
 		DELETE	t WITH(ROWLOCK)
@@ -313,9 +423,13 @@ BEGIN
 		WHERE	t.CustId = @CurrentTrader;
 	END;
 
-	INSERT INTO #tmpMatchesMultiple(CustId, Username, Grade, TeamId, MatchGroup, MultipleMatchCount, MatchList, Turnover, WinLoss, BetCount)
+	INSERT INTO #tmpMatchesMultiple(CustId, Username, Grade, TeamId, MatchGroup, MultipleMatchCount, MatchIdList, GroupIdList, Turnover, WinLoss, BetCount)
 	SELECT mm1.CustId, t.Username, t.Grade, t.TeamId, mm1.MatchGroup
 		,	COUNT (1) AS MultipleMatchCount
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), mm3.MatchIdList) 
+									FROM #tmpMatchesInfoMultiple mm3 WITH (NOLOCK)
+									WHERE mm1.CustId = mm3.CustId AND mm1.MatchGroup = mm3.MatchGroup
+									FOR XML PATH('')), 1, 1, '')	
 		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), mm2.MatchId) 
 									FROM #tmpMatchesInfoMultiple mm2 WITH (NOLOCK)
 									WHERE mm1.CustId = mm2.CustId AND mm1.MatchGroup = mm2.MatchGroup
@@ -324,7 +438,7 @@ BEGIN
 		,	SUM(mi.WinLoss)								AS WinLoss
 		,	SUM(mi.BetCount)							AS BetCount										
 	FROM #tmpMatchesInfoMultiple mm1 WITH (NOLOCK) 
-		INNER JOIN #tmpMatchesInfo mi WITH (NOLOCK) ON mm1.CustId = mi.CustId AND mm1.MatchId = mi.MatchId
+		INNER JOIN #tmpMatchesInfoGroup mi WITH (NOLOCK) ON mm1.CustId = mi.CustId AND mm1.MatchId = mi.GroupId
 		INNER JOIN dbo.Trader AS t WITH(NOLOCK) ON mm1.CustId = t.CustId
 	WHERE (@GradeIds = '' OR t.Grade IN (SELECT Grade FROM @GradeList))
 		AND (@TeamIds = '' OR t.TeamId IN (SELECT TeamId FROM @TeamList))
@@ -336,10 +450,14 @@ BEGIN
 		,	t.TeamName
 		,	m.MultipleMatchCount AS MultipleMatches
 		,	COUNT(1) AS MultipleTimes
-		,	STUFF((SELECT '#', CONVERT(VARCHAR(MAX), m2.MatchList) 
+		,	STUFF((SELECT '#', CONVERT(VARCHAR(MAX), m3.MatchIdList) 
+							FROM #tmpMatchesMultiple m3 WITH (NOLOCK)
+							WHERE m.CustId = m3.CustId AND m.MultipleMatchCount = m3.MultipleMatchCount
+							FOR XML PATH('')), 1, 1, '') AS MatchList
+		,	STUFF((SELECT '#', CONVERT(VARCHAR(MAX), m2.GroupIdList) 
 									FROM #tmpMatchesMultiple m2 WITH (NOLOCK)
 									WHERE m.CustId = m2.CustId AND m.MultipleMatchCount = m2.MultipleMatchCount
-									FOR XML PATH('')), 1, 1, '') AS MatchList
+									FOR XML PATH('')), 1, 1, '') AS GroupList
 		,	SUM(m.Turnover) AS Turnover
 		,	SUM(m.WinLoss) AS Winloss
 		,	SUM(m.BetCount) AS BetCount
