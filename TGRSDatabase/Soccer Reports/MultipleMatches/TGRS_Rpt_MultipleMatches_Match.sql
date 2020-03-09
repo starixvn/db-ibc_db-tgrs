@@ -1,6 +1,6 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_MultipleMatches_Match]
-		@FromDate			DATE = '20191001'
-	,	@ToDate				DATE = '20191206'
+		@FromDate			DATE = '20200101'
+	,	@ToDate				DATE = '20200203'
 	,	@CustId				INT
 	,	@MatchIds			VARCHAR(MAX) = ''
 	,	@Bettypes			VARCHAR(2000) = '1,3,7,8'
@@ -14,8 +14,9 @@ AS
 	Original:  
   
 	Revisions: 	
-   		- 20191204@Long.Luu:	Created [Remine Id: 118960]
-
+   			- 20191204@Long.Luu:	Created [Remine Id: 118960]
+			- 20200228@John.Ngo:	Enhance Multiple Match report - Combine betdaq match & support special products [Remine Id: 125929]
+	
 	Param's Explanation:  	
 
 	Exam:   
@@ -48,6 +49,8 @@ BEGIN
 		,	EventDate			DATETIME
 		,	GlobalShowTime		SMALLDATETIME
 		,	MatchGroup			INT
+		,	MatchCode			NVARCHAR(50)
+		,	ParentId			INT
 		,	HomeId				INT
 		,	AwayId				INT
 		,	LeagueName			NVARCHAR(500)
@@ -135,11 +138,12 @@ BEGIN
 	CROSS APPLY dbo.strSplit_Key(s1.val, ',') s2;
 
 	-- Get Trader-Match in range
-	INSERT INTO #tmpMatches(MatchId, EventDate, LeagueName, MatchGroup, Turnover, WinLoss, BetCount, Margin)
+	INSERT INTO #tmpMatches(MatchId, EventDate, LeagueName, MatchGroup, MatchCode, Turnover, WinLoss, BetCount, Margin)
 	SELECT	tp.MatchId
 		,	tp.EventDate
 		,	l.leaguename
 		,	m.MatchGroup
+		,	tp.MatchCode
 		,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss
 		,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
@@ -156,12 +160,14 @@ BEGIN
 	GROUP BY tp.MatchId
 		,	tp.EventDate
 		,	l.leaguename
-		,	m.MatchGroup;
+		,	m.MatchGroup
+		,	tp.MatchCode;
 
 	IF(@IsGetDataFromOrigin = 1)
 	BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
+			,	t.ParentId = m.ParentID
 			,	t.HomeId = m.homeid
 			,	t.AwayId = m.awayid
 		FROM #tmpMatches AS t
@@ -172,6 +178,7 @@ BEGIN
 	BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
+			,	t.ParentId = m.ParentID
 			,	t.HomeId = m.homeid
 			,	t.AwayId = m.awayid
 		FROM #tmpMatches AS t
@@ -182,6 +189,7 @@ BEGIN
 	BEGIN
 		UPDATE t WITH(ROWLOCK, UPDLOCK)
 		SET t.GlobalShowTime = m.GlobalShowTime
+			,	t.ParentId = m.ParentID
 			,	t.HomeId = m.homeid
 			,	t.AwayId = m.awayid
 		FROM #tmpMatches AS t
@@ -195,12 +203,14 @@ BEGIN
 		,	m.HomeId
 		,	m.AwayId
 		,	m.MatchGroup
+		,	m.MatchCode
+		,	m.ParentId
 		,	m.LeagueName
 		,	m.Turnover
 		,	m.WinLoss
 		,	m.BetCount
 		,	m.Margin
-	FROM #tmpMatches AS m WITH(NOLOCK);
+	FROM #tmpMatches AS m WITH(NOLOCK) ORDER BY GlobalShowTime ASC;
 END;
 
 GO
