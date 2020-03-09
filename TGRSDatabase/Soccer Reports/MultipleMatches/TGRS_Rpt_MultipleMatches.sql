@@ -331,30 +331,36 @@ BEGIN
 		CROSS APPLY (
 			SELECT m.MatchId, ROW_NUMBER() OVER(PARTITION BY m.ParentId ORDER BY m.MatchId) AS Row_Num
 			FROM #tmpMatchesInfo m
-			WHERE t.ParentId = m.ParentId AND t.LeagueId = m.LeagueId
+			WHERE t.CustId = m.CustId AND t.ParentId = m.ParentId AND t.LeagueId = m.LeagueId
 		) m
 	WHERE t.ParentId IS NOT NULL
 	  AND m.Row_Num = 1;
 	
 	-- 2. Update GroupId with betdaq matchid = Main matchid	
 	UPDATE c
-	SET c.GroupId = p.MatchId
+	SET c.GroupId = mm.MatchId
 	OUTPUT INSERTED.GroupId INTO #tmpParentMatch
 	FROM #tmpMatchesInfo c
-		INNER JOIN #tmpMatchesInfo p ON c.LeagueId = p.LeagueId AND c.HomeId = p.HomeId AND c.AwayId = p.AwayId
+		CROSS APPLY (
+			SELECT m.MatchId, ROW_NUMBER() OVER(PARTITION BY m.CustId, m.LeagueId, m.HomeId, m.AwayId ORDER BY m.MatchCode ASC) AS Row_Num
+			FROM #tmpMatchesInfo m
+			WHERE c.CustId = m.CustId AND c.LeagueId = m.LeagueId AND c.HomeId = m.HomeId AND c.AwayId = m.AwayId
+		) mm
 	WHERE c.MatchCode LIKE '%betdaq%'
 		AND c.GroupId IS NULL
+		AND mm.Row_Num = 1;
 
 	UPDATE p
 	SET p.GroupId = pm.MatchId
 	FROM #tmpMatchesInfo p
 		INNER JOIN #tmpParentMatch pm ON p.MatchId = pm.MatchId
+	WHERE p.GroupId IS NULL;
 	
 	-- 3. Update GroupId with ParentId IS NULL
 	UPDATE p
 	SET p.GroupId = p.MatchId
 	FROM #tmpMatchesInfo p
-	WHERE GroupId IS NULL
+	WHERE p.GroupId IS NULL;
 
 	-- Group MatchId
 	INSERT INTO #tmpMatchesInfoGroup(CustId, MatchIdList, ParentId, LeagueId, EventDate, Turnover, WinLoss, BetCount, GlobalShowTime, GroupId)
