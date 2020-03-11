@@ -142,10 +142,12 @@ DECLARE @StartDate DATE = @FromDate
 		SELECT @StartDate = DATEADD(DAY, 1, @EndDate);
 		SELECT @EndDate = CASE WHEN (DATENAME(DW, @StartDate) = 'Sunday') THEN @StartDate ELSE DATEADD(DAY, (DATEDIFF(DAY, 6, @StartDate) / 7) * 7 + 7, 6) END;
 	END;
-	
-	SELECT @WeekDays  = (CASE WHEN EXISTS (SELECT 1 FROM @Date) THEN 'Week '+ CAST((SELECT MAX(ID) + 1 FROM @Date) AS VARCHAR(10)) ELSE  'Week 1' END);
 
-	INSERT @Date(WeekDays, StartDate, EndDate) VALUES(@WeekDays, @StartDate, @ToDate);
+	INSERT @Date(StartDate, EndDate) VALUES(@StartDate, @ToDate);
+
+	UPDATE @Date 
+		SET	WeekDays = 'Week '+ CAST((SELECT MAX(ID) FROM @Date) AS VARCHAR(10)) 
+	WHERE ID = (SELECT MAX(ID) FROM @Date);
 
 	-- SELECT ID, WeekDays, StartDate, EndDate, DATENAME(DW, StartDate) AS StartName, DATENAME(DW, EndDate) AS EndName FROM @Date;
 	-- End Cal Week
@@ -232,12 +234,12 @@ DECLARE @StartDate DATE = @FromDate
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
 
 	-- LeagueCount, MatchCount & BetCount by Week
-	SELECT	WeekDays
-		,	StartDate
-		,	EndDate
-		,	LeagueCount	
-		,	MatchCount
-		,	BetCount
+	SELECT	tm.WeekDays
+		,	tm.StartDate
+		,	tm.EndDate
+		,	tm.LeagueCount	
+		,	tm.MatchCount
+		,	tm.BetCount
 	FROM #tmpTotalLMB AS tm WITH(NOLOCK) WHERE tm.LeagueCount > 0;
 
 	-- Total
