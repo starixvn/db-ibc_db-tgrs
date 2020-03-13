@@ -15,6 +15,7 @@ AS
    		- 20191227@Long.Luu: Created [Redmine ID: 123714]
 		- 20200120@John.Ngo: [TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
 		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
+		- 20200310@John.Ngo: Automation Trading - Report by Week  [Redmine ID: 129838]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -274,7 +275,7 @@ BEGIN
 		GROUP BY r.TypeSiteId;
 	END;
 
-	-- League & Match Count
+	-- Total LeagueCount & MatchCount
 	SELECT COUNT(DISTINCT r.LeagueId) AS LeagueCount
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
@@ -285,10 +286,11 @@ BEGIN
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
 
-	-- RptMonth, BetCount & MatchCount
+	-- LeagueCount, MatchCount & BetCount by Month
 	SELECT	CAST(YEAR(r.EventDate) AS VARCHAR) + '-' + CAST(MONTH(r.EventDate) AS VARCHAR) + '-01' AS RptMonth
-		,	SUM(r.BetCount) AS BetCount
+		,	COUNT(DISTINCT r.LeagueId) AS LeagueCount
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
+		,	SUM(r.BetCount) AS BetCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
@@ -321,7 +323,7 @@ BEGIN
 	FROM #tmpTotalPerformance AS t WITH(NOLOCK)
 		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.RptMonth = r.RptMonth AND t.TypeSiteId = r.TypeSiteId;
 		
-	-- Detailed by Bettype
+	-- Detailed by Month
 	SELECT	t.RptMonth
 		,	t.BetCount
 		,	t.MatchCount
@@ -341,7 +343,6 @@ BEGIN
 		,	(CASE WHEN r.RptMonth IS NULL THEN 0 ELSE r.Stake_AR END) AS Stake_8RM
 		,	(CASE WHEN r.RptMonth IS NULL THEN 0 ELSE r.WinLoss_AR END) AS Winloss_8RM
 		,	CASE WHEN ISNULL((CASE WHEN r.RptMonth IS NULL THEN 0 ELSE r.Stake_AR END), 0) <> 0 THEN (CASE WHEN r.RptMonth IS NULL THEN 0 ELSE r.WinLoss_AR END)*100/(CASE WHEN r.RptMonth IS NULL THEN 0 ELSE r.Stake_AR END) ELSE NULL END AS Margin_8RM
-
 
 		,	t.Stake_AR AS Stake_AR8RM
 		,	t.WinLoss_AR AS Winloss_AR8RM

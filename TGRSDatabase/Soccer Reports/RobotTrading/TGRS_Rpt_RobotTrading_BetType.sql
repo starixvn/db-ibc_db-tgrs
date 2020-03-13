@@ -15,6 +15,7 @@ AS
    		- 20191227@Long.Luu: Created [Redmine ID: 123714]
 		- 20200120@John.Ngo: [TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
 		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
+		- 20200310@John.Ngo: Automation Trading - Report by Week  [Redmine ID: 129838]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -139,7 +140,7 @@ BEGIN
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 	GROUP BY r.BetType, r.TypeSiteId;
 
-	-- LeagueCount & MatchCount
+	-- Total LeagueCount & MatchCount
 	SELECT COUNT(DISTINCT r.LeagueId) AS LeagueCount
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
@@ -150,10 +151,11 @@ BEGIN
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
 
-	-- BetType, BetCount & MatchCount
+	-- LeagueCount, MatchCount & BetCount by BetType
 	SELECT r.BetType
-		,	SUM(r.BetCount)	AS BetCount
+		,	COUNT(DISTINCT r.LeagueId) AS LeagueCount
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
+		,	SUM(r.BetCount)	AS BetCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lg ON r.LeagueGroupId = lg.LeagueGroupId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
