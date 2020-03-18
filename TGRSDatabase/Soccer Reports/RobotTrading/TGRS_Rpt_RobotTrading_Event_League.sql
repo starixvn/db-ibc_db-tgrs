@@ -156,7 +156,8 @@ BEGIN
 					FROM dbo.RobotTrading r2 WITH (NOLOCK)
 						INNER JOIN @Bettypes AS b ON r2.BetType = b.BettypeId
 						LEFT JOIN @TypeSites AS ts ON r2.TypeSiteId = ts.TypeSiteId
-					WHERE r.LeagueId = r2.LeagueId AND r2.[Type] = @Model
+					WHERE r2.EventDate BETWEEN @FromDate AND @ToDate
+						AND r.LeagueId = r2.LeagueId AND r2.[Type] = @Model
 						AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 					FOR XML PATH('')), 1, 1, '') AS MatchIdList
 		,	ISNULL(SUM(r.BetCount), 0) AS BetCount
