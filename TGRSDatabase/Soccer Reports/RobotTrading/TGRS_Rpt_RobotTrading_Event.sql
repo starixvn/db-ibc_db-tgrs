@@ -1,4 +1,4 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_RobotTrading_Event]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_RobotTrading_Event]
 		@FromDate			DATE
 	,	@ToDate				DATE
 	,	@Model				TINYINT =  3
@@ -143,7 +143,8 @@ BEGIN
 						FROM dbo.RobotTrading r2 WITH (NOLOCK)
 							INNER JOIN @Bettypes AS b ON r2.BetType = b.BettypeId
 							LEFT JOIN @TypeSites AS ts ON r2.TypeSiteId = ts.TypeSiteId
-						WHERE r.LeagueGroupId = r2.LeagueGroupId AND r2.[Type] = @Model
+						WHERE r2.EventDate BETWEEN @FromDate AND @ToDate
+							AND r.LeagueGroupId = r2.LeagueGroupId AND r2.[Type] = @Model
 							AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 						FOR XML PATH('')), 1, 1, '') AS LeagueIdList
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount

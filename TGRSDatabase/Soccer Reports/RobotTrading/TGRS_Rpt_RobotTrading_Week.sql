@@ -13,6 +13,7 @@ AS
   
 	Revisions: 	
    		- 20200305@John.Ngo: Created [Redmine ID: 129838]
+		- 20200325@John.Ngo: Automation Trading by Period/Bettype - Drill down to event performance [Redmine ID: 130791]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -24,7 +25,7 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 
-DECLARE @StartDate DATE = @FromDate
+	DECLARE @StartDate DATE = @FromDate
 	,	@EndDate   DATE = CASE WHEN (DATENAME(DW, @FromDate) = 'Sunday') THEN @FromDate ELSE DATEADD(DAY, (DATEDIFF(DAY, 6, @FromDate) / 7) * 7 + 7, 6) END
 	,	@WeekDays  VARCHAR(100);
 
@@ -81,6 +82,7 @@ DECLARE @StartDate DATE = @FromDate
 		,	StartDate			DATE 
 		,	EndDate				DATE
 		,   LeagueCount			INT
+		,	LeagueIdList		VARCHAR(MAX)
 		,   MatchCount			INT
 		,   BetCount			INT
 		,	PRIMARY KEY CLUSTERED (
@@ -202,11 +204,20 @@ DECLARE @StartDate DATE = @FromDate
 			AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 		GROUP BY r.TypeSiteId;
 		
-		INSERT INTO #tmpTotalLMB(WeekDays, StartDate, EndDate, LeagueCount, MatchCount, BetCount)
+		INSERT INTO #tmpTotalLMB(WeekDays, StartDate, EndDate, LeagueCount, LeagueIdList, MatchCount, BetCount)
 		SELECT	@WeekDays
 			,	@StartDate
 			,	@EndDate
 			,	COUNT(DISTINCT r.LeagueId) AS LeagueCount
+			,	STUFF((SELECT DISTINCT ',', CONVERT(VARCHAR(MAX), r2.LeagueId)
+					FROM dbo.RobotTrading r2 WITH (NOLOCK)
+						INNER JOIN @LeagueGroups AS lg ON r2.LeagueGroupId = lg.LeagueGroupId
+						INNER JOIN @Bettypes AS b ON r2.BetType = b.BettypeId
+						LEFT JOIN @TypeSites AS ts ON r2.TypeSiteId = ts.TypeSiteId
+					WHERE r2.EventDate BETWEEN @StartDate AND @EndDate
+						AND r2.[Type] = @Model
+						AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+					FOR XML PATH('')), 1, 1, '') AS LeagueIdList
 			,	COUNT(DISTINCT r.MatchId) AS MatchCount
 			,	ISNULL(SUM(r.BetCount), 0) AS BetCount
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
@@ -237,7 +248,8 @@ DECLARE @StartDate DATE = @FromDate
 	SELECT	tm.WeekDays
 		,	tm.StartDate
 		,	tm.EndDate
-		,	tm.LeagueCount	
+		,	tm.LeagueCount
+		,	tm.LeagueIdList
 		,	tm.MatchCount
 		,	tm.BetCount
 	FROM #tmpTotalLMB AS tm WITH(NOLOCK) WHERE tm.LeagueCount > 0;
