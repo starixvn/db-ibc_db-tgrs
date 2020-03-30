@@ -15,6 +15,7 @@ AS
   
 	Revisions: 	
    		- 20200313@John.Ngo: Created [Redmine ID: 130393]
+		- 20200326@John.Ngo: Enhance performance [Redmine ID: 130791]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -68,6 +69,25 @@ BEGIN
 			,	TypeSiteId		ASC
 		)
 	);	
+
+	IF	OBJECT_ID('tempdb..#tmpLM') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmpLM;
+	END;
+
+	CREATE TABLE	#tmpLM (
+			LeagueGroupId		SMALLINT
+		,	LeagueId			INT
+		,	LeagueName			NVARCHAR(500)
+		,	MatchId				INT
+		,   BetCount			INT
+
+		,	PRIMARY KEY CLUSTERED (
+				LeagueGroupId	ASC
+			,	LeagueId		ASC
+			,	MatchId			ASC
+		)
+	);
 
 	DECLARE @Bettypes AS TABLE (BettypeId SMALLINT PRIMARY KEY CLUSTERED);
 	INSERT INTO @Bettypes(BettypeId)
@@ -148,19 +168,12 @@ BEGIN
 	GROUP BY r.LeagueGroupId, r.LeagueId, r.TypeSiteId;
 
 	-- LeagueGroupId, LeagueId, MatchCount & BetCount by Event (LeagueGroupId) - LeagueId
+	INSERT INTO #tmpLM (LeagueGroupId, LeagueId, LeagueName, MatchId, BetCount)
 	SELECT	r.LeagueGroupId
 		,	r.LeagueId
 		,	l.LeagueName
-		,	COUNT(DISTINCT r.MatchId) AS MatchCount
-		,	STUFF((SELECT DISTINCT ',', CONVERT(VARCHAR(MAX), r2.MatchId)
-					FROM dbo.RobotTrading r2 WITH (NOLOCK)
-						INNER JOIN @Bettypes AS b ON r2.BetType = b.BettypeId
-						LEFT JOIN @TypeSites AS ts ON r2.TypeSiteId = ts.TypeSiteId
-					WHERE r2.EventDate BETWEEN @FromDate AND @ToDate
-						AND r.LeagueId = r2.LeagueId AND r2.[Type] = @Model
-						AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
-					FOR XML PATH('')), 1, 1, '') AS MatchIdList
-		,	ISNULL(SUM(r.BetCount), 0) AS BetCount
+		,	r.MatchId
+		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN bodb02.dbo.league AS l ON l.LeagueId = lg.LeagueId
@@ -169,7 +182,20 @@ BEGIN
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
-	GROUP BY r.LeagueGroupId, r.LeagueId, l.leaguename;
+	GROUP BY r.LeagueGroupId, r.LeagueId, l.LeagueName, r.MatchId
+	
+	SELECT	lm.LeagueGroupId
+		,	lm.LeagueId
+		,	lm.LeagueName
+		,	COUNT(lm.MatchId) AS MatchCount
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), lm2.MatchId)
+					FROM #tmpLM lm2 WITH (NOLOCK)
+					WHERE lm.LeagueId = lm2.LeagueId
+					FOR XML PATH('')), 1, 1, '') AS MatchIdList
+		,	ISNULL(SUM(lm.BetCount), 0) AS BetCount
+	FROM #tmpLM lm WITH (NOLOCK)
+	GROUP BY lm.LeagueGroupId, lm.LeagueId, lm.LeagueName
+	ORDER BY lm.LeagueGroupId ASC, lm.LeagueId ASC;
 
 	-- Detailed by Event (LeagueGroupId) - LeagueId
 	SELECT	t.LeagueGroupId
