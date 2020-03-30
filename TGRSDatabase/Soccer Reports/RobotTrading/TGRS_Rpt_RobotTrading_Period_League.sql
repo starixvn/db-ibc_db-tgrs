@@ -1,4 +1,4 @@
-CREATE PROCEDURE [dbo].[TGRS_Rpt_RobotTrading_Period_League]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_RobotTrading_Period_League]
 		@FromDate			DATE
 	,	@ToDate				DATE
 	,	@Model				TINYINT =  3
@@ -63,6 +63,23 @@ BEGIN
 		)
 	);	
 
+	IF	OBJECT_ID('tempdb..#tmpLM') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmpLM;
+	END;
+
+	CREATE TABLE	#tmpLM (
+			LeagueId			INT
+		,	LeagueName			NVARCHAR(500)
+		,	MatchId				INT
+		,   BetCount			INT
+
+		,	PRIMARY KEY CLUSTERED (
+				LeagueId		ASC
+			,	MatchId			ASC
+		)
+	);
+
 	DECLARE @Bettypes AS TABLE (BettypeId SMALLINT PRIMARY KEY CLUSTERED);
 	INSERT INTO @Bettypes(BettypeId)
 	VALUES (1), (3), (7), (8);
@@ -124,18 +141,11 @@ BEGIN
 	GROUP BY r.LeagueId, r.TypeSiteId;
 
 	-- LeagueId, MatchCount & BetCount by Month/Week - LeagueId
-	SELECT	r.LeagueId
+	INSERT INTO #tmpLM (LeagueId, LeagueName, MatchId, BetCount)
+	SELECT	DISTINCT r.LeagueId
 		,	l.LeagueName
-		,	COUNT(DISTINCT r.MatchId) AS MatchCount
-		,	STUFF((SELECT DISTINCT ',', CONVERT(VARCHAR(MAX), r2.MatchId)
-					FROM dbo.RobotTrading r2 WITH (NOLOCK)
-						INNER JOIN @Bettypes AS b ON r2.BetType = b.BettypeId
-						LEFT JOIN @TypeSites AS ts ON r2.TypeSiteId = ts.TypeSiteId
-					WHERE r2.EventDate BETWEEN @FromDate AND @ToDate
-						AND r.LeagueId = r2.LeagueId AND r2.[Type] = @Model
-						AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
-					FOR XML PATH('')), 1, 1, '') AS MatchIdList
-		,	ISNULL(SUM(r.BetCount), 0) AS BetCount
+		,	r.MatchId
+		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN bodb02.dbo.league AS l ON l.LeagueId = lg.LeagueId
@@ -144,7 +154,19 @@ BEGIN
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
-	GROUP BY r.LeagueId, l.leaguename;
+	GROUP BY r.LeagueId, l.LeagueName, r.MatchId
+	
+	SELECT	lm.LeagueId
+		,	lm.LeagueName
+		,	COUNT(lm.MatchId) AS MatchCount
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), lm2.MatchId)
+					FROM #tmpLM lm2 WITH (NOLOCK)
+					WHERE lm.LeagueId = lm2.LeagueId
+					FOR XML PATH('')), 1, 1, '') AS MatchIdList
+		,	ISNULL(SUM(lm.BetCount), 0) AS BetCount
+	FROM #tmpLM lm WITH (NOLOCK)
+	GROUP BY lm.LeagueId, lm.LeagueName
+	ORDER BY lm.LeagueId ASC;
 
 	-- Detailed by Month/Week - LeagueId
 	SELECT	t.LeagueId

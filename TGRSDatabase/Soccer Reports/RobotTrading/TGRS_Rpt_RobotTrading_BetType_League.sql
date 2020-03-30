@@ -25,7 +25,7 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 
-	IF	OBJECT_ID('tempdb..#tmp8RMPerformance') IS NOT NULL
+		IF	OBJECT_ID('tempdb..#tmp8RMPerformance') IS NOT NULL
 	BEGIN
 		DROP TABLE	#tmp8RMPerformance;
 	END;
@@ -65,6 +65,23 @@ BEGIN
 				LeagueId		ASC
 			,	BetType			ASC
 			,	TypeSiteId		ASC
+		)
+	);	
+
+	IF	OBJECT_ID('tempdb..#tmpLM') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmpLM;
+	END;
+
+	CREATE TABLE	#tmpLM (
+			LeagueId			INT
+		,	LeagueName			NVARCHAR(500)
+		,	MatchId				INT
+		,   BetCount			INT
+
+		,	PRIMARY KEY CLUSTERED (
+				LeagueId		ASC
+			,	MatchId			ASC
 		)
 	);	
 
@@ -126,17 +143,11 @@ BEGIN
 	GROUP BY r.LeagueId, r.BetType, r.TypeSiteId;
 
 	-- LeagueCount, MatchCount & BetCount by BetType
-	SELECT	r.LeagueId
+	INSERT INTO #tmpLM (LeagueId, LeagueName, MatchId, BetCount)
+	SELECT	DISTINCT r.LeagueId
 		,	l.LeagueName
-		,	COUNT(DISTINCT r.MatchId) AS MatchCount
-		,	STUFF((SELECT DISTINCT ',', CONVERT(VARCHAR(MAX), r2.MatchId)
-					FROM dbo.RobotTrading r2 WITH (NOLOCK)
-						LEFT JOIN @TypeSites AS ts ON r2.TypeSiteId = ts.TypeSiteId
-					WHERE r2.EventDate BETWEEN @FromDate AND @ToDate
-						AND r.LeagueId = r2.LeagueId AND r2.[Type] = @Model AND r2.BetType = @BettypeId
-						AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
-					FOR XML PATH('')), 1, 1, '') AS MatchIdList
-		,	ISNULL(SUM(r.BetCount), 0) AS BetCount
+		,	r.MatchId
+		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN bodb02.dbo.league AS l ON l.LeagueId = lg.LeagueId
@@ -145,7 +156,19 @@ BEGIN
 		AND r.[Type] = @Model
 		AND r.BetType = @BettypeId
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
-	GROUP BY r.LeagueId, l.LeagueName;
+	GROUP BY r.LeagueId, l.LeagueName, r.MatchId
+	
+	SELECT	lm.LeagueId
+		,	lm.LeagueName
+		,	COUNT(lm.MatchId) AS MatchCount
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), lm2.MatchId)
+					FROM #tmpLM lm2 WITH (NOLOCK)
+					WHERE lm.LeagueId = lm2.LeagueId
+					FOR XML PATH('')), 1, 1, '') AS MatchIdList
+		,	ISNULL(SUM(lm.BetCount), 0) AS BetCount
+	FROM #tmpLM lm WITH (NOLOCK)
+	GROUP BY lm.LeagueId, lm.LeagueName
+	ORDER BY lm.LeagueId ASC;
 
 	-- Detailed by Bettype - LeagueId
 	SELECT	t.LeagueId
