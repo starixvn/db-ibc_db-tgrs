@@ -47,7 +47,8 @@ BEGIN;
 		,	@Winlostdate			DATETIME
 		,	@Duration				INT
 		,	@Msg					NVARCHAR(MAX)
-		,	@Date					NVARCHAR(250);
+		,	@Date					NVARCHAR(250)
+		,	@DotAdminDate			DATETIME = '20191101'
 
 	IF	OBJECT_ID('tempdb..#tmpDataGroup') IS NOT NULL
 	BEGIN
@@ -408,53 +409,225 @@ BEGIN;
 
 		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
 
-		INSERT INTO	#tmpTrader2 (TraderId, MatchId, EventDate, BetType, SpecialType)
-		SELECT	DISTINCT
-				[TraderId]		= a.TraderId
-			,	[MatchId]		= m.MatchId
-			,	[EventDate]		= m.EventDate
-			,	[BetType]		= a.BetType
-			,	[SpecialType]	= CASE	WHEN LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%'
-											THEN 1
-										WHEN LeagueName LIKE '%SPECIFIC 15 MINS%' AND t.TeamName LIKE '%No.of Corners%'
-											THEN 2
-										WHEN LeagueName LIKE '%SPECIALS' AND (t.TeamName LIKE '%Over' OR t.TeamName LIKE '%Under')
-											THEN 3
-										WHEN LeagueName LIKE '%SPECIFIC 15 MINS%'
-											THEN 4
-										WHEN LeagueName LIKE '%SPECIFIC 10 MINS%'
-											THEN 5
-										WHEN t.TeamName LIKE '%No.of Corners%'
-											THEN 6
-										WHEN t.TeamName LIKE '%Total Bookings'
-											THEN 7
-										WHEN t.TeamName LIKE '%Corner%'
-											THEN 8
-										WHEN t.TeamName LIKE '%Booking'
-											THEN 9
-										ELSE 0
-									END
-		FROM		bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
-			INNER JOIN	bodb_archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
-			LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
-			LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
-		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
-			AND	m.EventStatus = 'completed'
-			AND	m.SportType = 1
-			AND	m.MatchCode NOT LIKE '%hedge%'				
-			AND a.[Type] = 0 -- Operator
-			AND a.TraderId <> 0;
-		
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-			;
-
-		IF	@Debug = 1
+		IF @DotAdminDate <= @FromDateBK
 		BEGIN
-			-- Force the output to appear immediately
-			RAISERROR('From BK - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			INSERT INTO	#tmpTrader2 (TraderId, MatchId, EventDate, BetType, SpecialType)
+			SELECT	DISTINCT
+					[TraderId]		= a.TraderId
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= a.BetType
+				,	[SpecialType]	= CASE	WHEN LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%'
+												THEN 1
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%' AND t.TeamName LIKE '%No.of Corners%'
+												THEN 2
+											WHEN LeagueName LIKE '%SPECIALS' AND (t.TeamName LIKE '%Over' OR t.TeamName LIKE '%Under')
+												THEN 3
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%'
+												THEN 4
+											WHEN LeagueName LIKE '%SPECIFIC 10 MINS%'
+												THEN 5
+											WHEN t.TeamName LIKE '%No.of Corners%'
+												THEN 6
+											WHEN t.TeamName LIKE '%Total Bookings'
+												THEN 7
+											WHEN t.TeamName LIKE '%Corner%'
+												THEN 8
+											WHEN t.TeamName LIKE '%Booking'
+												THEN 9
+											ELSE 0
+										END
+			FROM		bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
+				INNER JOIN	bodb_archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
+				LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
+				LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
+			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
+				AND	m.EventStatus = 'completed'
+				AND	m.SportType = 1
+				AND	m.MatchCode NOT LIKE '%hedge%'				
+				AND a.[Type] = 0 -- Operator
+				AND a.TraderId <> 0;
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
 		END;
 		
+		IF @DotAdminDate > @FromDateBK AND @DotAdminDate <= @ToDateBK
+		BEGIN
+			SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', (@DotAdminDate - 1) = ' + CONVERT(NVARCHAR, (@DotAdminDate - 1), 120);
+
+			INSERT INTO	#tmpTrader2 (TraderId, MatchId, EventDate, BetType, SpecialType)
+			SELECT	DISTINCT
+					[TraderId]		= a.OperatorID
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= CASE	WHEN (a.BetType = 1 OR a.BetType = 5) AND a.OperatorType = 1
+												THEN 1
+											WHEN a.BetType = 1 AND a.OperatorType = 2
+												THEN 7
+											WHEN a.BetType = 2 AND a.OperatorType = 1
+												THEN 3
+											WHEN a.BetType = 2 AND a.OperatorType = 2
+												THEN 8
+											ELSE 0
+										END
+				,	[SpecialType]	= CASE	WHEN LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%'
+												THEN 1
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%' AND t.TeamName LIKE '%No.of Corners%'
+												THEN 2
+											WHEN LeagueName LIKE '%SPECIALS' AND (t.TeamName LIKE '%Over' OR t.TeamName LIKE '%Under')
+												THEN 3
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%'
+												THEN 4
+											WHEN LeagueName LIKE '%SPECIFIC 10 MINS%'
+												THEN 5
+											WHEN t.TeamName LIKE '%No.of Corners%'
+												THEN 6
+											WHEN t.TeamName LIKE '%Total Bookings'
+												THEN 7
+											WHEN t.TeamName LIKE '%Corner%'
+												THEN 8
+											WHEN t.TeamName LIKE '%Booking'
+												THEN 9
+											ELSE 0
+										END
+			FROM		DBARC.bodb_Archive.dbo.Dot_admin_Assignment_Operator_bk AS a WITH (NOLOCK)
+			INNER JOIN	DBARC.bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON a.matchid = m.matchid
+			LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
+			LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
+			WHERE	m.EventDate BETWEEN @FromDateBK AND (@DotAdminDate - 1)
+				AND	m.EventStatus = 'completed'
+				AND	m.SportType = 1
+				AND	a.OperatorType < 3
+				AND	m.MatchCode NOT LIKE '%hedge%';
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+
+			SELECT @Date = '@DotAdminDate = ' + CONVERT(NVARCHAR, @DotAdminDate, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+
+			INSERT INTO	#tmpTrader2 (TraderId, MatchId, EventDate, BetType, SpecialType)
+			SELECT	DISTINCT
+					[TraderId]		= a.TraderId
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= a.BetType
+				,	[SpecialType]	= CASE	WHEN LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%'
+												THEN 1
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%' AND t.TeamName LIKE '%No.of Corners%'
+												THEN 2
+											WHEN LeagueName LIKE '%SPECIALS' AND (t.TeamName LIKE '%Over' OR t.TeamName LIKE '%Under')
+												THEN 3
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%'
+												THEN 4
+											WHEN LeagueName LIKE '%SPECIFIC 10 MINS%'
+												THEN 5
+											WHEN t.TeamName LIKE '%No.of Corners%'
+												THEN 6
+											WHEN t.TeamName LIKE '%Total Bookings'
+												THEN 7
+											WHEN t.TeamName LIKE '%Corner%'
+												THEN 8
+											WHEN t.TeamName LIKE '%Booking'
+												THEN 9
+											ELSE 0
+										END
+			FROM		bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
+				INNER JOIN	bodb_archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
+				LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
+				LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
+			WHERE	m.EventDate BETWEEN @DotAdminDate AND @ToDateBK
+				AND	m.EventStatus = 'completed'
+				AND	m.SportType = 1
+				AND	m.MatchCode NOT LIKE '%hedge%'				
+				AND a.[Type] = 0 -- Operator
+				AND a.TraderId <> 0;
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+			
+			SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+		END;
+
+		IF @DotAdminDate > @ToDateBK 
+		BEGIN
+			INSERT INTO	#tmpTrader2 (TraderId, MatchId, EventDate, BetType, SpecialType)
+			SELECT	DISTINCT
+					[TraderId]		= a.OperatorID
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= CASE	WHEN (a.BetType = 1 OR a.BetType = 5) AND a.OperatorType = 1
+												THEN 1
+											WHEN a.BetType = 1 AND a.OperatorType = 2
+												THEN 7
+											WHEN a.BetType = 2 AND a.OperatorType = 1
+												THEN 3
+											WHEN a.BetType = 2 AND a.OperatorType = 2
+												THEN 8
+											ELSE 0
+										END
+				,	[SpecialType]	= CASE	WHEN LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%'
+												THEN 1
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%' AND t.TeamName LIKE '%No.of Corners%'
+												THEN 2
+											WHEN LeagueName LIKE '%SPECIALS' AND (t.TeamName LIKE '%Over' OR t.TeamName LIKE '%Under')
+												THEN 3
+											WHEN LeagueName LIKE '%SPECIFIC 15 MINS%'
+												THEN 4
+											WHEN LeagueName LIKE '%SPECIFIC 10 MINS%'
+												THEN 5
+											WHEN t.TeamName LIKE '%No.of Corners%'
+												THEN 6
+											WHEN t.TeamName LIKE '%Total Bookings'
+												THEN 7
+											WHEN t.TeamName LIKE '%Corner%'
+												THEN 8
+											WHEN t.TeamName LIKE '%Booking'
+												THEN 9
+											ELSE 0
+										END
+			FROM		DBARC.bodb_Archive.dbo.Dot_admin_Assignment_Operator_bk AS a WITH (NOLOCK)
+			INNER JOIN	DBARC.bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON a.matchid = m.matchid
+			LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
+			LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
+			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
+				AND	m.EventStatus = 'completed'
+				AND	m.SportType = 1
+				AND	a.OperatorType < 3
+				AND	m.MatchCode NOT LIKE '%hedge%';
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpTrader2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+		END;
+
 		INSERT INTO	#winlostdate (winlostdate)
 		SELECT	tally.winlostdate
 		FROM	(

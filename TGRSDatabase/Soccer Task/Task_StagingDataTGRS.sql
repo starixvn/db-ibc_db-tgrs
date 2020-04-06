@@ -65,8 +65,7 @@ BEGIN
 		,	@Duration				INT
 		,	@Msg					NVARCHAR(MAX)
 		,	@Date					NVARCHAR(250)
-		--,	@FromSP					BIT = 1
-		--,	@CapturedDate			DATETIME = GETDATE()
+		,	@DotAdminDate			DATETIME = '20191101'
 		;
 
 	DECLARE @BalanceUpDay			SMALLDATETIME
@@ -207,6 +206,30 @@ BEGIN
 		,	MatchId				ASC
 		,	BetType				ASC
 	);
+
+	IF	OBJECT_ID('tempdb..#tmpDLTraderbk') IS NOT NULL
+		BEGIN
+			DROP TABLE #tmpDLTraderbk;
+		END;
+
+		CREATE TABLE	#tmpDLTraderbk (
+				TraderId			INT
+			,	LeagueId			INT
+			,	MatchId				INT
+			,	EventDate			DATETIME
+			,	Bettype				INT
+			,	TraderBettype		INT
+			,	OperatorType		INT
+			,	MainDBBetType		INT
+			,	TeamId				INT
+			,	Grade				TINYINT
+		);
+
+		CREATE CLUSTERED INDEX	#CIX_tmpDLTraderbkIdx ON #tmpDLTraderbk (
+				EventDate			ASC
+			,	MatchId				ASC
+			,	BetType				ASC
+		);
 
 	IF	OBJECT_ID('tempdb..#tmpDLwinlostdate') IS NOT NULL
 	BEGIN
@@ -573,35 +596,153 @@ BEGIN
 				AND	m.SportType = 1
 				AND m.EventStatus = 'completed'
 				AND	m.MatchCode NOT LIKE '%hedge%';
-
-		INSERT INTO	#tmpDLTrader (TraderId, LeagueId, MatchId, EventDate, BetType, TeamId, Grade)
-		SELECT	DISTINCT
-				[TraderId]		= a.TraderID
-			,	[LeagueId]		= m.LeagueId
-			,	[MatchId]		= m.MatchId
-			,	[EventDate]		= m.EventDate
-			,	[BetType]		= a.BetType
-			,	[TeamId]		= td_T.TeamId
-			,	[Grade]			= td_G.Grade
-		FROM	bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
-			INNER JOIN #tmpDLScannedMatches AS m WITH (NOLOCK) ON m.matchId = a.matchId
-			INNER JOIN #tmpDLFilteredBettypes AS b WITH (NOLOCK) ON b.BetType = a.bettype
-			LEFT JOIN dbo.TraderGrade_History AS td_G WITH (NOLOCK) ON td_G.CustID = a.TraderID
-					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
-			LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
-					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
-		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
-				AND a.[Type] = 0 -- Operator
-				AND a.TraderId <> 0;
 		
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-			;
-
-		IF	@Debug = 1
+		IF @DotAdminDate <= @FromDateBK
 		BEGIN
-			-- Force the output to appear immediately
-			RAISERROR('From BK - Insert #tmpDLTrader - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			INSERT INTO	#tmpDLTraderbk (TraderId, LeagueId, MatchId, EventDate, BetType, TeamId, Grade)
+			SELECT	DISTINCT
+					[TraderId]		= a.TraderID
+				,	[LeagueId]		= m.LeagueId
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= a.BetType
+				,	[TeamId]		= td_T.TeamId
+				,	[Grade]			= td_G.Grade
+			FROM	bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
+				INNER JOIN #tmpDLScannedMatches AS m WITH (NOLOCK) ON m.matchId = a.matchId
+				INNER JOIN #tmpDLFilteredBettypes AS b WITH (NOLOCK) ON b.BetType = a.bettype
+				LEFT JOIN dbo.TraderGrade_History AS td_G WITH (NOLOCK) ON td_G.CustID = a.TraderID
+						AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
+				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
+						AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
+					AND a.[Type] = 0 -- Operator
+					AND a.TraderId <> 0;
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpDLTraderbk - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+		END;
+
+		IF @DotAdminDate > @FromDateBK AND @DotAdminDate <= @ToDateBK
+		BEGIN
+			SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', (@DotAdminDate - 1) = ' + CONVERT(NVARCHAR, (@DotAdminDate - 1), 120);
+
+			INSERT INTO	#tmpDLTraderbk (TraderId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)
+			SELECT	DISTINCT
+					[TraderId]		= a.OperatorID
+				,	[LeagueId]		= m.LeagueId
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= CASE	WHEN a.bettype = 5 AND a.operatortype = 1
+												THEN 1
+											ELSE ISNULL(b.MainDBBetType, 0) 
+										END
+				,	[TraderBettype] = a.bettype
+				,	[OperatorType]	= a.operatortype
+				,	[MainDBBetType] = b.MainDBBetType
+				,	[TeamId]		= td_T.TeamId
+				,	[Grade]			= td_G.Grade
+			FROM		bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
+			INNER JOIN	#tmpDLScannedMatches AS m WITH (NOLOCK) ON m.MatchId = a.matchId
+			LEFT JOIN	dbo.BetType AS b WITH(NOLOCK) ON a.bettype = b.AssignmentBetType
+					AND	a.OperatorType = b.OperatorType
+			LEFT JOIN	dbo.TraderGrade_History AS td_G WITH (NOLOCK) ON td_G.CustID = a.OperatorID
+					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
+			LEFT JOIN	dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.OperatorID
+					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+			WHERE	m.EventDate BETWEEN @FromDateBK AND (@DotAdminDate - 1)
+				AND	a.OperatorType < 3;
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpDLTraderbk - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+
+			SELECT @Date = '@DotAdminDate = ' + CONVERT(NVARCHAR, @DotAdminDate, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+
+			INSERT INTO	#tmpDLTraderbk (TraderId, LeagueId, MatchId, EventDate, BetType, TeamId, Grade)
+			SELECT	DISTINCT
+					[TraderId]		= a.TraderID
+				,	[LeagueId]		= m.LeagueId
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= a.BetType
+				,	[TeamId]		= td_T.TeamId
+				,	[Grade]			= td_G.Grade
+			FROM	bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
+				INNER JOIN #tmpDLScannedMatches AS m WITH (NOLOCK) ON m.matchId = a.matchId
+				INNER JOIN #tmpDLFilteredBettypes AS b WITH (NOLOCK) ON b.BetType = a.bettype
+				LEFT JOIN dbo.TraderGrade_History AS td_G WITH (NOLOCK) ON td_G.CustID = a.TraderID
+						AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
+				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
+						AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+			WHERE	m.EventDate BETWEEN @DotAdminDate AND @ToDateBK
+					AND a.[Type] = 0 -- Operator
+					AND a.TraderId <> 0;
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpDLTraderbk - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
+
+			SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
+		END;
+
+		IF @DotAdminDate > @ToDateBK 
+		BEGIN
+			
+			INSERT INTO	#tmpDLTraderbk (TraderId, LeagueId, MatchId, EventDate, BetType, TraderBettype, OperatorType, MainDBBetType, TeamId, Grade)
+			SELECT	DISTINCT
+					[TraderId]		= a.OperatorID
+				,	[LeagueId]		= m.LeagueId
+				,	[MatchId]		= m.MatchId
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= CASE	WHEN a.bettype = 5 AND a.operatortype = 1
+												THEN 1
+											ELSE ISNULL(b.MainDBBetType, 0) 
+										END
+				,	[TraderBettype] = a.bettype
+				,	[OperatorType]	= a.operatortype
+				,	[MainDBBetType] = b.MainDBBetType
+				,	[TeamId]		= td_T.TeamId
+				,	[Grade]			= td_G.Grade
+			FROM		bodb_archive.dbo.Dot_Admin_Assignment_Operator_bk AS a WITH (NOLOCK)
+			INNER JOIN	#tmpDLScannedMatches AS m WITH (NOLOCK) ON m.MatchId = a.matchId
+			LEFT JOIN	dbo.BetType AS b WITH(NOLOCK) ON a.bettype = b.AssignmentBetType
+					AND	a.OperatorType = b.OperatorType
+			LEFT JOIN	dbo.TraderGrade_History AS td_G WITH (NOLOCK) ON td_G.CustID = a.OperatorID
+					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
+			LEFT JOIN	dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.OperatorID
+					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
+				AND	a.OperatorType < 3;
+		
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - Insert #tmpDLTraderbk - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
 		END;
 
 		INSERT INTO	#tmpDLwinlostdate (Winlostdate)
@@ -769,7 +910,7 @@ BEGIN
 				,	[BetChoice]			= b.BetChoice 
 			FROM	#tmpDLFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-				LEFT JOIN #tmpDLTrader AS t WITH (NOLOCK)
+				LEFT JOIN #tmpDLTraderbk AS t WITH (NOLOCK)
 						ON	b.winlostdate = t.EventDate
 						AND	b.matchId = t.matchId
 						AND	(b.BetType = t.BetType OR (b.bettype = 23 AND t.BetType = 1))
