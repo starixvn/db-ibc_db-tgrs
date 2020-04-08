@@ -52,8 +52,8 @@ BEGIN
 	INTO #Trader
 	FROM bodb02.dbo.Dot_Admin_Assignment_Trader td WITH(NOLOCK)  
 		INNER JOIN  bodb02.dbo.Customer ci WITH (NOLOCK) ON td.TraderID = ci.custid 
-		LEFT JOIN  bodb_TGRS.dbo.Trader tr_h WITH (NOLOCK) 	ON tr_h.CustId = ci.custid 
-		LEFT JOIN [bodb02].[dbo].match m WITH(NOLOCK) ON td.matchid = m.matchid	
+		LEFT JOIN  dbo.Trader tr_h WITH (NOLOCK) ON tr_h.CustId = ci.custid 
+		LEFT JOIN [bodb02].[dbo].[match] m WITH(NOLOCK) ON td.matchid = m.matchid	
 	WHERE td.[Type] = 0 -- Operator
 		AND td.TraderID <> 0
 		AND tr_h.CustId IS NULL
@@ -92,7 +92,7 @@ BEGIN
 			   ,[GradeEffectiveDate] 
 	FROM #Trader;
 
-	INSERT INTO [bodb_TGRS].[dbo].[TraderGrade_History](
+	INSERT INTO [dbo].[TraderGrade_History](
 			[CustId]
 		,	[Grade]
 	    ,	[BeginDate]
@@ -102,10 +102,10 @@ BEGIN
 		,	[BeginDate] = td.GradeEffectiveDate
 		,	[EndDate]   = NULL
 	FROM #Trader td
-		LEFT JOIN  [bodb_TGRS].dbo.[TraderGrade_History] trg_h WITH (NOLOCK) ON trg_h.CustId = td.custid 
+		LEFT JOIN  dbo.[TraderGrade_History] trg_h WITH (NOLOCK) ON trg_h.CustId = td.custid 
 	WHERE trg_h.CustId IS NULL;
 
-	INSERT INTO [bodb_TGRS].[dbo].[TraderTeam_History](
+	INSERT INTO [dbo].[TraderTeam_History](
 			[CustId]
 	   ,	[TeamId]
 	   ,	[BeginDate]
@@ -115,7 +115,7 @@ BEGIN
 		,	[BeginDate] = td.[TeamEffectiveDate]
 		,	[EndDate]   = NULL
 	FROM #Trader td
-	LEFT JOIN  [bodb_TGRS].dbo.[TraderTeam_History] trt_h WITH (NOLOCK) ON trt_h.CustId = td.custid
+	LEFT JOIN  dbo.[TraderTeam_History] trt_h WITH (NOLOCK) ON trt_h.CustId = td.custid
 	WHERE trt_h.CustId IS NULL;
  
 	TRUNCATE TABLE #Trader;

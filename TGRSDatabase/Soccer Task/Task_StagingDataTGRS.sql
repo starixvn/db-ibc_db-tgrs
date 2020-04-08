@@ -65,7 +65,7 @@ BEGIN
 		,	@Duration				INT
 		,	@Msg					NVARCHAR(MAX)
 		,	@Date					NVARCHAR(250)
-		,	@DotAdminDate			DATETIME = '20191101'
+		,	@DotAdminDate			DATETIME = '20200101'
 		;
 
 	DECLARE @BalanceUpDay			SMALLDATETIME
