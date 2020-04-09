@@ -440,13 +440,26 @@ BEGIN;
 			FROM		bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
 				INNER JOIN	bodb_archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
 				LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
-				LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
+				LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.LeagueId
+				CROSS APPLY (
+							SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
+							WHERE   a.matchid = dt.matchid
+								AND a.bettype = dt.bettype		
+								AND a.[Type] = 0
+								AND a.TraderId <> 0
+							) dat
 			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 				AND	m.EventStatus = 'completed'
 				AND	m.SportType = 1
-				AND	m.MatchCode NOT LIKE '%hedge%'				
+				AND	m.MatchCode NOT LIKE '%hedge%'	
 				AND a.[Type] = 0 -- Operator
-				AND a.TraderId <> 0;
+				AND a.TraderId <> 0
+				AND a.TraderID = dat.TraderID
+				AND a.MatchId = dat.MatchId
+				AND a.Bettype = dat.Bettype
+				AND dat.Row_Num = 1;
 		
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -550,12 +563,25 @@ BEGIN;
 				INNER JOIN	bodb_archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
 				LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
 				LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
+				CROSS APPLY (
+							SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
+							WHERE   a.matchid = dt.matchid
+								AND a.bettype = dt.bettype		
+								AND a.[Type] = 0
+								AND a.TraderId <> 0
+							) dat
 			WHERE	m.EventDate BETWEEN @DotAdminDate AND @ToDateBK
 				AND	m.EventStatus = 'completed'
 				AND	m.SportType = 1
-				AND	m.MatchCode NOT LIKE '%hedge%'				
+				AND	m.MatchCode NOT LIKE '%hedge%'	
 				AND a.[Type] = 0 -- Operator
-				AND a.TraderId <> 0;
+				AND a.TraderId <> 0
+				AND a.TraderID = dat.TraderID
+				AND a.MatchId = dat.MatchId
+				AND a.Bettype = dat.Bettype
+				AND dat.Row_Num = 1;
 		
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -887,11 +913,25 @@ BEGIN;
 			INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK) ON a.matchid = m.matchid
 			LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
 			LEFT JOIN	bodb02.dbo.League l WITH (NOLOCK) ON m.leagueid = l.leagueid
+			CROSS APPLY (
+						SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+							ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+						FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
+						WHERE   a.matchid = dt.matchid
+							AND a.bettype = dt.bettype		
+							AND a.[Type] = 0
+							AND a.TraderId <> 0
+						) dat
 		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
+			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
-			AND	m.MatchCode NOT LIKE '%hedge%'
+			AND	m.MatchCode NOT LIKE '%hedge%'	
 			AND a.[Type] = 0 -- Operator
-			AND a.TraderId <> 0;
+			AND a.TraderId <> 0
+			AND a.TraderID = dat.TraderID
+			AND a.MatchId = dat.MatchId
+			AND a.Bettype = dat.Bettype
+			AND dat.Row_Num = 1;
 			
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1162,13 +1202,26 @@ BEGIN;
 		FROM		bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.Match AS m WITH (NOLOCK)	ON a.matchid = m.matchid
 			LEFT JOIN	bodb02.dbo.Team AS t WITH (NOLOCK) ON m.homeid = t.teamid
-			LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.leagueid
+			LEFT JOIN	bodb02.dbo.League AS l WITH (NOLOCK) ON	m.leagueid = l.LeagueId
+			CROSS APPLY (
+						SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+							ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+						FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
+						WHERE   a.matchid = dt.matchid
+							AND a.bettype = dt.bettype		
+							AND a.[Type] = 0
+							AND a.TraderId <> 0
+						) dat
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
-			AND	m.MatchCode NOT LIKE '%hedge%'
+			AND	m.MatchCode NOT LIKE '%hedge%'	
 			AND a.[Type] = 0 -- Operator
-			AND a.TraderId <> 0;
+			AND a.TraderId <> 0
+			AND a.TraderID = dat.TraderID
+			AND a.MatchId = dat.MatchId
+			AND a.Bettype = dat.Bettype
+			AND dat.Row_Num = 1;
 		
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())

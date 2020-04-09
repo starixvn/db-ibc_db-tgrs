@@ -615,9 +615,22 @@ BEGIN
 						AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
 						AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+				CROSS APPLY (
+							SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
+							WHERE   a.matchid = dt.matchid
+								AND a.bettype = dt.bettype		
+								AND a.[Type] = 0
+								AND a.TraderId <> 0
+							) dat
 			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 					AND a.[Type] = 0 -- Operator
-					AND a.TraderId <> 0;
+					AND a.TraderId <> 0
+					AND a.TraderID = dat.TraderID
+					AND a.MatchId = dat.MatchId
+					AND a.Bettype = dat.Bettype
+					AND dat.Row_Num = 1;	
 		
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -688,9 +701,22 @@ BEGIN
 						AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
 						AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+				CROSS APPLY (
+							SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
+							WHERE   a.matchid = dt.matchid
+								AND a.bettype = dt.bettype		
+								AND a.[Type] = 0
+								AND a.TraderId <> 0
+							) dat
 			WHERE	m.EventDate BETWEEN @DotAdminDate AND @ToDateBK
 					AND a.[Type] = 0 -- Operator
-					AND a.TraderId <> 0;
+					AND a.TraderId <> 0
+					AND a.TraderID = dat.TraderID
+					AND a.MatchId = dat.MatchId
+					AND a.Bettype = dat.Bettype
+					AND dat.Row_Num = 1;
 		
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1151,9 +1177,22 @@ BEGIN
 					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 			LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON td_T.CustID = a.TraderID
 					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+		CROSS APPLY (
+					SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+						ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+					FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
+					WHERE   a.matchid = dt.matchid
+						AND a.bettype = dt.bettype		
+						AND a.[Type] = 0
+						AND a.TraderId <> 0
+					) dat
 		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
 				AND a.[Type] = 0 -- Operator
-				AND a.TraderId <> 0;
+				AND a.TraderId <> 0
+				AND a.TraderID = dat.TraderID
+				AND a.MatchId = dat.MatchId
+				AND a.Bettype = dat.Bettype
+				AND dat.Row_Num = 1;	
 		
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1580,9 +1619,22 @@ BEGIN
 					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 			LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON td_T.CustID = a.TraderID
 					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
+			CROSS APPLY (
+						SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+							ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+						FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
+						WHERE   a.matchid = dt.matchid
+							AND a.bettype = dt.bettype		
+							AND a.[Type] = 0
+							AND a.TraderId <> 0
+						) dat
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 				AND a.[Type] = 0 -- Operator
-				AND a.TraderId <> 0;
+				AND a.TraderId <> 0
+				AND a.TraderID = dat.TraderID
+				AND a.MatchId = dat.MatchId
+				AND a.Bettype = dat.Bettype
+				AND dat.Row_Num = 1;
 		
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
