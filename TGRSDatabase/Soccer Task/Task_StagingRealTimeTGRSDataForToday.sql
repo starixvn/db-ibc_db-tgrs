@@ -382,11 +382,9 @@ BEGIN
 					FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
 					WHERE   a.matchid = dt.matchid
 						AND a.bettype = dt.bettype		
-						AND a.[Type] = 0
 						AND a.TraderId <> 0
 					) dat
 		WHERE	m.EventDate = @WinlostDate
-				AND a.[Type] = 0 -- Operator
 				AND a.TraderId <> 0
 				AND a.TraderID = dat.TraderID
 				AND a.MatchId = dat.MatchId
@@ -427,13 +425,7 @@ BEGIN
 			,	[WorkShift]			= m.WorkShift
 			,	[SpecialType]		= m.SpecialType
 			,	[Winlostdate]		= b.winlostdate
-			,	[Bettype]			= CASE	WHEN b.bettype = 1308
-												THEN 153
-											WHEN b.bettype = 1311
-												THEN 154
-											WHEN b.bettype = 1316
-												THEN 155
-											WHEN b.bettype = 465
+			,	[Bettype]			= CASE	WHEN b.bettype = 465
 												THEN 458
 											WHEN b.bettype = 466
 												THEN 459
@@ -1102,14 +1094,12 @@ BEGIN
 						FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
 						WHERE   a.matchid = dt.matchid
 							AND a.bettype = dt.bettype		
-							AND a.[Type] = 0
 							AND a.TraderId <> 0
 						) dat
 		WHERE		m.EventDate = @WinlostDate
 				AND	m.EventStatus = 'completed'
 				AND	m.SportType = 1
 				AND	m.MatchCode NOT LIKE '%hedge%'	
-				AND a.[Type] = 0 -- Operator
 				AND a.TraderId <> 0
 				AND a.TraderID = dat.TraderID
 				AND a.MatchId = dat.MatchId

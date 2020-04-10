@@ -447,14 +447,12 @@ BEGIN;
 							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
 							WHERE   a.matchid = dt.matchid
 								AND a.bettype = dt.bettype		
-								AND a.[Type] = 0
 								AND a.TraderId <> 0
 							) dat
 			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 				AND	m.EventStatus = 'completed'
 				AND	m.SportType = 1
 				AND	m.MatchCode NOT LIKE '%hedge%'	
-				AND a.[Type] = 0 -- Operator
 				AND a.TraderId <> 0
 				AND a.TraderID = dat.TraderID
 				AND a.MatchId = dat.MatchId
@@ -569,14 +567,12 @@ BEGIN;
 							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
 							WHERE   a.matchid = dt.matchid
 								AND a.bettype = dt.bettype		
-								AND a.[Type] = 0
 								AND a.TraderId <> 0
 							) dat
 			WHERE	m.EventDate BETWEEN @DotAdminDate AND @ToDateBK
 				AND	m.EventStatus = 'completed'
 				AND	m.SportType = 1
 				AND	m.MatchCode NOT LIKE '%hedge%'	
-				AND a.[Type] = 0 -- Operator
 				AND a.TraderId <> 0
 				AND a.TraderID = dat.TraderID
 				AND a.MatchId = dat.MatchId
@@ -919,14 +915,12 @@ BEGIN;
 						FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
 						WHERE   a.matchid = dt.matchid
 							AND a.bettype = dt.bettype		
-							AND a.[Type] = 0
 							AND a.TraderId <> 0
 						) dat
 		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
 			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
 			AND	m.MatchCode NOT LIKE '%hedge%'	
-			AND a.[Type] = 0 -- Operator
 			AND a.TraderId <> 0
 			AND a.TraderID = dat.TraderID
 			AND a.MatchId = dat.MatchId
@@ -1209,14 +1203,12 @@ BEGIN;
 						FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
 						WHERE   a.matchid = dt.matchid
 							AND a.bettype = dt.bettype		
-							AND a.[Type] = 0
 							AND a.TraderId <> 0
 						) dat
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 			AND	m.EventStatus = 'completed'
 			AND	m.SportType = 1
 			AND	m.MatchCode NOT LIKE '%hedge%'	
-			AND a.[Type] = 0 -- Operator
 			AND a.TraderId <> 0
 			AND a.TraderID = dat.TraderID
 			AND a.MatchId = dat.MatchId
