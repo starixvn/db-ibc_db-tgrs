@@ -17,6 +17,7 @@ AS
 		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
 		- 20200310@John.Ngo: Automation Trading - Report by Week (LeagueCount) [Redmine ID: 129838]
 		- 20200325@John.Ngo: Automation Trading by Period/Bettype - Drill down to event performance [Redmine ID: 130791]
+		- 20200407@John.Ngo: Separate LeagueGroupId (1 -> 11) [Redmine ID: 132038]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -86,17 +87,6 @@ BEGIN
 		INSERT INTO @LeagueGroups(LeagueGroupId)
 		SELECT val 
 		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
-
-		IF CHARINDEX('6', @LeagueGroupIds) > 0
-		BEGIN
-			DELETE FROM @LeagueGroups
-			WHERE LeagueGroupId = 6;
-
-			INSERT INTO @LeagueGroups(LeagueGroupId)
-			SELECT DISTINCT l.LeagueGroupID
-			FROM bodb02.dbo.league AS l WITH(NOLOCK)
-			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5);
-		END;
 	END
 	ELSE 
 	BEGIN

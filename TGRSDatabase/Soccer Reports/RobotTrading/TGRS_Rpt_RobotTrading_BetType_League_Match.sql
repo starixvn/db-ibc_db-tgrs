@@ -14,6 +14,7 @@ AS
   
 	Revisions: 	
 		- 20200325@John.Ngo: Automation Trading by Period/Bettype - Drill down to event performance [Redmine ID: 130791]
+		- 20200407@John.Ngo: Separate LeagueGroupId (1 -> 11) [Redmine ID: 132038]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -88,6 +89,12 @@ BEGIN
 		FROM dbo.strSplit_Key(@MatchIds,',');
 	END;
 
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
+	BEGIN
+		INSERT INTO @LeagueGroups(LeagueGroupId)
+		VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11);
+	END;
+
 	INSERT INTO #tmp8RMPerformance(EventDate, MatchId, BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
 	SELECT	r.EventDate
 		,	r.MatchId
@@ -99,6 +106,7 @@ BEGIN
 		,	- SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Matches AS m ON r.MatchId = m.MatchId
 		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
@@ -120,6 +128,7 @@ BEGIN
 		,	SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Matches AS m ON r.MatchId = m.MatchId
 		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
@@ -136,6 +145,7 @@ BEGIN
 		,	COUNT(DISTINCT r.MatchId) AS MatchCount
 		,	ISNULL(SUM(r.BetCount), 0) AS BetCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Matches AS m ON r.MatchId = m.MatchId
 		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
