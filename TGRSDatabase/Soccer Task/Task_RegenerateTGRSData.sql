@@ -14,6 +14,7 @@ AS
 		- 20190627@John.Ngo: Void/Recover bet now support up to 7 days, so Data Daily & Summary need to regenerate data changes within 7 days as well [Redmine ID: 115780]
 		- 20191018@John.Ngo: Update logic generate data [Redmine ID: 118959]
 		- 20200106@John.Ngo: Update generate data for RT3 [Redmine ID: 123714]
+		- 20200407@John.Ngo: Call xtest for SPs [Redmine ID: 120634]
 
 	Param's Explanation (filtered by):
 		@Flagged: 0 - All, 1 - For Soccer, 2 - For OS, 3 - For RT3

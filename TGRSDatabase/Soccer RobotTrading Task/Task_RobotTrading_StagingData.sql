@@ -15,6 +15,7 @@ AS
 		- 20191217@Long.Luu: Created [Redmine ID: 118959]
 		- 20200120@John.Ngo: [TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
 		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
+		- 20200409@John.Ngo: Update logic for #Trader [Redmine ID: 120634]
    		
 	Param's Explanation:
 
@@ -504,8 +505,20 @@ BEGIN
 				LEFT JOIN	dbo.TraderTeam_History AS td_T WITH (NOLOCK)
 					ON	td_T.CustID = a.TraderID
 					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
-		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
-		;
+				CROSS APPLY (
+							SELECT dt.TraderID, dt.MatchId, dt.Bettype, dt.[Type],
+								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.BetType, dt.[Type] ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
+							WHERE   a.matchid = dt.matchid
+								AND a.bettype = dt.BetType
+								AND a.[Type] = dt.[Type]
+							) dat
+		WHERE		m.EventDate BETWEEN @FromDateBK AND @ToDateBK
+				AND a.TraderID = dat.TraderID
+				AND a.MatchId = dat.MatchId
+				AND a.Bettype = dat.BetType
+				AND a.[Type] = dat.[Type]
+				AND dat.Row_Num = 1;
 		
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
@@ -898,8 +911,20 @@ BEGIN
 					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
 					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
-		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
-		;
+				CROSS APPLY (
+							SELECT dt.TraderID, dt.MatchId, dt.Bettype, dt.[Type],
+								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.BetType, dt.[Type] ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+							FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
+							WHERE   a.matchid = dt.matchid
+								AND a.bettype = dt.BetType
+								AND a.[Type] = dt.[Type]
+							) dat
+		WHERE		m.EventDate BETWEEN @FromDate14 AND @ToDate14
+				AND a.TraderID = dat.TraderID
+				AND a.MatchId = dat.MatchId
+				AND a.Bettype = dat.BetType
+				AND a.[Type] = dat.[Type]
+				AND dat.Row_Num = 1;
 		
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1302,8 +1327,20 @@ BEGIN
 					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
 					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
-		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
-		;
+				CROSS APPLY (
+							SELECT dt.TraderID, dt.MatchId, dt.Bettype, dt.[Type],
+								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.BetType, dt.[Type] ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+							FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
+							WHERE   a.matchid = dt.matchid
+								AND a.bettype = dt.BetType
+								AND a.[Type] = dt.[Type]
+							) dat
+		WHERE		m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
+				AND a.TraderID = dat.TraderID
+				AND a.MatchId = dat.MatchId
+				AND a.Bettype = dat.BetType
+				AND a.[Type] = dat.[Type]
+				AND dat.Row_Num = 1;
 		
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
