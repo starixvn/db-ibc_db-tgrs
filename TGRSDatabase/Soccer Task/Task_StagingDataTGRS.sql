@@ -44,9 +44,10 @@ AS
 		- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
 		- 20190513@John.Ngo: Update the logic on checking match to prepare data for trading performance [Redmine ID: 113321]
 		- 20190704@John.Ngo: Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
-		- 20190822@Long.Luu:	Grade brokendown for details performance [Redmine ID: 117030]
-		- 20190822@Long.Luu:	Suppport Non-Live Data [Redmine ID: 118959]
-		- 20200331@John.Ngo:	Update new table [Dot_Admin_Assignment_Trader] [Redmine ID: 120634]
+		- 20190822@Long.Luu: Grade brokendown for details performance [Redmine ID: 117030]
+		- 20190822@Long.Luu: Suppport Non-Live Data [Redmine ID: 118959]
+		- 20200331@John.Ngo: Update new table [Dot_Admin_Assignment_Trader] [Redmine ID: 120634]
+		- 20200416@John.Ngo: [TGR] Extend league data type [Redmine ID: 132630]
    		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -177,7 +178,7 @@ BEGIN
 			, SportType		INT
 			, HomeId		INT
 			, AwayId		INT
-			, LeagueName	NVARCHAR(100)
+			, LeagueName	NVARCHAR(512)
 			, HomeName		NVARCHAR(100)
 			, SpecialType	INT				
 	);

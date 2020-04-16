@@ -13,6 +13,7 @@ AS
 		- 20200120@John.Ngo: [TGR Soccer] RT3 Performance - Model Comparision Report [Redmine ID: 127208]
    		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
 		- 20200409@John.Ngo: Update logic for #Trader [Redmine ID: 120634]
+		- 20200416@John.Ngo: [TGR] Extend league data type [Redmine ID: 132630]
 
 	Param's Explanation:
 
@@ -108,7 +109,7 @@ BEGIN
 		,	SportType		INT
 		,	HomeId			INT
 		,	AwayId			INT
-		,	LeagueName		NVARCHAR(100)
+		,	LeagueName		NVARCHAR(512)
 		,	HomeName		NVARCHAR(100)
 		,	SpecialType		INT				
 	);
