@@ -16,6 +16,7 @@ AS
 	Revisions: 	
    		- 20200313@John.Ngo: Created [Redmine ID: 130393]
 		- 20200326@John.Ngo: Enhance performance [Redmine ID: 130791]
+		- 20200407@John.Ngo: Separate LeagueGroupId (1 -> 11) [Redmine ID: 132038]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -104,6 +105,12 @@ BEGIN
 		SELECT val FROM dbo.strSplit_Key(@TypeSiteIds,',');
 	END;
 
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
+	BEGIN
+		INSERT INTO @LeagueGroups(LeagueGroupId)
+		VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11);
+	END;
+
 	IF @IsExportExcel = 0
 	BEGIN
 		DECLARE @Leagues AS TABLE (LeagueId INT PRIMARY KEY CLUSTERED)
@@ -121,6 +128,7 @@ BEGIN
 		INSERT INTO @Leagues(LeagueId)
 		SELECT DISTINCT r.LeagueId
 		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+			INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 			LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
@@ -139,6 +147,7 @@ BEGIN
 		,	- SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
@@ -159,6 +168,7 @@ BEGIN
 		,	SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
@@ -175,6 +185,7 @@ BEGIN
 		,	r.MatchId
 		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN bodb02.dbo.league AS l ON l.LeagueId = lg.LeagueId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId

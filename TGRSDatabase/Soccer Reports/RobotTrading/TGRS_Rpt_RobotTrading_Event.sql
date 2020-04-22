@@ -13,6 +13,7 @@ AS
   
 	Revisions: 	
    		- 20200313@John.Ngo: Created [Redmine ID: 130393]
+		- 20200407@John.Ngo: Separate LeagueGroupId (1 -> 11) [Redmine ID: 132038]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -85,6 +86,7 @@ BEGIN
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+		AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
 
