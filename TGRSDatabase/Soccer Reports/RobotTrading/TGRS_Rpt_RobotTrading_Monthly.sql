@@ -18,6 +18,7 @@ AS
 		- 20200310@John.Ngo: Automation Trading - Report by Week (LeagueCount) [Redmine ID: 129838]
 		- 20200325@John.Ngo: Automation Trading by Period/Bettype - Drill down to event performance [Redmine ID: 130791]
 		- 20200407@John.Ngo: Separate LeagueGroupId (1 -> 11) [Redmine ID: 132038]
+		- 20200424@John.Ngo: Update logic @FirstMonthFromDate [Redmine ID: 131517]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -152,7 +153,7 @@ BEGIN
 	BEGIN
 		-- 8RM performance
 		INSERT INTO #tmp8RMPerformance(RptMonth, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
-		SELECT	@FirstMonthFromDate
+		SELECT	CAST(MONTH(@FirstMonthFromDate) AS VARCHAR) + '/01/' + CAST(YEAR(@FirstMonthFromDate) AS VARCHAR) AS DATE
 			,	SUM(r.BetCount)
 			,	SUM(r.Stake_VR)
 			,	- SUM(r.WinLoss_VR - r.Comm_VR)
@@ -207,7 +208,7 @@ BEGIN
 
 		-- All others performance
 		INSERT INTO #tmpTotalPerformance(RptMonth, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
-		SELECT	@FirstMonthFromDate
+		SELECT	CAST(MONTH(@FirstMonthFromDate) AS VARCHAR) + '/01/' + CAST(YEAR(@FirstMonthFromDate) AS VARCHAR) AS DATE
 			,	SUM(r.BetCount)
 			,	COUNT(DISTINCT r.MatchId)
 			,	SUM(r.Stake_VR)

@@ -10,6 +10,8 @@ AS
    		- 20140715@Tom.Vo:	  Filter Sport Type 1
    		- 20160314@Aaron.Cao: Added UPDATE Username
 		- 20200331@John.Ngo:  Update new table [Dot_Admin_Assignment_Trader] [Redmine ID: 120634]
+		- 20200422@John.Ngo:  Update logic for new table [Dot_Admin_Assignment_Trader] [Redmine ID: 131517]
+
  Param's Explanation:  
 	 
  Exam: 
@@ -54,8 +56,7 @@ BEGIN
 		INNER JOIN  bodb02.dbo.Customer ci WITH (NOLOCK) ON td.TraderID = ci.custid 
 		LEFT JOIN  dbo.Trader tr_h WITH (NOLOCK) ON tr_h.CustId = ci.custid 
 		LEFT JOIN [bodb02].[dbo].[match] m WITH(NOLOCK) ON td.matchid = m.matchid	
-	WHERE td.[Type] = 0 -- Operator
-		AND td.TraderID <> 0
+	WHERE td.TraderID <> 0
 		AND tr_h.CustId IS NULL
 		AND m.sporttype = 1;
  
