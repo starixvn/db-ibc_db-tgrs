@@ -10,6 +10,7 @@ AS
 	Revisions:
    		-	20180502@Long: change the way to get date range
 		-	20180724@CaseyHuynh: Enhance SP
+		-	20200427@John.Ngo:   Remove Unused table [Redmine ID: 131517]
 	Param's Explanation:
 		
 	Exam: EXEC Task_TrackChangesOnMatches] @Debug BIT = 0
@@ -181,35 +182,5 @@ BEGIN
 		-- Force the output to appear immediately --
 		RAISERROR('From #tmpTraderSummarizedDataOld and #tmpTraderSummarizedDataNew - Insert ChangedMatches - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 	END;
-
-	------------------DELETE OLD TRACE DATA-------------------
-	----DELETE ALL Match BEFORE 14 days
-	DELETE	tpt
-	FROM	dbo.TracePerformanceTrader as tpt WITH (ROWLOCK)
-	WHERE	DATEDIFF(DAY, tpt.CapturedDate, @NewCapturedDate) > 14;
-
-	DELETE	tpsm
-	FROM	dbo.TracePerformanceScannedMatches as tpsm WITH (ROWLOCK)
-	WHERE	DATEDIFF(DAY, tpsm.CapturedDate, @NewCapturedDate) > 14;	
-	
-	DELETE	tsmi
-	FROM	dbo.TraceScannedMatchesInfo as tsmi WITH (ROWLOCK)
-	WHERE	DATEDIFF(DAY, tsmi.CapturedDate, @NewCapturedDate) > 14;
-	
-	----DELETE All Match NOT IN TrackChangedMatch
-	DELETE	tpt
-	FROM	dbo.TracePerformanceTrader as tpt WITH (ROWLOCK)
-			LEFT JOIN dbo.TrackChangedMatch tcm WITH(NOLOCK) on tpt.MatchId = tcm.MatchId
-	WHERE	tcm.MatchId IS NULL;
-	
-	DELETE	tpsm
-	FROM	dbo.TracePerformanceScannedMatches as tpsm WITH (ROWLOCK)
-			LEFT JOIN dbo.TrackChangedMatch tcm WITH(NOLOCK) on tpsm.MatchId = tcm.MatchId
-	WHERE	tcm.MatchId IS NULL;
-	
-	DELETE	tsmi
-	FROM	dbo.TraceScannedMatchesInfo as tsmi WITH (ROWLOCK)
-			LEFT JOIN dbo.TrackChangedMatch tcm WITH(NOLOCK) on tsmi.MatchId = tcm.MatchId
-	WHERE	tcm.MatchId IS NULL;
 	
 END;
