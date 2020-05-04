@@ -14,6 +14,7 @@ AS
    		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
 		- 20200409@John.Ngo: Update logic for #Trader [Redmine ID: 120634]
 		- 20200416@John.Ngo: [TGR] Extend league data type [Redmine ID: 132630]
+		- 20200504@John.Ngo: [TGR] Get ExtraPT from epositiontaking column in bettrans table [Redmine ID: 133409]
 
 	Param's Explanation:
 
@@ -23,9 +24,6 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	/*
-	-- INITIALIZE --
-	*/
 	-- Common variables
 	DECLARE	@Begin					DATETIME = GETDATE()
 		,	@RowCount				INT
@@ -156,19 +154,6 @@ BEGIN
 
 	CREATE TABLE	#tmpWinlossDates (
 			WinlostDate		DATE
-	);
-
-	IF	OBJECT_ID('tempdb..#ExtraPTSportbooks') IS NOT NULL
-	BEGIN
-		DROP TABLE	#ExtraPTSportbooks;
-	END;
-
-	CREATE TABLE #ExtraPTSportbooks
-	(
-			SuperId			INT
-		,	ExtraPT			MONEY
-		,	FromDate		DATETIME
-		,	ToDate			DATETIME
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpFilteredBettransByBatch') IS NOT NULL
@@ -383,18 +368,6 @@ BEGIN
 				LEFT JOIN #tmpTraders AS td WITH (NOLOCK) ON sm.MatchId = td.MatchId
 		WHERE	td.MatchId IS NULL;
 
-		-- ExtraPT
-		INSERT INTO #ExtraPTSportbooks
-		SELECT t.SuperId, SUM(t.ExtraPT) AS ExtraPT, t.FromDate, t.ToDate
-		FROM
-			(
-				SELECT SuperId, ExtraPT, FromDate, ToDate
-				FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
-				WHERE @WinlostDate BETWEEN FromDate AND ToDate
-					AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
-			) AS t
-		GROUP BY t.SuperId, t.FromDate, t.ToDate;
-
 		TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 		INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, 
 				VirtualRate, ActualRate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Stake, WinLost, SMAWinLost, MatchCode,
@@ -412,7 +385,7 @@ BEGIN
 			,	[Tpositiontaking]	= b.tpositiontaking
 			,	[Srecommend]		= b.srecommend
 			,	[Scomm]				= b.scomm
-			,	[ExtraPT]			= es.ExtraPT
+			,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 			,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 			,	[WinLost]			= winlost - actual_stake
 			,	[SMAWinLost]		= awinlost + mwinlost + swinlost
@@ -428,8 +401,6 @@ BEGIN
 		FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
 				INNER JOIN #tmpScanningMatches AS m WITH (NOLOCK) ON b.matchid = m.matchid
 				INNER JOIN #tmpFilteredBettypes AS bt WITH(NOLOCK) ON b.bettype = bt.BetType
-				LEFT JOIN #ExtraPTSportbooks AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
-					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 				LEFT JOIN bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK) ON mm.MatchId = b.matchid
 					AND	mm.BetType = b.bettype
 				LEFT JOIN #tmp8RMMembers AS t8 WITH(NOLOCK) ON b.CustId = t8.CustId

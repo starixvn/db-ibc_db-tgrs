@@ -32,6 +32,7 @@ AS
 		- 20190822@Long.Luu: Suppport Non-Live Data [Redmine ID: 118959]
 		- 20200331@John.Ngo: Update new table [Dot_Admin_Assignment_Trader] [Redmine ID: 120634]
 		- 20200416@John.Ngo: [TGR] Extend league data type [Redmine ID: 132630]
+		- 20200504@John.Ngo: [TGR] Get ExtraPT from epositiontaking column in bettrans table [Redmine ID: 133409]
 
 	Param's Explanation:
 		
@@ -401,21 +402,6 @@ BEGIN
 			RAISERROR('Insert #tmpRTTrader - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;	
 
-		-- SUM(ExtraPT)
-		INSERT INTO #ExtraPTSportbook
-		SELECT SuperId, SUM(ExtraPT) AS ExtraPT, FromDate, ToDate
-		FROM
-		(
-			SELECT SuperId, ExtraPT, FromDate, ToDate
-			FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
-			WHERE
-				(
-					@WinLostDate BETWEEN FromDate AND ToDate
-				)
-				AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
-		) A
-		GROUP BY SuperId, FromDate, ToDate;
-
 		TRUNCATE TABLE	#tmpRTFilteredBettransByBatch;
 		INSERT INTO	#tmpRTFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, Winlostdate, Bettype, Modds, 
 			Virtualrate, Actualrate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Spread, Stake, WinLost, SMAWinLost, MatchCode, 
@@ -442,7 +428,7 @@ BEGIN
 			,	[Tpositiontaking]	= b.tpositiontaking
 			,	[Srecommend]		= b.srecommend
 			,	[Scomm]				= b.scomm
-			,	[ExtraPT]			= ISNULL(es.ExtraPT, 0)
+			,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 			,	[Spread]			= CASE WHEN mm.BetType IN (5, 15) THEN ISNULL(s.Spread, - (4 / mm.Spread - 4)) ELSE mm.Spread END
 			,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 			,	[WinLost]			= winlost - actual_stake
@@ -457,8 +443,6 @@ BEGIN
 			,	[BetChoice]			= b.betteam
 		FROM		bodb02.dbo.bettrans AS b WITH (NOLOCK)
 			INNER JOIN	#tmpRTScannedMatches AS m WITH (NOLOCK)	ON b.matchid = m.matchid
-			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
-					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			LEFT JOIN	bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK) ON mm.MatchId = b.MatchId AND mm.BetType = b.bettype
 			LEFT JOIN	#tmpRTSpread1x2 AS s ON	mm.Spread = s.Margin AND mm.BetType IN (5, 15)
 		WHERE	b.winlostdate = @winlostdate
@@ -1130,7 +1114,7 @@ BEGIN
 			,	[Betteam]			= b.betteam
 			,	[Odds]				= b.odds
 			,	[StatusID]			= b.statusID
-			,	[ExtraPT]			= CASE WHEN m.eventdate < '20170221' THEN 0 ELSE ISNULL(es.ExtraPT, 0) END
+			,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 			,	[ScoreHDP]			= CASE	WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore)
 											ELSE b.hdp1
 										END
@@ -1141,8 +1125,6 @@ BEGIN
 									* ABS(b.stake)
 		FROM		bodb02.dbo.bettrans AS b WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.Match AS m WITH (NOLOCK)	ON	b.matchid = m.matchid
-			LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
-					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 		WHERE	b.winlostdate = @winlostdate
 			AND	b.bettype IN (1, 3, 7, 8)
 			AND	b.statusID IN (112, 113)
