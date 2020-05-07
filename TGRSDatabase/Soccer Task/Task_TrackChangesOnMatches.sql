@@ -10,7 +10,8 @@ AS
 	Revisions:
    		-	20180502@Long: change the way to get date range
 		-	20180724@CaseyHuynh: Enhance SP
-		-	20200427@John.Ngo:   Remove Unused table [Redmine ID: 131517]
+		-	20200505@John.Ngo:   Remove Unused table [Redmine ID: 133409]
+
 	Param's Explanation:
 		
 	Exam: EXEC Task_TrackChangesOnMatches] @Debug BIT = 0
@@ -184,3 +185,6 @@ BEGIN
 	END;
 	
 END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

@@ -10,6 +10,7 @@ AS
 
 		- 20181205@John.Ngo: Adding 74 bettypes to OS's Settings [Redmine ID: #105513]
 		- 20200417@John.Ngo: Update new table [Dot_Admin_Assignment_Trader] [Redmine ID: 131517]
+		- 20200507@John.Ngo: Fix bug for TraderId [Redmine ID: 133409]
  
  Param's Explanation: 
 
@@ -79,7 +80,7 @@ BEGIN
 			   ,[ModifiedDate]
 			   ,[ModifiedBy]
 			   ,[Disabled])
-	SELECT [CustId]
+	SELECT [TraderId]
 			   ,[Username]
 			   ,[EmployeeId]
 			   ,[TeamId]

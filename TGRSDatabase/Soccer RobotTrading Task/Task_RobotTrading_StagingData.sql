@@ -17,6 +17,7 @@ AS
 		- 20200210@John.Ngo: [TGR Soccer] RT3 - Adding TA model into Robot Trading by Bettype and Month [Redmine ID: 128184]
 		- 20200409@John.Ngo: Update logic for #Trader [Redmine ID: 120634]
 		- 20200416@John.Ngo: [TGR] Extend league data type [Redmine ID: 132630]
+		- 20200504@John.Ngo: [TGR] Get ExtraPT from epositiontaking column in bettrans table [Redmine ID: 133409]
    		
 	Param's Explanation:
 
@@ -25,9 +26,6 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	/*
-	-- INITIALIZE --
-	*/
 	-- Common variables
 	DECLARE	@Begin					DATETIME = GETDATE()
 		,	@RowCount				INT
@@ -190,19 +188,6 @@ BEGIN
 
 	CREATE TABLE	#tmpWinlossDates (
 			WinlostDate		DATE
-	);
-
-	IF	OBJECT_ID('tempdb..#ExtraPTSportbooks') IS NOT NULL
-	BEGIN
-		DROP TABLE	#ExtraPTSportbooks;
-	END;
-
-	CREATE TABLE #ExtraPTSportbooks
-	(
-			SuperId			INT
-		,	ExtraPT			MONEY
-		,	FromDate		DATETIME
-		,	ToDate			DATETIME
 	);
 
 	IF	OBJECT_ID('tempdb..#tmpFilteredBettransByBatch') IS NOT NULL
@@ -435,7 +420,6 @@ BEGIN
 	BEGIN
 		TRUNCATE TABLE #tmpTraders;
 		TRUNCATE TABLE #tmpScanningMatches;
-		TRUNCATE TABLE #ExtraPTSportbooks;
 		
 		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
 
@@ -571,19 +555,6 @@ BEGIN
 				RAISERROR('From BK - Insert RobotStaging_EventDate - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 			END;
 		END;
-		
-		-- ExtraPT
-		INSERT INTO #ExtraPTSportbooks
-		SELECT t.SuperId, SUM(t.ExtraPT) AS ExtraPT, t.FromDate, t.ToDate
-		FROM
-			(
-				SELECT SuperId, ExtraPT, FromDate, ToDate
-				FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
-				WHERE (@FromDateBK BETWEEN FromDate AND ToDate
-						OR @ToDateBK BETWEEN FromDate AND ToDate)
-					AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
-			) AS t
-		GROUP BY t.SuperId, t.FromDate, t.ToDate;
 
 		WHILE	EXISTS (SELECT 1 FROM #tmpWinlossDates)
 		BEGIN
@@ -611,7 +582,7 @@ BEGIN
 				,	[Tpositiontaking]	= b.tpositiontaking
 				,	[Srecommend]		= b.srecommend
 				,	[Scomm]				= b.scomm
-				,	[ExtraPT]			= es.ExtraPT
+				,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 				,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 				,	[WinLost]			= winlost - actual_stake
 				,	[SMAWinLost]		= awinlost + mwinlost + swinlost
@@ -627,8 +598,6 @@ BEGIN
 			FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
 					INNER JOIN #tmpScanningMatches AS m WITH (NOLOCK) ON b.matchId = m.matchId
 					INNER JOIN #tmpFilteredBettypes AS bt WITH(NOLOCK) ON b.bettype = bt.BetType
-					LEFT JOIN #ExtraPTSportbooks AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
-						AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 					LEFT JOIN bodb_Archive.dbo.MatchMaxbet_bk AS mm WITH (NOLOCK) ON mm.matchId = b.matchId
 						AND	mm.BetType = b.bettype						
 					LEFT JOIN #tmp8RMMembers AS t8 WITH(NOLOCK) ON b.CustId = t8.CustId
@@ -843,7 +812,6 @@ BEGIN
 	BEGIN
 		TRUNCATE TABLE #tmpTraders;
 		TRUNCATE TABLE #tmpScanningMatches;
-		TRUNCATE TABLE #ExtraPTSportbooks;
 		
 		SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
 
@@ -980,19 +948,6 @@ BEGIN
 			END;
 		END;
 
-		-- ExtraPT
-		INSERT INTO #ExtraPTSportbooks
-		SELECT t.SuperId, SUM(t.ExtraPT) AS ExtraPT, t.FromDate, t.ToDate
-		FROM
-			(
-				SELECT SuperId, ExtraPT, FromDate, ToDate
-				FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
-				WHERE (@FromDate14 BETWEEN FromDate AND ToDate
-						OR @ToDate14 BETWEEN FromDate AND ToDate)
-					AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
-			) AS t
-		GROUP BY t.SuperId, t.FromDate, t.ToDate;
-
 		WHILE	EXISTS (SELECT 1 FROM #tmpWinlossDates WITH(NOLOCK))
 		BEGIN
 			SELECT	TOP(1)
@@ -1019,7 +974,7 @@ BEGIN
 				,	[Tpositiontaking]	= b.tpositiontaking
 				,	[Srecommend]		= b.srecommend
 				,	[Scomm]				= b.scomm
-				,	[ExtraPT]			= es.ExtraPT
+				,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 				,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 				,	[WinLost]			= winlost - actual_stake
 				,	[SMAWinLost]		= awinlost + mwinlost + swinlost
@@ -1035,8 +990,6 @@ BEGIN
 			FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
 					INNER JOIN #tmpScanningMatches AS m WITH (NOLOCK) ON b.matchId = m.matchId
 					INNER JOIN #tmpFilteredBettypes AS bt WITH(NOLOCK) ON b.bettype = bt.BetType
-					LEFT JOIN #ExtraPTSportbooks AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
-						AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 					LEFT JOIN bodb02.dbo.MatchMaxbet14 AS mm WITH (NOLOCK) ON	mm.matchId = b.matchId
 						AND	mm.BetType = b.bettype
 					LEFT JOIN #tmp8RMMembers AS t8 WITH(NOLOCK) ON b.CustId = t8.CustId
@@ -1250,7 +1203,6 @@ BEGIN
 	BEGIN
 		TRUNCATE TABLE #tmpTraders;
 		TRUNCATE TABLE #tmpScanningMatches;
-		TRUNCATE TABLE #ExtraPTSportbooks;
 		
 		SELECT @Date = '@FromDateOrigin = ' + CONVERT(NVARCHAR, @FromDateOrigin, 120) + ', @ToDateOrigin = ' + CONVERT(NVARCHAR, @ToDateOrigin, 120);
 
@@ -1394,19 +1346,6 @@ BEGIN
 			END;
 		END;
 
-		-- ExtraPT
-		INSERT INTO #ExtraPTSportbooks
-		SELECT t.SuperId, SUM(t.ExtraPT) AS ExtraPT, t.FromDate, t.ToDate
-		FROM
-			(
-				SELECT SuperId, ExtraPT, FromDate, ToDate
-				FROM bodb02.dbo.Acc_GroupExtraPTSetting WITH (NOLOCK)
-				WHERE (@FromDateOrigin BETWEEN FromDate AND ToDate
-						OR @ToDateOrigin BETWEEN FromDate AND ToDate)
-					AND ProductId = 1 AND Sporttype = 0 AND SubProduct = ''
-			) AS t
-		GROUP BY t.SuperId, t.FromDate, t.ToDate;
-
 		WHILE	EXISTS (SELECT 1 FROM #tmpWinlossDates WITH(NOLOCK))
 		BEGIN
 			SELECT	TOP(1)
@@ -1433,7 +1372,7 @@ BEGIN
 				,	[Tpositiontaking]	= b.tpositiontaking
 				,	[Srecommend]		= b.srecommend
 				,	[Scomm]				= b.scomm
-				,	[ExtraPT]			= es.ExtraPT
+				,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 				,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 				,	[WinLost]			= winlost - actual_stake
 				,	[SMAWinLost]		= awinlost + mwinlost + swinlost
@@ -1449,8 +1388,6 @@ BEGIN
 			FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
 					INNER JOIN #tmpScanningMatches AS m WITH (NOLOCK) ON b.matchid = m.matchid
 					INNER JOIN #tmpFilteredBettypes AS bt WITH(NOLOCK) ON b.bettype = bt.BetType
-					LEFT JOIN #ExtraPTSportbooks AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
-						AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 					LEFT JOIN bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK) ON mm.MatchId = b.matchid
 						AND	mm.BetType = b.bettype
 					LEFT JOIN #tmp8RMMembers AS t8 WITH(NOLOCK) ON b.CustId = t8.CustId
