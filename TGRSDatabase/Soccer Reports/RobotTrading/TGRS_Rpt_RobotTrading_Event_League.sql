@@ -17,6 +17,7 @@ AS
    		- 20200313@John.Ngo: Created [Redmine ID: 130393]
 		- 20200326@John.Ngo: Enhance performance [Redmine ID: 130791]
 		- 20200407@John.Ngo: Separate LeagueGroupId (1 -> 11) [Redmine ID: 132038]
+		- 20200626@John.Ngo: TA Performance - Get lastest LeagueGroup [Redmine ID: 136438]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -27,6 +28,42 @@ AS
  
 BEGIN 
 	SET NOCOUNT ON;
+
+	IF	OBJECT_ID('tempdb..#tmpRobotTrading') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmpRobotTrading;
+	END;
+
+	CREATE TABLE	#tmpRobotTrading (
+			TraderId			INT
+		,	MatchId				INT
+		,	LeagueId			INT
+		,	LeagueGroupId		SMALLINT
+		,	EventDate			DATE
+		,	BetType				SMALLINT
+		,	Is8RM				BIT
+		,   BetCount			INT
+		,   MatchCount			INT
+		,	Stake_VR			MONEY
+		,	WinLoss_VR			MONEY
+		,	Comm_VR				MONEY
+		,	Stake_AR			MONEY
+		,	WinLoss_AR			MONEY
+		,	Comm_AR				MONEY
+		,	TypeSiteId			TINYINT
+		,	[Type]				TINYINT
+	);	
+
+	CREATE CLUSTERED INDEX	#CIX_tmpRobotTrading_EventDate ON #tmpRobotTrading (
+			EventDate			ASC
+	);	
+
+	CREATE NONCLUSTERED INDEX	#IX_tmpRobotTradingIdx ON #tmpRobotTrading (
+			MatchId				ASC
+		,	BetType				ASC
+		,	Is8RM				ASC
+		,	[Type]				ASC
+	);
 
 	IF	OBJECT_ID('tempdb..#tmp8RMPerformance') IS NOT NULL
 	BEGIN
@@ -105,6 +142,41 @@ BEGIN
 		SELECT val FROM dbo.strSplit_Key(@TypeSiteIds,',');
 	END;
 
+	INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
+	SELECT	r.TraderId
+		,	r.MatchId
+		,	r.EventDate
+		,	r.BetType
+		,	r.LeagueId
+		,	r.LeagueGroupId
+		,	r.Is8RM
+		,	r.BetCount
+		,	r.Stake_VR
+		,	r.WinLoss_VR
+		,	r.Comm_VR
+		,	r.Stake_AR
+		,	r.WinLoss_AR 
+		,	r.Comm_AR
+		,	r.TypeSiteId
+		,	r.[Type]
+	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+		AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
+		AND r.[Type] = @Model
+		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+
+	-- Update lastest LeagueGroupId
+	UPDATE c
+	SET c.LeagueGroupId = mm.LeagueGroupId
+	FROM #tmpRobotTrading c
+		INNER JOIN (
+					SELECT m.LeagueId , m.LeagueGroupId, ROW_NUMBER() OVER(PARTITION BY m.LeagueId ORDER BY m.EventDate DESC) AS Row_Num
+					FROM #tmpRobotTrading m
+					) mm ON mm.LeagueId = c.LeagueId
+	WHERE mm.Row_Num = 1;
+
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
 	BEGIN
 		INSERT INTO @LeagueGroups(LeagueGroupId)
@@ -127,7 +199,7 @@ BEGIN
 	BEGIN
 		INSERT INTO @Leagues(LeagueId)
 		SELECT DISTINCT r.LeagueId
-		FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		FROM #tmpRobotTrading AS r WITH(NOLOCK)
 			INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 			LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
@@ -146,7 +218,7 @@ BEGIN
 		,	SUM(r.Stake_AR)
 		,	- SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+	FROM #tmpRobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
@@ -167,7 +239,7 @@ BEGIN
 		,	SUM(r.Stake_AR)
 		,	SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+	FROM #tmpRobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
@@ -184,7 +256,7 @@ BEGIN
 		,	l.LeagueName
 		,	r.MatchId
 		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+	FROM #tmpRobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN bodb02.dbo.league AS l ON l.LeagueId = lg.LeagueId
@@ -201,7 +273,7 @@ BEGIN
 		,	COUNT(lm.MatchId) AS MatchCount
 		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), lm2.MatchId)
 					FROM #tmpLM lm2 WITH (NOLOCK)
-					WHERE lm.LeagueId = lm2.LeagueId
+					WHERE lm.LeagueId = lm2.LeagueId AND lm.LeagueGroupId = lm2.LeagueGroupId
 					FOR XML PATH('')), 1, 1, '') AS MatchIdList
 		,	ISNULL(SUM(lm.BetCount), 0) AS BetCount
 	FROM #tmpLM lm WITH (NOLOCK)
@@ -243,6 +315,8 @@ BEGIN
 
 	DROP TABLE #tmp8RMPerformance;
 	DROP TABLE #tmpTotalPerformance;
+	DROP TABLE #tmpRobotTrading;
+
 END;
 
 GO
