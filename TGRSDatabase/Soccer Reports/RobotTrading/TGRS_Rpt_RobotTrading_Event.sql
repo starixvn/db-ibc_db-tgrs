@@ -123,7 +123,35 @@ BEGIN
 		SELECT val FROM dbo.strSplit_Key(@TypeSiteIds,',');
 	END;
 
-	IF @LeagueExclusionDate <= @FromDate OR (@LeagueExclusionDate > @FromDate AND @LeagueExclusionDate > @ToDate)
+	IF (@LeagueExclusionDate > @FromDate AND @LeagueExclusionDate > @ToDate)
+		BEGIN
+			INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
+			SELECT	r.TraderId
+				,	r.MatchId
+				,	r.EventDate
+				,	r.BetType
+				,	r.LeagueId
+				,	r.LeagueGroupId
+				,	r.Is8RM
+				,	r.BetCount
+				,	r.Stake_VR
+				,	r.WinLoss_VR
+				,	r.Comm_VR
+				,	r.Stake_AR
+				,	r.WinLoss_AR 
+				,	r.Comm_AR
+				,	r.TypeSiteId
+				,	r.[Type]
+			FROM dbo.RobotTrading AS r WITH(NOLOCK)
+				INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+				LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+			WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+				AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
+				AND r.[Type] = @Model
+				AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+		END;
+
+	IF @LeagueExclusionDate <= @FromDate
 		BEGIN
 			INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
 			SELECT	r.TraderId
