@@ -15,6 +15,7 @@ AS
    		- 20200313@John.Ngo: Created [Redmine ID: 130393]
 		- 20200407@John.Ngo: Separate LeagueGroupId (1 -> 11) [Redmine ID: 132038]
 		- 20200626@John.Ngo: TA Performance - Get lastest LeagueGroup [Redmine ID: 136438]
+		- 20200706@John.Ngo: TA Performance - Exclude major leagues from June 25 [Redmine ID: 137063]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -104,6 +105,12 @@ BEGIN
 	DECLARE @Bettypes AS TABLE (BettypeId SMALLINT PRIMARY KEY CLUSTERED);
 	INSERT INTO @Bettypes(BettypeId)
 	VALUES (1), (3), (7), (8);
+
+	-- LeagueExclusion from 'June 25, 2020 -> Today'
+	DECLARE @LeagueExclusionDate DATE = '20200625'
+	DECLARE @LeagueExclusion AS TABLE (LeagueId INT PRIMARY KEY CLUSTERED);
+	INSERT INTO @LeagueExclusion(LeagueId)
+	VALUES (3), (4), (5), (43);
 	
 	DECLARE @FilterSite AS TABLE (TypeSiteId TINYINT PRIMARY KEY CLUSTERED, TypeSiteDesc VARCHAR(20));
 	INSERT INTO @FilterSite(TypeSiteId, TypeSiteDesc)
@@ -115,31 +122,119 @@ BEGIN
 		INSERT INTO @TypeSites(TypeSiteId)
 		SELECT val FROM dbo.strSplit_Key(@TypeSiteIds,',');
 	END;
+
+	IF (@LeagueExclusionDate > @FromDate AND @LeagueExclusionDate > @ToDate)
+		BEGIN
+			INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
+			SELECT	r.TraderId
+				,	r.MatchId
+				,	r.EventDate
+				,	r.BetType
+				,	r.LeagueId
+				,	r.LeagueGroupId
+				,	r.Is8RM
+				,	r.BetCount
+				,	r.Stake_VR
+				,	r.WinLoss_VR
+				,	r.Comm_VR
+				,	r.Stake_AR
+				,	r.WinLoss_AR 
+				,	r.Comm_AR
+				,	r.TypeSiteId
+				,	r.[Type]
+			FROM dbo.RobotTrading AS r WITH(NOLOCK)
+				INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+				LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+			WHERE r.EventDate BETWEEN @FromDate AND @ToDate
+				AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
+				AND r.[Type] = @Model
+				AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+		END;
+
+	IF @LeagueExclusionDate <= @FromDate
+		BEGIN
+			INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
+			SELECT	r.TraderId
+				,	r.MatchId
+				,	r.EventDate
+				,	r.BetType
+				,	r.LeagueId
+				,	r.LeagueGroupId
+				,	r.Is8RM
+				,	r.BetCount
+				,	r.Stake_VR
+				,	r.WinLoss_VR
+				,	r.Comm_VR
+				,	r.Stake_AR
+				,	r.WinLoss_AR 
+				,	r.Comm_AR
+				,	r.TypeSiteId
+				,	r.[Type]
+			FROM dbo.RobotTrading AS r WITH(NOLOCK)
+				INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+				LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+				LEFT JOIN @LeagueExclusion AS le ON r.LeagueId = le.LeagueId
+			WHERE (r.EventDate BETWEEN @FromDate AND @ToDate)
+				AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
+				AND r.[Type] = @Model
+				AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+				AND (le.LeagueId IS NULL);
+		END;
 	
-	INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
-	SELECT	r.TraderId
-		,	r.MatchId
-		,	r.EventDate
-		,	r.BetType
-		,	r.LeagueId
-		,	r.LeagueGroupId
-		,	r.Is8RM
-		,	r.BetCount
-		,	r.Stake_VR
-		,	r.WinLoss_VR
-		,	r.Comm_VR
-		,	r.Stake_AR
-		,	r.WinLoss_AR 
-		,	r.Comm_AR
-		,	r.TypeSiteId
-		,	r.[Type]
-	FROM dbo.RobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
-	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
-		AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
-		AND r.[Type] = @Model
-		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+	IF @LeagueExclusionDate > @FromDate AND @LeagueExclusionDate <= @ToDate
+		BEGIN
+			INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
+			SELECT	r.TraderId
+				,	r.MatchId
+				,	r.EventDate
+				,	r.BetType
+				,	r.LeagueId
+				,	r.LeagueGroupId
+				,	r.Is8RM
+				,	r.BetCount
+				,	r.Stake_VR
+				,	r.WinLoss_VR
+				,	r.Comm_VR
+				,	r.Stake_AR
+				,	r.WinLoss_AR 
+				,	r.Comm_AR
+				,	r.TypeSiteId
+				,	r.[Type]
+			FROM dbo.RobotTrading AS r WITH(NOLOCK)
+				INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+				LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+			WHERE (r.EventDate BETWEEN @FromDate AND DATEADD(DD,-1,@LeagueExclusionDate))
+				AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
+				AND r.[Type] = @Model
+				AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+
+			INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
+			SELECT	r.TraderId
+				,	r.MatchId
+				,	r.EventDate
+				,	r.BetType
+				,	r.LeagueId
+				,	r.LeagueGroupId
+				,	r.Is8RM
+				,	r.BetCount
+				,	r.Stake_VR
+				,	r.WinLoss_VR
+				,	r.Comm_VR
+				,	r.Stake_AR
+				,	r.WinLoss_AR 
+				,	r.Comm_AR
+				,	r.TypeSiteId
+				,	r.[Type]
+			FROM dbo.RobotTrading AS r WITH(NOLOCK)
+				INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+				LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
+				LEFT JOIN @LeagueExclusion AS le ON r.LeagueId = le.LeagueId
+			WHERE r.EventDate BETWEEN @LeagueExclusionDate AND @ToDate
+				AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
+				AND r.[Type] = @Model
+				AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
+				AND (le.LeagueId IS NULL);
+		END;
 
 	-- Update lastest LeagueGroupId
 	UPDATE c
