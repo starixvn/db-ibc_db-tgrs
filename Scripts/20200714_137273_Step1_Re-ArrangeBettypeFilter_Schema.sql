@@ -8,6 +8,8 @@ Reviewer: Partrick
 
 --USE	bodb_TGRS;
 --GO
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SET NOCOUNT ON;
 
 ----===================B. CREATE TABLES========================
 ----===========================================================
@@ -34,3 +36,6 @@ CREATE NONCLUSTERED INDEX IX_BetType_GroupBettype ON [dbo].[BetType] (
 	[GroupBettypeId]		ASC
 )
 GO
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/

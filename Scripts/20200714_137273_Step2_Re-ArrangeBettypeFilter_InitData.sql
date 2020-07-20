@@ -8,6 +8,9 @@ Reviewer: Partrick
 
 --USE	bodb_TGRS;
 --GO
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SET NOCOUNT ON;
+
 DECLARE @CurrentDate DATETIME = GETDATE();
 
 INSERT INTO dbo.GroupBettype(GroupBettypeId,GroupBettypeName,CreatedBy,CreatedDate)
@@ -202,3 +205,6 @@ VALUES(900, 9, 'TGRS_BettypeManagement_Bettype_Insert', N'Bet Type Management', 
 
 INSERT INTO dbo.LogAction(ActionId, ActionTypeId, SPName, ActionName, Items, SubItems, IsInternal)
 VALUES(901, 9, 'TGRS_BettypeManagement_Bettype_Update', N'Bet Type Management', '<root><xml path="r/z" /><row item="BettypeId" alias="b" /><row item="BettypeName" alias="bn" /><row item="Group" alias="g" /><row item="GroupBettypeId" alias="gb" /><row item="OperatorType" alias="o" /><row item="AssignmentType" alias="a" /><row item="IsUsedForJuice" alias="j" /><row item="Active" alias="at" /></root>', NULL, 0);
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/
