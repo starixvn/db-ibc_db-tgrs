@@ -33,6 +33,7 @@ AS
 		- 20200331@John.Ngo: Update new table [Dot_Admin_Assignment_Trader] [Redmine ID: 120634]
 		- 20200416@John.Ngo: [TGR] Extend league data type [Redmine ID: 132630]
 		- 20200504@John.Ngo: [TGR] Get ExtraPT from epositiontaking column in bettrans table [Redmine ID: 133409]
+		- 20200721@John.Ngo: New Negative Bettype No Of Corner HDP [Redmine ID: 138095]
 
 	Param's Explanation:
 		
@@ -503,53 +504,59 @@ BEGIN
 						)
 			CROSS APPLY	(
 				SELECT	[BetType]	= CASE	WHEN b.BetType = 1 AND b.SpecialType = 0
-												THEN 1 --HDP
-											WHEN b.BetType = 3 AND b.SpecialType = 0
-												THEN 3 --O/U		
-											WHEN b.BetType = 8 AND b.SpecialType = 0
-												THEN 8 --1st O/U
-											WHEN b.BetType IN (5, 124) AND b.SpecialType = 0
-												THEN 5 --1x2		
-											WHEN b.BetType IN (5, 124) AND b.SpecialType = 5
-												THEN - 14 --10mins 1x2
-											WHEN b.BetType IN (15, 125) AND b.SpecialType = 0
-												THEN 15 --1st 1x2
-											WHEN b.BetType = 1 AND b.SpecialType = 4
-												THEN - 1 --15mins HDP
-											WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
-												THEN - 2 --Next Corner
-											WHEN b.BetType = 1 AND b.SpecialType = 5
-												THEN - 15 --10mins HDP
-											WHEN b.BetType = 1 AND b.SpecialType = 9
-												THEN - 3 --Next Booking
-											WHEN b.BetType IN (5, 124) AND b.SpecialType = 4
-												THEN - 4 --15mins 1X2
-											WHEN b.BetType = 3 AND b.SpecialType = 4
-												THEN - 5 --15mins O/U
-											WHEN b.BetType = 3 AND b.SpecialType = 5
-												THEN - 6 --10mins O/U
-											WHEN b.BetType = 3 AND b.SpecialType = 2
-												THEN - 7 --Corners 15mins O/U
-											WHEN b.BetType = 3 AND b.SpecialType = 7
-												THEN - 8 --Total Bookings
-											WHEN b.BetType = 1 AND b.SpecialType = 1
-												THEN - 37 --Total Bookings 15mins HDP
-											WHEN b.BetType = 3 AND b.SpecialType = 1
-												THEN - 10 --Total Bookings 15mins O/U
-											WHEN b.BetType = 3 AND b.SpecialType = 6
-												THEN - 13 --No. of Corner
-											WHEN b.BetType = 8 AND b.SpecialType = 6
-												THEN - 12 --1st No. of Corner
-											WHEN b.BetType = 8 AND b.SpecialType = 7
-												THEN - 9 --1st TotalBookings
-											WHEN (b.BetType = 3 OR b.BetType = 8) AND b.SpecialType = 3
-												THEN - 11 --Single Team O/U
-											WHEN b.BetType IN (5, 124)
-												THEN 5 --1x2	
-											WHEN b.BetType IN (15, 125)
-												THEN 15 --1st 1x2
-											ELSE b.BetType
-										END
+													THEN 1 --HDP
+												WHEN b.BetType = 3 AND b.SpecialType = 0
+													THEN 3 --O/U		
+												WHEN b.BetType = 8 AND b.SpecialType = 0
+													THEN 8 --1st O/U
+												WHEN b.BetType IN (5, 124) AND b.SpecialType = 0
+													THEN 5 --1x2		
+												WHEN b.BetType IN (5, 124) AND b.SpecialType = 5
+													THEN - 14 --10mins 1x2
+												WHEN b.BetType IN (15, 125) AND b.SpecialType = 0
+													THEN 15 --1st 1x2
+												WHEN b.BetType = 1 AND b.SpecialType = 4
+													THEN - 1 --15mins HDP
+												WHEN (b.bettype = 23 AND t.BetType = 1) OR (b.BetType = 1 AND b.SpecialType = 8)
+													THEN - 2 --Next Corner
+												WHEN b.BetType = 1 AND b.SpecialType = 5
+													THEN - 15 --10mins HDP
+												WHEN b.BetType = 1 AND b.SpecialType = 9
+													THEN - 3 --Next Booking
+												WHEN b.BetType IN (5, 124) AND b.SpecialType = 4
+													THEN - 4 --15mins 1X2
+												WHEN b.BetType = 3 AND b.SpecialType = 4
+													THEN - 5 --15mins O/U
+												WHEN b.BetType = 3 AND b.SpecialType = 5
+													THEN - 6 --10mins O/U
+												WHEN b.BetType = 1 AND b.SpecialType = 2  
+													THEN - 39 --No. of Corners 15mins HPD
+												WHEN b.BetType = 3 AND b.SpecialType = 2  
+													THEN - 7 --No. of Corner 15mins O/U
+												WHEN b.BetType = 3 AND b.SpecialType = 7
+													THEN - 8 --Total Bookings
+												WHEN b.BetType = 1 AND b.SpecialType = 1
+													THEN - 37 --Total Bookings 15mins HDP
+												WHEN b.BetType = 3 AND b.SpecialType = 1
+													THEN - 10 --Total Bookings 15mins O/U
+												WHEN b.BetType = 1 AND b.SpecialType = 6  
+													THEN - 41  --No. of Corners HPD
+												WHEN b.BetType = 3 AND b.SpecialType = 6  
+													THEN - 13 --No. of Corners O/U
+												WHEN b.BetType = 7 AND b.SpecialType = 6  
+													THEN - 40 --1st No. of Corners HDP
+												WHEN b.BetType = 8 AND b.SpecialType = 6  
+													THEN - 12 --1st No. of Corners O/U												
+												WHEN b.BetType = 8 AND b.SpecialType = 7
+													THEN - 9 --1st TotalBookings
+												WHEN (b.BetType = 3 OR b.BetType = 8) AND b.SpecialType = 3
+													THEN - 11 --Single Team O/U
+												WHEN b.BetType IN (5, 124)
+													THEN 5 --1x2	
+												WHEN b.BetType IN (15, 125)
+													THEN 15 --1st 1x2
+												ELSE b.BetType
+											END
 				) AS ca
 		WHERE	b.winlostdate = @winlostdate;
 
@@ -1185,18 +1192,24 @@ BEGIN
 												THEN -5 --15mins O/U
 											WHEN b.BetType = 3 AND SpecialType = 5
 												THEN -6 --10mins O/U
-											WHEN b.BetType = 3 AND SpecialType = 2
-												THEN -7 --Corners 15mins O/U
+											WHEN b.BetType = 1 AND SpecialType = 2  
+												THEN -39 --No. of Corners 15mins HPD
+											WHEN b.BetType = 3 AND SpecialType = 2  
+												THEN -7 --No. of Corner 15mins O/U
 											WHEN b.BetType = 3 AND SpecialType = 7
 												THEN -8 --Total Bookings
 											WHEN b.BetType = 1 AND SpecialType = 1
-												THEN - 37 --Total Bookings 15mins HDP
+												THEN -37 --Total Bookings 15mins HDP
 											WHEN b.BetType = 3 AND SpecialType = 1 
 												THEN -10 --Total Bookings 15mins O/U
-											WHEN b.BetType = 3 AND SpecialType = 6
-												THEN -13 --No. of Corner
-											WHEN b.BetType = 8 AND SpecialType = 6
-												THEN -12 --1st No. of Corner
+											WHEN b.BetType = 1 AND SpecialType = 6  
+												THEN -41  --No. of Corners HPD
+											WHEN b.BetType = 3 AND SpecialType = 6  
+												THEN -13 --No. of Corners O/U
+											WHEN b.BetType = 7 AND SpecialType = 6  
+												THEN -40 --1st No. of Corners HDP
+											WHEN b.BetType = 8 AND SpecialType = 6  
+												THEN -12 --1st No. of Corners O/U											
 											WHEN b.BetType = 8 AND SpecialType = 7
 												THEN -9 --1st TotalBookings
 											WHEN (b.BetType = 3 OR b.BetType = 8) AND SpecialType = 3
