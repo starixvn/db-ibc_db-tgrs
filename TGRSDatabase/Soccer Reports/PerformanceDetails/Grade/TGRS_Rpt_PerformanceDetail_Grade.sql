@@ -1,6 +1,7 @@
 ALTER PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]  
 		@FromDate			DATE
 	,	@ToDate				DATE
+	,	@LeagueGroupIds		VARCHAR(2000) = ''
 	,	@Turnover			MONEY			= NULL
 	,	@WinLoss			MONEY			= NULL
 	,	@MarginFrom			MONEY			= NULL
@@ -24,24 +25,37 @@ AS
 		- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
+		- 20200713@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
 	
 	Example: 	
-		EXECUTE	TGRS_Rpt_PerformanceDetail_Grade  
-					@FromDate = '2016-02-15 00:00:00'
-				,	@WinLoss = NULL
-				,	@Turnover = NULL
-				,	@MarginTo = NULL
-				,	@MarginFrom = NULL
-				,	@Bettypes = '1,3,5'
-				,	@ToDate = '2016-03-14 00:00:00'
+		EXECUTE	TGRS_Rpt_PerformanceDetail_Grade  @FromDate = '2016-02-15 00:00:00', @ToDate = '2016-03-14 00:00:00', @Bettypes = '1,3,5'				
 */  
  
 BEGIN 	
 	SET NOCOUNT ON;  
-	 
+	
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
+	IF @LeagueGroupIds <> ''
+	BEGIN
+		INSERT INTO @LeagueGroups(LeagueGroupId)
+		SELECT val 
+		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
+
+		IF CHARINDEX('12', @LeagueGroupIds) > 0
+		BEGIN
+			DELETE FROM @LeagueGroups
+			WHERE LeagueGroupId = 12;
+
+			INSERT INTO @LeagueGroups(LeagueGroupId)
+			SELECT DISTINCT l.LeagueGroupID
+			FROM bodb02.dbo.league AS l WITH(NOLOCK)
+			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5,6,7,8,9,10,11);
+		END;
+	END;
+	
 	CREATE TABLE #ScoreDetail (
 			CustID			INT
 		,	Grade			TINYINT
@@ -91,17 +105,16 @@ BEGIN
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss		
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
-		INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
-				ON	tm.BetType = tp.BetType
-				AND	tm.WorkShift = tp.WorkShift
-		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK)
-				ON	s.Spread = tp.Spread
-				AND	s.Rate = tm.Rate
+		INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
+		INNER JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType AND tm.WorkShift = tp.WorkShift
+		LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 				AND (@Market = -1 OR tp.IsLive = @Market)
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 	WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 		AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 	GROUP BY	tp.CustId, tp.Grade, tp.IsLive;
 
 	WITH GradeDetail AS (
@@ -118,11 +131,14 @@ BEGIN
 						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
 				END														AS Margin
 		FROM	dbo.TraderPerformance	AS tp WITH (NOLOCK)
+			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
+			LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
 			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 			AND (@Market = -1 OR tp.IsLive = @Market)
 			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+			AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 		GROUP BY	tp.Grade, tp.IsLive
 	)
 	INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLoss, BetCount, Margin, IsLive)

@@ -1,11 +1,12 @@
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Grade_League]  	
-	@FromDate			DATE,
-	@ToDate				DATE,
-	@Grade				INT,
-	@Bettypes			VARCHAR(2000) =  '0',
-	@IsExcludeLeagues	BIT = 1,
-	@Market				SMALLINT = 1
+		@FromDate			DATE
+	,	@ToDate				DATE
+	,	@LeagueGroupIds		VARCHAR(2000) = ''
+	,	@Grade				INT
+	,	@Bettypes			VARCHAR(2000) =  '0'
+	,	@IsExcludeLeagues	BIT = 1
+	,	@Market				SMALLINT = 1
 AS    
 /*  
  Created:	20160328@Aaron.Cao
@@ -20,20 +21,38 @@ AS
 	- 20190822@Long.Luu:	grade brokendown for details performance [Redmine ID: 117030]
 	- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 	- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
+	- 20200713@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 
  Param's Explanation:  	
 	- @Market: -1 All; 0 Nonlive; 1 Live
 
  Exam: 
 	  EXEC  TGRS_Rpt_PerformanceDetail_Grade_League @FromDate = '2016-03-13', @ToDate= '2016-03-27', @Grade = 1
-  
 */  
  
 BEGIN 
 	SET NOCOUNT ON;
 
-	DECLARE @BettypeList AS TABLE (bettype SMALLINT);
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
+	IF @LeagueGroupIds <> ''
+	BEGIN
+		INSERT INTO @LeagueGroups(LeagueGroupId)
+		SELECT val 
+		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
 
+		IF CHARINDEX('12', @LeagueGroupIds) > 0
+		BEGIN
+			DELETE FROM @LeagueGroups
+			WHERE LeagueGroupId = 12;
+
+			INSERT INTO @LeagueGroups(LeagueGroupId)
+			SELECT DISTINCT l.LeagueGroupID
+			FROM bodb02.dbo.league AS l WITH(NOLOCK)
+			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5,6,7,8,9,10,11);
+		END;
+	END;
+
+	DECLARE @BettypeList AS TABLE (Bettype SMALLINT);
 	IF @Bettypes <> '0'
 		INSERT INTO @BettypeList
 		SELECT val 
@@ -45,6 +64,7 @@ BEGIN
 	
 	SELECT P.LeagueId,
 		L.LeagueName,
+		L.LeagueGroupID,
 		P.IsLive,
 		ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount, 
 		ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount, 
@@ -52,15 +72,17 @@ BEGIN
 		ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm),0) AS WinLoss, 
 		ISNULL(SUM(P.BetCount), 0) AS BetCount,
 		CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin
-	FROM dbo.TraderPerformance AS P WITH (NOLOCK)	 
+	FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 		INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+		LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 	WHERE	P.Bettype IN (SELECT bettype FROM @BettypeList)
 		AND P.Grade = @Grade
 		AND P.EventDate BETWEEN @FromDate AND @ToDate	
 		AND (@Market = -1 OR P.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-	GROUP BY P.LeagueId, L.LeagueName, P.IsLive	
+		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+	GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive	
 	ORDER BY Margin DESC, LeagueName ASC;
 END;
 

@@ -1,6 +1,7 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_ScoreDetail]
 		@FromDate			DATE
 	,	@ToDate				DATE
+	,	@LeagueGroupIds		VARCHAR(2000) = ''
 	,	@CustId				INT
 	,	@MatchId			INT
 	,	@Bettypes			VARCHAR(2000) = '0'
@@ -19,18 +20,38 @@ AS
 		- 20190116@John:		Fix excluding Leagues from report [Redmine ID: #108008]
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
+		- 20200710@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 
 	 Exam: 
-		EXEC [TGRS_Rpt_ScoreDetail]  @FromDate='2014-11-23 00:00:00', @CustId=4244272,@Bettypes='0',@MatchId=11146182,@ToDate='2014-12-07 00:00:00' 
+		EXEC [TGRS_Rpt_ScoreDetail]  @FromDate='2014-11-23 00:00:00', @CustId=4244272,@Bettypes='0', @MatchId=11146182, @ToDate='2014-12-07 00:00:00' 
 	   
 */  
  
 BEGIN 
 	SET NOCOUNT ON;
 	
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
+	IF @LeagueGroupIds <> ''
+	BEGIN
+		INSERT INTO @LeagueGroups(LeagueGroupId)
+		SELECT val 
+		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
+
+		IF CHARINDEX('12', @LeagueGroupIds) > 0
+		BEGIN
+			DELETE FROM @LeagueGroups
+			WHERE LeagueGroupId = 12;
+
+			INSERT INTO @LeagueGroups(LeagueGroupId)
+			SELECT DISTINCT l.LeagueGroupID
+			FROM bodb02.dbo.league AS l WITH(NOLOCK)
+			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5,6,7,8,9,10,11);
+		END;
+	END;
+
 	DECLARE @Detail AS TABLE (
 			LeagueId		INT
 		,	BetType			SMALLINT
@@ -155,19 +176,25 @@ BEGIN
 						SELECT MAX(ModifiedDate) AS ModifiedDate, LeagueId, BetType, WorkShift
 						FROM ( 
 								SELECT MAX(ModifiedDate) AS ModifiedDate, B.LeagueId, B.BetType, B.WorkShift 
-								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)	
-									LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON B.LeagueId = le.LeagueId	
+								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)
+									INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON B.LeagueId = L.LeagueId
+									LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+									LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON B.LeagueId = le.LeagueId
 								WHERE  B.ModifiedDate BETWEEN @DateB AND @DateE
 									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
 									   AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+									   AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 								GROUP BY  B.LeagueId, B.BetType, B.WorkShift
 								UNION 
 								SELECT MAX(ModifiedDate) AS ModifiedDate, B.LeagueId, B.BetType, B.WorkShift
 								FROM   dbo.Benchmark_BetType_History B WITH (NOLOCK)
+									INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON B.LeagueId = L.LeagueId
+									LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 									LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON B.LeagueId = le.LeagueId		
 								WHERE  B.ModifiedDate < @DateB
 									   AND B.Bettype IN (SELECT Bettype FROM @BettypeList)	
 									   AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+									   AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 								GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
 								) B
 						GROUP BY  B.LeagueId, B.BetType, B.WorkShift	
@@ -186,6 +213,8 @@ BEGIN
 				ISNULL(SUM(P.Stake),0) AS Stake,
 				@DateB, @DateE, P.IsLive
 		FROM	dbo.TraderPerformance P WITH (NOLOCK)
+			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+			LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 			LEFT JOIN @BenchMark B ON B.LeagueId = P.LeagueId
 					AND B.BetType = P.BetType 
 					AND B.WorkShift = P.WorkShift
@@ -197,6 +226,7 @@ BEGIN
 				AND P.IsLive = @Market
 				AND P.Bettype IN (SELECT Bettype FROM @BettypeList)	
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 		GROUP BY  P.LeagueId, P.BetType, P.WorkShift, B.Benchmark, P.IsLive;
 		 
 		SELECT @i = @i + 1;
