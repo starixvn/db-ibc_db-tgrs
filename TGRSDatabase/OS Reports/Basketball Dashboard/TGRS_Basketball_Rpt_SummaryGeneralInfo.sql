@@ -139,8 +139,8 @@ DECLARE @PrevFromDate		DATE
 		FROM  #SummaryGeneralInfo sm WITH (NOLOCK)
 		WHERE	sm.EventDate BETWEEN @FromDate AND @ToDate
 		UNION 
-		SELECT 	@FromDate AS FromDate 
-			,	@ToDate AS ToDate
+		SELECT 	@PrevFromDate AS FromDate 
+			,	@PrevToDate AS ToDate
 			,	ISNULL(SUM(sm.Turnover),0)/@Avg AS AvgTurnover
 			,	ISNULL(SUM(sm.WinLoss),0)/@Avg AS AvgWinLoss
 			,	ISNULL(SUM(sm.MatchCount),0)/@Avg AS AvgMatchCount
@@ -222,8 +222,8 @@ DECLARE @PrevFromDate		DATE
 		FROM  #SummaryGeneralInfo sm WITH (NOLOCK)
 		WHERE sm.EventDate BETWEEN @FromDate AND @ToDate
 		UNION 
-		SELECT 	@FromDate AS FromDate 
-			,	@ToDate AS ToDate
+		SELECT 	@PrevFromDate AS FromDate 
+			,	@PrevToDate AS ToDate
 			,	ISNULL(SUM(sm.Turnover),0)/@Avg AS AvgTurnover
 			,	ISNULL(SUM(sm.WinLoss),0)/@Avg AS AvgWinLoss
 			,	ISNULL(SUM(sm.MatchCount),0)/@Avg AS AvgMatchCount

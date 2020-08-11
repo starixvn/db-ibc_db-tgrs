@@ -54,13 +54,13 @@ BEGIN
 			AND os.SportId = 2
 		GROUP BY L.LeagueGroupId
 		
-		SELECT  lg.GroupID
+		SELECT  ml.LeagueGroupId
 			,	lg.GroupName
 			,	ml.Turnover
 			,	ml.WinLoss
 			,	ml.Margin
 		FROM	#SummaryByLeagueGroup ml WITH (NOLOCK)
-			INNER JOIN	bodb02.dbo.LeagueGroup lg WITH (NOLOCK) ON ml.LeagueGroupId = lg.GroupID
+			LEFT JOIN bodb02.dbo.LeagueGroup lg WITH (NOLOCK) ON ml.LeagueGroupId = lg.GroupID
 		ORDER BY Margin ASC
 	END;
 
@@ -83,13 +83,13 @@ BEGIN
 			AND sm.SportId = 2
 		GROUP BY L.LeagueGroupId
 
-		SELECT  lg.GroupID
+		SELECT  ml.LeagueGroupId
 			,	lg.GroupName
 			,	ml.Turnover
 			,	ml.WinLoss
 			,	ml.Margin
 		FROM	#SummaryByLeagueGroup ml WITH (NOLOCK)
-			INNER JOIN	bodb02.dbo.LeagueGroup lg WITH (NOLOCK) ON ml.LeagueGroupId = lg.GroupID
+			LEFT JOIN bodb02.dbo.LeagueGroup lg WITH (NOLOCK) ON ml.LeagueGroupId = lg.GroupID
 		ORDER BY Margin ASC
 	END;
 END;
