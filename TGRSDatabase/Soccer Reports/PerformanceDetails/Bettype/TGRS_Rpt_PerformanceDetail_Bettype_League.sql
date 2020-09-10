@@ -1,6 +1,7 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League]  	
 		@FromDate			DATE
 	,	@ToDate				DATE
+	,	@LeagueName			NVARCHAR(500)= ''
 	,	@LeagueGroupIds		VARCHAR(2000) =  ''
 	,	@Bettype			SMALLINT
 	,	@IsExcludeLeagues	BIT = 1
@@ -19,12 +20,12 @@ AS
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20200709@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 		- 20200731@John.Ngo:	View down bet choice from League performance [Redmine ID: 137278]
+		- 20200909@John.Ngo:	Performance Detail - Bettype - Support filter by LeagueName [Redmine ID: 141294]
 
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
 
-	 Exam: 
-		EXEC  TGRS_Rpt_PerformanceDetail_Bettype_League @FromDate = '2014-01-01', @ToDate= '2014-05-30', @Bettype = 1
+	 Exam: EXEC  TGRS_Rpt_PerformanceDetail_Bettype_League @FromDate = '2014-01-01', @ToDate= '2014-05-30', @Bettype = 1
   
 */  
  
@@ -50,29 +51,57 @@ BEGIN
 		END;
 	END;
 	
-	SELECT P.LeagueId,
-		L.LeagueName,
-		L.LeagueGroupID,
-		P.IsLive,
-		ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount, 
-		ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount,
-		ISNULL(COUNT(DISTINCT P.BetChoice), 0) AS BetChoiceCount,
-		ISNULL(SUM(P.Stake), 0) AS Turnover, 
-		ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss, 
-		ISNULL(SUM(P.BetCount), 0) AS BetCount,
-		CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin		
-	FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
-		INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-		LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-	WHERE	 P.EventDate BETWEEN @FromDate AND @ToDate
-		AND  P.Bettype = @Bettype
-		AND (@Market = -1 OR P.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-	GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive 	
-	ORDER BY Margin DESC, LeagueName ASC;
-
+	IF (@LeagueName IS NULL OR @LeagueName = '')
+		BEGIN
+			SELECT P.LeagueId,
+				L.LeagueName,
+				L.LeagueGroupID,
+				P.IsLive,
+				ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount, 
+				ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount,
+				ISNULL(COUNT(DISTINCT P.BetChoice), 0) AS BetChoiceCount,
+				ISNULL(SUM(P.Stake), 0) AS Turnover, 
+				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss, 
+				ISNULL(SUM(P.BetCount), 0) AS BetCount,
+				CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin		
+			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
+				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+			WHERE	 P.EventDate BETWEEN @FromDate AND @ToDate
+				AND  P.Bettype = @Bettype
+				AND (@Market = -1 OR P.IsLive = @Market)
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive 	
+			ORDER BY Margin DESC, LeagueName ASC;
+		END;
+	ELSE
+		BEGIN
+			SELECT P.LeagueId,
+				L.LeagueName,
+				L.LeagueGroupID,
+				P.IsLive,
+				ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount, 
+				ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount,
+				ISNULL(COUNT(DISTINCT P.BetChoice), 0) AS BetChoiceCount,
+				ISNULL(SUM(P.Stake), 0) AS Turnover, 
+				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss, 
+				ISNULL(SUM(P.BetCount), 0) AS BetCount,
+				CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin		
+			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
+				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+			WHERE	 P.EventDate BETWEEN @FromDate AND @ToDate
+				AND  P.Bettype = @Bettype
+				AND L.LeagueName LIKE '%' + @LeagueName + '%'
+				AND (@Market = -1 OR P.IsLive = @Market)
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive 	
+			ORDER BY Margin DESC, LeagueName ASC;
+		END;
 END;
 
 GO

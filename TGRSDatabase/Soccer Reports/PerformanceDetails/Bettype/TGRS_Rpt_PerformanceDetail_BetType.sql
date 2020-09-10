@@ -1,6 +1,7 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_BetType]
 		@FromDate			DATE
 	,	@ToDate				DATE
+	,	@LeagueName			NVARCHAR(500)= ''
 	,	@LeagueGroupIds		VARCHAR(2000) = ''
 	,	@Turnover			MONEY = NULL
 	,	@WinLoss			MONEY = NULL
@@ -23,12 +24,12 @@ AS
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20200710@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
+		- 20200909@John.Ngo:	Performance Detail - Bettype - Support filter by LeagueName [Redmine ID: 141294]
 
 	Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 
-	Exam: 
-			EXEC  [TGRS_Rpt_PerformanceDetail_BetType] @FromDate = '2014-01-01', @ToDate= '2015-12-30' 
+	Exam: EXEC [TGRS_Rpt_PerformanceDetail_BetType] @FromDate = '2014-01-01', @ToDate= '2015-12-30' 
   
 */  
  
@@ -68,27 +69,94 @@ BEGIN
 			FROM dbo.Bettype WITH (NOLOCK);
 		END;
 
-	SELECT P.BetType, 	
-		P.IsLive,					
-		ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount, 
-		ISNULL(COUNT(DISTINCT P.LeagueId), 0) AS LeagueCount, 
-		ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount, 
-		ISNULL(SUM(P.Stake), 0) AS Turnover, 
-		ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss, 
-		ISNULL(SUM(P.BetCount), 0) AS BetCount,
-		CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin	
-	INTO #TraderPerformanceTemp
-	FROM dbo.TraderPerformance AS P WITH (NOLOCK)
-		INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-		LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-		LEFT JOIN @BettypeList bl ON p.bettype = bl.bettype
-	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
-		AND (@Bettypes = '0' OR bl.bettype IS NOT NULL)
-		AND (@Market = -1 OR P.IsLive = @Market)
-		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-	GROUP BY P.BetType, P.IsLive;
+	IF	OBJECT_ID('tempdb..#tmpTraderPerformance') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmpTraderPerformance;
+	END;
+
+	CREATE TABLE #tmpTraderPerformance (
+			BetType				SMALLINT
+		,	IsLive				BIT
+		,	TraderCount			INT
+		,	LeagueCount			INT
+		,	MatchCount			INT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY
+		,	BetCount			INT
+		,	Margin				MONEY
+	);
+	
+	CREATE CLUSTERED INDEX #CIX_tmpTraderPerformanceIdx ON #tmpTraderPerformance (
+			BetType			ASC
+	); 
+
+	IF (@LeagueName IS NULL OR @LeagueName = '')
+		BEGIN
+			INSERT INTO #tmpTraderPerformance (
+					BetType
+				,	IsLive
+				,	TraderCount
+				,	LeagueCount
+				,	MatchCount
+				,	Turnover
+				,	WinLoss
+				,	BetCount
+				,	Margin	)
+			SELECT P.BetType, 	
+				P.IsLive,					
+				ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount, 
+				ISNULL(COUNT(DISTINCT P.LeagueId), 0) AS LeagueCount, 
+				ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount, 
+				ISNULL(SUM(P.Stake), 0) AS Turnover, 
+				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss, 
+				ISNULL(SUM(P.BetCount), 0) AS BetCount,
+				CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin
+			FROM dbo.TraderPerformance AS P WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+				LEFT JOIN @BettypeList bl ON p.bettype = bl.bettype
+			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+				AND (@Bettypes = '0' OR bl.bettype IS NOT NULL)
+				AND (@Market = -1 OR P.IsLive = @Market)
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+			GROUP BY P.BetType, P.IsLive;
+		END;
+	ELSE
+		BEGIN
+			INSERT INTO #tmpTraderPerformance (
+					BetType
+				,	IsLive
+				,	TraderCount
+				,	LeagueCount
+				,	MatchCount
+				,	Turnover
+				,	WinLoss
+				,	BetCount
+				,	Margin	)
+			SELECT P.BetType, 	
+				P.IsLive,					
+				ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount, 
+				ISNULL(COUNT(DISTINCT P.LeagueId), 0) AS LeagueCount, 
+				ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount, 
+				ISNULL(SUM(P.Stake), 0) AS Turnover, 
+				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss, 
+				ISNULL(SUM(P.BetCount), 0) AS BetCount,
+				CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin
+			FROM dbo.TraderPerformance AS P WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+				LEFT JOIN @BettypeList bl ON p.bettype = bl.bettype
+			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+				AND (@Bettypes = '0' OR bl.bettype IS NOT NULL)
+				AND L.LeagueName LIKE '%' + @LeagueName + '%'
+				AND (@Market = -1 OR P.IsLive = @Market)
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+			GROUP BY P.BetType, P.IsLive;
+		END;
 				 	
 	 SELECT	P.BetType, 
 		TN.TypeName,
@@ -100,7 +168,7 @@ BEGIN
 		P.BetCount,
 		P.Margin,
 		P.IsLive 
-	 FROM	#TraderPerformanceTemp AS P WITH (NOLOCK)
+	 FROM	#tmpTraderPerformance AS P WITH (NOLOCK)
 		LEFT JOIN dbo.BetType AS TN WITH (NOLOCK) ON TN.BetType = P.BetType	 	 
 	 WHERE	(@Turnover IS NULL OR P.Turnover >= @Turnover)
 		AND (@WinLoss IS NULL  OR P.WinLoss >= @WinLoss)
@@ -108,7 +176,6 @@ BEGIN
 		AND ( @MarginTo IS NULL OR P.Margin <= @MarginTo)
 	ORDER BY P.Margin DESC, P.Bettype ASC;
 
-	DROP TABLE #TraderPerformanceTemp;
 END;
 
 GO
