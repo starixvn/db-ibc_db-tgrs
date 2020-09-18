@@ -1,11 +1,3 @@
-USE [bodb_TGRS]
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 ALTER PROCEDURE	[dbo].[Task_StagingOSTraderPerformanceMonthly]
 	@Month DATE = NULL
 AS
@@ -18,14 +10,15 @@ AS
 	Revisions:
 				- 20170227@Aaron: Added MatchCount, EventDate; removed Rptyear, RptMonth				
 				- 20170404@Long: Apply Juice
+				- 20200914@John.Ngo: Support AR, Live/Nonlive for OSDataTGRS [Redmine ID: 140875]
    			
 	Param's Explanation:  
 	
 	Exam:
 
 */
-
-SET NOCOUNT ON;
+BEGIN
+	SET NOCOUNT ON;
 
 	DECLARE @StartDate DATE, @EndDate DATE;
 
@@ -38,7 +31,7 @@ SET NOCOUNT ON;
 	DELETE [dbo].OSSummaryByTrader_Monthly WHERE EventDate = @Month;
 
 	INSERT INTO [dbo].OSSummaryByTrader_Monthly(		
-		  [TraderId]
+		   [TraderId]
            ,[SportId]
            ,[LeagueId]
            ,[BettypeId]
@@ -52,6 +45,13 @@ SET NOCOUNT ON;
            ,[StakeMYR]
            ,[Juice]
            ,[StakeMYRJuice]
+		   ,[Turnover_AR]
+           ,[WinLoss_AR]
+           ,[Comm_AR]
+		   ,[StakeMYR_AR]
+           ,[Juice_AR]
+           ,[StakeMYRJuice_AR]
+		   ,[IsLive]
 		  )
 	SELECT [TraderId]
            ,[SportId]
@@ -67,6 +67,13 @@ SET NOCOUNT ON;
 		   ,SUM([StakeMYR])
 		   ,SUM([Juice])
 		   ,SUM([StakeMYRJuice])
+		   ,SUM([Turnover_AR])
+		   ,SUM([WinLoss_AR])
+		   ,SUM([Comm_AR])
+		   ,SUM([StakeMYR_AR])
+		   ,SUM([Juice_AR])
+		   ,SUM([StakeMYRJuice_AR])
+		   ,[IsLive]
 	 FROM [dbo].OSDataTGRS WITH(NOLOCK)
 	 WHERE EventDate BETWEEN @StartDate AND @EndDate
 	 GROUP BY [TraderId]
@@ -74,6 +81,7 @@ SET NOCOUNT ON;
            ,[BettypeId]
            ,[LeagueId]
 		   ,[Target]
+		   ,[IsLive]
 
 	DELETE [dbo].OSSummaryByLeague_Monthly WHERE EventDate = @Month;
 
@@ -90,6 +98,13 @@ SET NOCOUNT ON;
            ,[StakeMYR]
            ,[Juice]
            ,[StakeMYRJuice]
+		   ,[Turnover_AR]
+           ,[WinLoss_AR]
+           ,[Comm_AR]
+		   ,[StakeMYR_AR]
+           ,[Juice_AR]
+           ,[StakeMYRJuice_AR]
+		   ,[IsLive]
 		  )
 	SELECT  [SportId]
            ,[LeagueId]
@@ -103,8 +118,20 @@ SET NOCOUNT ON;
 		   ,SUM([StakeMYR])
 		   ,SUM([Juice])
 		   ,SUM([StakeMYRJuice])
+		   ,SUM([Turnover_AR])
+		   ,SUM([WinLoss_AR])
+		   ,SUM([Comm_AR])
+		   ,SUM([StakeMYR_AR])
+		   ,SUM([Juice_AR])
+		   ,SUM([StakeMYRJuice_AR])
+		   ,[IsLive]
 	 FROM [dbo].OSDataTGRS WITH(NOLOCK)
 	 WHERE EventDate BETWEEN @StartDate AND @EndDate
 	 GROUP BY [SportId]
            ,[LeagueId]
 		   ,[Target]
+		   ,[IsLive]
+END;
+
+GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

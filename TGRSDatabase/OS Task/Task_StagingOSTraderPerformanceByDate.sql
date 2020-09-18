@@ -1,8 +1,3 @@
-SET QUOTED_IDENTIFIER ON 
-GO
-SET ANSI_NULLS ON 
-GO
-
 ALTER PROCEDURE	[dbo].[Task_StagingOSTraderPerformanceByDate]
 	@Date DATE = NULL
 AS
@@ -17,14 +12,15 @@ AS
 				- 20170404@Long: Apply Juice
 				- 20170706@Billy: Fix bug duplicated data - [Redmine: #79615]
 				- 20190108@John:  Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
+				- 20200914@John.Ngo: Support AR, Live/Nonlive for OSDataTGRS [Redmine ID: 140875]
    			
 	Param's Explanation:  
 	
 	Exam: 
 
 */
-
-SET NOCOUNT ON;
+BEGIN
+	SET NOCOUNT ON;
 	    
 	DELETE [dbo].OSSummaryByTrader_Daily WHERE EventDate = @Date;
 
@@ -43,6 +39,13 @@ SET NOCOUNT ON;
            ,[StakeMYR]
            ,[Juice]
            ,[StakeMYRJuice]
+		   ,[Turnover_AR]
+           ,[WinLoss_AR]
+           ,[Comm_AR]
+		   ,[StakeMYR_AR]
+           ,[Juice_AR]
+           ,[StakeMYRJuice_AR]
+		   ,[IsLive]
            )
  
 	SELECT [TraderId]
@@ -59,6 +62,13 @@ SET NOCOUNT ON;
 		   ,SUM([StakeMYR])
 		   ,SUM([Juice])
 		   ,SUM([StakeMYRJuice])
+		   ,SUM([Turnover_AR])
+		   ,SUM([WinLoss_AR])
+		   ,SUM([Comm_AR])
+		   ,SUM([StakeMYR_AR])
+		   ,SUM([Juice_AR])
+		   ,SUM([StakeMYRJuice_AR])
+		   ,[IsLive]
     FROM [dbo].OSDataTGRS WITH(NOLOCK)
     WHERE EventDate = @Date
 	GROUP BY [TraderId]
@@ -66,7 +76,9 @@ SET NOCOUNT ON;
            ,[SportId]
            ,[BettypeId]
            ,[LeagueId]
-		   ,[Target];
+		   ,[Target]
+		   ,[IsLive];
+END;
 
 GO
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

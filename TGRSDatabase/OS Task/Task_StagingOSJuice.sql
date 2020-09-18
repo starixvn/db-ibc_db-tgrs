@@ -23,6 +23,7 @@ AS
 		- 20190704@John.Ngo: Implement change request to the job sum and enhance logic on Extra PT WL calculation [Redmine ID: 116379]
 		- 20200420@John.Ngo: Update new table [Dot_Admin_Assignment_Trader] [Redmine ID: 131517]
 		- 20200504@John.Ngo: [TGR] Get ExtraPT from epositiontaking column in bettrans table [Redmine ID: 133409]
+		- 20200914@John.Ngo: Support AR for OSDataTGRS [Redmine ID: 140875]
 
 	Param's Explanation:
 		
@@ -213,6 +214,10 @@ BEGIN
 					,	StakeMYBeforeComm	MONEY
 					,	StakeMY				MONEY
 					,	Stake				MONEY
+					,	AVGOdds_AR			FLOAT
+					,	StakeMYBeforeComm_AR MONEY
+					,	StakeMY_AR			MONEY
+					,	Stake_AR			MONEY
 					,	MOdds				SMALLMONEY
 					);
 
@@ -237,6 +242,11 @@ BEGIN
 					,	StakeMYRJuice		MONEY
 					,	StakeMYRTotal		MONEY
 					,	ScoreHDP			SMALLMONEY
+					,	StakeMYBeforeComm_AR MONEY
+					,	StakeMY_AR			MONEY
+					,	Juice_AR			MONEY
+					,	StakeMYRJuice_AR	MONEY
+					,	StakeMYRTotal_AR	MONEY
 					);
 
 	CREATE CLUSTERED INDEX	#CIX_tmptmpOSJuiceIdx ON #tmpOSJuice (
@@ -662,7 +672,7 @@ BEGIN
 				RAISERROR('From BK - Insert #tmpStagingOSTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			INSERT INTO	#tmpOSDataGroup(TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake)
+			INSERT INTO	#tmpOSDataGroup(TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR)
 			SELECT	[TraderId]			= t.TraderId
 				,	[EventDate]			= t.EventDate
 				,	[MatchId]			= t.MatchId
@@ -675,6 +685,11 @@ BEGIN
 				,	[StakeMYBeforeComm]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
 				,	[StakeMY]			= SUM((t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) - (t.Scomm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Scomm * t.ExtraPT / (1 - t.TPositionTaking)) END))) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
 				,	[Stake]				= SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * t.Stake * (1 - t.TPositionTaking - t.ExtraPT) - (t.Scomm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Scomm * t.ExtraPT / (1 - t.TPositionTaking)) END))) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
+				,	[AVGOdds_AR]		= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+										/ SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+				,	[StakeMYBeforeComm_AR]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+				,	[StakeMY_AR]		= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
+				,	[Stake_AR]			= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
 			FROM	#tmpStagingOSTraderPerformance AS t
 			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.MOdds;
 			
@@ -832,7 +847,7 @@ BEGIN
 				RAISERROR('From 14 - Insert #tmpStagingOSTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			INSERT INTO	#tmpOSDataGroup(TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake)
+			INSERT INTO	#tmpOSDataGroup(TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR)
 			SELECT	[TraderId]			= t.TraderId
 				,	[EventDate]			= t.EventDate
 				,	[MatchId]			= t.MatchId
@@ -845,6 +860,11 @@ BEGIN
 				,	[StakeMYBeforeComm]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
 				,	[StakeMY]			= SUM((t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) - (t.Scomm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Scomm * t.ExtraPT / (1 - t.TPositionTaking)) END))) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
 				,	[Stake]				= SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * t.Stake * (1 - t.TPositionTaking - t.ExtraPT) - (t.Scomm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Scomm * t.ExtraPT / (1 - t.TPositionTaking)) END))) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
+				,	[AVGOdds_AR]		= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+										/ SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+				,	[StakeMYBeforeComm_AR]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+				,	[StakeMY_AR]		= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
+				,	[Stake_AR]			= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
 			FROM	#tmpStagingOSTraderPerformance AS t
 			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.MOdds;
 			
@@ -1002,7 +1022,7 @@ BEGIN
 				RAISERROR('From Origin - Insert #tmpStagingOSTraderPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			INSERT INTO #tmpOSDataGroup(TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake)
+			INSERT INTO #tmpOSDataGroup(TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR)
 			SELECT	[TraderId]			= t.TraderId
 				,	[EventDate]			= t.EventDate
 				,	[MatchId]			= t.MatchId
@@ -1015,6 +1035,11 @@ BEGIN
 				,	[StakeMYBeforeComm]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
 				,	[StakeMY]			= SUM((t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) - (t.Scomm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Scomm * t.ExtraPT / (1 - t.TPositionTaking)) END))) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
 				,	[Stake]				= SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * t.Stake * (1 - t.TPositionTaking - t.ExtraPT) - (t.Scomm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Scomm * t.ExtraPT / (1 - t.TPositionTaking)) END))) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
+				,	[AVGOdds_AR]		= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+										/ SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+				,	[StakeMYBeforeComm_AR]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
+				,	[StakeMY_AR]		= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
+				,	[Stake_AR]			= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
 			FROM	#tmpStagingOSTraderPerformance AS t
 			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.MOdds;
 			
@@ -1048,6 +1073,9 @@ BEGIN
 					,	StakeMYBeforeComm	MONEY
 					,	Juice				MONEY
 					,	StakeMYRJuice		MONEY
+					,	StakeMYBeforeComm_AR MONEY
+					,	Juice_AR			MONEY
+					,	StakeMYRJuice_AR	MONEY
 					);
 
 	IF	OBJECT_ID('tempdb..#tmpResults') IS NOT NULL
@@ -1060,9 +1088,12 @@ BEGIN
 					,	StakeMYBeforeComm	MONEY
 					,	Juice				MONEY
 					,	StakeMYRJuice		MONEY
+					,	StakeMYBeforeComm_AR MONEY
+					,	Juice_AR			MONEY
+					,	StakeMYRJuice_AR	MONEY
 					);
 
-	INSERT INTO	#tmpOSJuice(EventDate, MatchId, BetType, ScoreHDP, StakeMYBeforeComm, StakeMY, Juice, StakeMYRJuice, StakeMYRTotal)
+	INSERT INTO	#tmpOSJuice(EventDate, MatchId, BetType, ScoreHDP, StakeMYBeforeComm, StakeMY, Juice, StakeMYRJuice, StakeMYRTotal, StakeMYBeforeComm_AR, StakeMY_AR, Juice_AR, StakeMYRJuice_AR, StakeMYRTotal_AR)
 	SELECT	[EventDate]			= temp1.EventDate
 		,	[MatchId]			= temp1.MatchId
 		,	[BetType]			= temp1.BetType
@@ -1085,6 +1116,32 @@ BEGIN
 															+	temp2.Stake * CASE WHEN ABS(temp2.AVGOdds) > 1 THEN ABS(temp2.AVGOdds) ELSE 1 END
 														ELSE 0
 											 END), 0))
+		,	[StakeMYBeforeComm_AR]	= SUM(temp1.StakeMYBeforeComm_AR)
+		,	[StakeMY_AR]			= SUM(temp1.StakeMY_AR)
+		,	[Juice_AR]				= SUM(ISNULL( CASE	WHEN temp1.BetTeam IN ('h')
+														THEN  CASE WHEN temp2.Stake_AR * (1 + ABS(temp2.AVGOdds_AR)) / (1 + ABS(temp1.AVGOdds_AR)) > temp1.Stake_AR THEN temp1.Stake_AR ELSE temp2.Stake_AR * (1 + ABS(temp2.AVGOdds_AR)) / (1 + ABS(temp1.AVGOdds_AR)) END * CASE WHEN temp1.AVGOdds_AR > 0 THEN 1 ELSE -temp1.AVGOdds_AR END
+															- CASE WHEN temp1.Stake_AR * (1 + ABS(temp1.AVGOdds_AR)) / (1 + ABS(temp2.AVGOdds_AR)) > temp2.Stake_AR THEN temp2.Stake_AR ELSE temp1.Stake_AR * (1 + ABS(temp1.AVGOdds_AR)) / (1 + ABS(temp2.AVGOdds_AR)) END * CASE WHEN temp2.AVGOdds_AR > 0 THEN temp2.AVGOdds_AR ELSE 1 END 
+													ELSE 0 
+											  END
+											, 0
+									  )
+								  )
+		,	[StakeMYRJuice_AR]		= SUM(ISNULL( CASE	WHEN temp1.BetTeam IN ('h')
+														THEN  CASE WHEN temp2.Stake_AR * (1 + ABS(temp2.AVGOdds_AR)) / (1 + ABS(temp1.AVGOdds_AR)) > temp1.Stake_AR THEN temp1.Stake_AR ELSE temp2.Stake_AR * (1 + ABS(temp2.AVGOdds_AR)) / (1 + ABS(temp1.AVGOdds_AR)) END * CASE WHEN ABS(temp1.AVGOdds_AR) > 1 THEN ABS(temp1.AVGOdds_AR) ELSE 1 END
+															+ CASE WHEN temp1.Stake_AR * (1 + ABS(temp1.AVGOdds_AR)) / (1 + ABS(temp2.AVGOdds_AR)) > temp2.Stake_AR THEN temp2.Stake_AR ELSE temp1.Stake_AR * (1 + ABS(temp1.AVGOdds_AR)) / (1 + ABS(temp2.AVGOdds_AR)) END * CASE WHEN ABS(temp2.AVGOdds_AR) > 1 THEN ABS(temp2.AVGOdds_AR) ELSE 1 END
+													ELSE 0
+											  END
+											, 0
+									  )
+								  )
+		,	[StakeMYRTotal_AR]		= SUM(ISNULL( CASE	WHEN temp1.BetTeam IN ('h')
+														THEN  temp1.Stake_AR * CASE WHEN ABS(temp1.AVGOdds_AR) > 1 THEN ABS(temp1.AVGOdds_AR) ELSE 1 END
+															+ temp2.Stake_AR * CASE WHEN ABS(temp2.AVGOdds_AR) > 1 THEN ABS(temp2.AVGOdds_AR) ELSE 1 END
+													ELSE 0
+											  END
+											, 0
+									  )
+								  )
 	FROM		#tmpOSDataGroup AS temp1 WITH (NOLOCK)
 	LEFT JOIN	#tmpOSDataGroup AS temp2
 			ON	temp1.MatchId = temp2.MatchId
@@ -1093,35 +1150,45 @@ BEGIN
 			AND	temp1.BetTeam <> temp2.BetTeam
 	GROUP BY temp1.MatchId, temp1.BetType, temp1.EventDate, temp1.ScoreHDP;
 
-	INSERT INTO	#tmpSumTotal(EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice)
+	INSERT INTO	#tmpSumTotal(EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR)
 	SELECT	[EventDate]			= t.EventDate
 		,	[MatchId]			= t.MatchId
 		,	[BetType]			= t.BetType
 		,	[StakeMYBeforeComm]	= SUM(t.StakeMYBeforeComm)
 		,	[Juice]				= SUM(t.Juice)
 		,	[StakeMYRJuice]		= SUM(CASE WHEN t.StakeMYRTotal = 0 THEN 0 ELSE t.StakeMYBeforeComm * t.StakeMYRJuice / t.StakeMYRTotal END) -- Before comm
+		,	[StakeMYBeforeComm_AR]	= SUM(t.StakeMYBeforeComm_AR)
+		,	[Juice_AR]			= SUM(t.Juice_AR)
+		,	[StakeMYRJuice_AR]	= SUM(CASE WHEN t.StakeMYRTotal_AR = 0 THEN 0 ELSE CAST(t.StakeMYBeforeComm_AR AS DECIMAL(38,18)) * t.StakeMYRJuice_AR / t.StakeMYRTotal_AR END) -- Before comm
 	FROM	#tmpOSJuice AS t
 	GROUP BY t.MatchId, t.BetType, t.EventDate, t.ScoreHDP;
 
-	INSERT INTO	#tmpResults(EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice)
+	INSERT INTO	#tmpResults(EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR)
 	SELECT	[EventDate]			= t.EventDate
 		,	[MatchId]			= t.MatchId
 		,	[BetType]			= t.BetType
 		,	[StakeMYBeforeComm]	= SUM(t.StakeMYBeforeComm)
 		,	[Juice]				= SUM(t.Juice)
 		,	[StakeMYRJuice]		= SUM(t.StakeMYRJuice)
+		,	[StakeMYBeforeComm_AR]	= SUM(t.StakeMYBeforeComm_AR)
+		,	[Juice_AR]			= SUM(t.Juice_AR)
+		,	[StakeMYRJuice_AR]	= SUM(t.StakeMYRJuice_AR)
 	FROM	#tmpSumTotal AS t
 	GROUP BY t.MatchId, t.BetType, t.EventDate;
 
 	UPDATE	tp
-	SET		tp.Juice = t.Juice
-		,	tp.StakeMYR = t.StakeMYBeforeComm
-		,	tp.StakeMYRJuice = t.StakeMYRJuice
-	FROM		dbo.OSDataTGRS AS tp WITH (ROWLOCK, UPDLOCK)
+	SET		tp.Juice			= t.Juice
+		,	tp.StakeMYR			= t.StakeMYBeforeComm
+		,	tp.StakeMYRJuice	= t.StakeMYRJuice
+		,	tp.Juice_AR			= t.Juice_AR
+		,	tp.StakeMYR_AR		= t.StakeMYBeforeComm_AR
+		,	tp.StakeMYRJuice_AR = t.StakeMYRJuice_AR
+	FROM	dbo.OSDataTGRS AS tp WITH (ROWLOCK, UPDLOCK)
 	INNER JOIN	#tmpResults AS t WITH (NOLOCK)
 			ON	t.MatchId = tp.MatchId
 			AND	t.BetType = tp.BettypeId
-	WHERE	tp.EventDate = t.EventDate;
+	WHERE	tp.EventDate = t.EventDate
+		AND tp.IsLive = 1; -- Temporarily update Juice for live tickets only
 
 	SELECT	@RowCount	= @@ROWCOUNT
 		,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
