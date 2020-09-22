@@ -1,1 +1,1 @@
-TGRSDatabase\Soccer Task\Task_RegenerateTGRSData.sql 
+TGRSDatabase\Soccer Task\Task_RegenerateTGRSData.sql
