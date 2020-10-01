@@ -1,7 +1,7 @@
 /*
 	Creator: 20201001@John.Ngo
 	Task: Initial IsLive of OSDataTGRS of Basketball [Redmine ID: #140875]
-	DB: DB06.bodb_TGRS_UAT
+	DB: DB061.bodb_TGRS
 
 	Reviewer: Partrick
 */
@@ -21,7 +21,7 @@ CREATE CLUSTERED INDEX	#CIX_tmpEventDate_EventDate ON #tmpEventDate (
 		
 INSERT INTO #tmpEventDate(EventDate)
 SELECT DISTINCT r.EventDate
-FROM dbo.[OSDataTGRS] AS r WITH(NOLOCK);
+FROM dbo.[OSDataTGRS] AS r WITH(NOLOCK) WHERE r.IsLive IS NULL;
 
 WHILE	EXISTS (SELECT 1 FROM #tmpEventDate WITH (NOLOCK))
 	BEGIN
@@ -48,4 +48,4 @@ UPDATE [dbo].[OSSummaryByTrader_Monthly] WITH(ROWLOCK)
 SET	[IsLive] = 1;
 
 GO
-/*<info serverAlias=" DB06-bodb_TGRS_UAT"></info>*/
+/*<info serverAlias=" DB061-bodb_TGRS"></info>*/

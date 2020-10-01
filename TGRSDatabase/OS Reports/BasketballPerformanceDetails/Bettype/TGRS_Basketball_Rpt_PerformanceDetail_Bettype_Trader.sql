@@ -135,7 +135,7 @@ BEGIN
 		,	td.IsLive
 	FROM	#tmpTraderDetail AS td WITH (NOLOCK)
 	INNER JOIN	dbo.OSTrader AS t WITH (NOLOCK) ON t.TraderId = td.TraderId
-	INNER JOIN	dbo.OSTeam AS tm WITH (NOLOCK) ON	t.TeamId = tm.TeamId
+	LEFT JOIN	dbo.OSTeam AS tm WITH (NOLOCK) ON	t.TeamId = tm.TeamId
 	ORDER BY td.Margin DESC, t.TraderName ASC;
 	
 	DROP TABLE #tmpTraderDetail;

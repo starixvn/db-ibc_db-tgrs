@@ -131,7 +131,7 @@ BEGIN
 		SET 	t.HomeId = m.homeid
 			,	t.AwayId = m.awayid
 		FROM #tmpOSDataTGRS AS t
-			INNER JOIN bodb02.dbo.match14 AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
+			INNER JOIN bodb02.dbo.match AS m WITH(NOLOCK) ON t.MatchId = m.matchid;
 	END;
 
 	IF(@IsGetDataFrom14 = 1)

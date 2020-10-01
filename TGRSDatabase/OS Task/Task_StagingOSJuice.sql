@@ -1,7 +1,3 @@
-SET QUOTED_IDENTIFIER ON 
-GO
-SET ANSI_NULLS ON 
-GO
 ALTER PROCEDURE	[dbo].[Task_StagingOSJuice]
 		@Debug					BIT = 0
 	,	@BeforeMoveBetsDay		BIT = 1	
@@ -91,6 +87,27 @@ BEGIN
 		-- Force the output to appear immediately
 		RAISERROR(@Msg, 0, 0) WITH NOWAIT;
 	END;
+
+	IF	OBJECT_ID('tempdb..#tmpStagingOSTrader') IS NOT NULL
+	BEGIN
+		DROP TABLE #tmpStagingOSTrader;
+	END;
+
+	CREATE TABLE	#tmpStagingOSTrader (
+						TraderId			INT
+					,	MatchId				INT
+					,	SportType			INT
+					,	EventDate			DATETIME
+					,	BetType				SMALLINT
+					,	UpdatedTime			DATETIME
+					,	ID					INT
+					);
+
+	CREATE CLUSTERED INDEX	#CIX_tmpStagingOSTraderIdx ON #tmpStagingOSTrader (
+			EventDate			ASC
+		,	MatchId				ASC
+		,	BetType				ASC
+	);
 
 	IF	OBJECT_ID('tempdb..#tmpOSTrader') IS NOT NULL
 	BEGIN
@@ -388,34 +405,48 @@ BEGIN
 
 	IF	@IsGetDataFromBK = 1
 	BEGIN
+		TRUNCATE TABLE #tmpStagingOSTrader;
 		TRUNCATE TABLE #tmpOSTrader;
 		TRUNCATE TABLE #ExtraPTSportbook;
+
 		SELECT @Date = '@FromDateBK = ' + CONVERT(NVARCHAR, @FromDateBK, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
 
 		IF @DotExtraPTDate <= @FromDateBK
 		BEGIN
-			INSERT INTO	#tmpOSTrader(TraderId, matchid, SportType, EventDate, BetType)
-			SELECT	DISTINCT
-					[TraderId]	= a.TraderId
-				,	[MatchId]	= m.MatchId
-				,	[SportType]	= m.Sporttype
-				,	[EventDate]	= m.EventDate
-				,	[BetType]	= a.Bettype
+			
+			INSERT INTO	#tmpStagingOSTrader (TraderId, MatchId, SportType, EventDate, BetType, UpdatedTime, ID)
+			SELECT	[TraderId]		= a.TraderID
+				,	[MatchId]		= m.MatchId
+				,	[SportType]		= m.Sporttype
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= a.bettype
+				,	[UpdatedTime]	= a.UpdatedTime
+				,	[ID]			= a.ID
 			FROM	bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
-			INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.MatchId
+				INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
+			WHERE m.EventDate BETWEEN @FromDateBK AND @ToDateBK
+				AND	m.Sporttype <> 1
+				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
+				AND a.TraderId <> 0;
+
+			INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType)
+			SELECT	DISTINCT
+					[TraderId]	= a.TraderID
+				,	[MatchId]	= a.MatchId
+				,	[SportType]	= a.Sporttype
+				,	[EventDate]	= a.EventDate
+				,	[BetType]	= a.Bettype
+			FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
 			CROSS APPLY (
 							SELECT dt.TraderID, dt.MatchId, dt.Bettype,
 								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
-							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
+							FROM #tmpStagingOSTrader AS dt WITH (NOLOCK)
 							WHERE   a.matchid = dt.matchid
 								AND a.bettype = dt.bettype		
 								AND a.TraderId <> 0
 							) dat
-			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
-				AND	m.Sporttype <> 1
-				AND m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%'
-				AND a.TraderId <> 0
+			WHERE a.EventDate BETWEEN @FromDateBK AND @ToDateBK
 				AND a.TraderID = dat.TraderID
 				AND a.MatchId = dat.MatchId
 				AND a.Bettype = dat.Bettype
@@ -488,28 +519,39 @@ BEGIN
 
 			SELECT @Date = '@DotExtraPTDate = ' + CONVERT(NVARCHAR, @DotExtraPTDate, 120) + ', @ToDateBK = ' + CONVERT(NVARCHAR, @ToDateBK, 120);
 
-			INSERT INTO	#tmpOSTrader(TraderId, matchid, SportType, EventDate, BetType)
-			SELECT	DISTINCT
-					[TraderId]	= a.TraderId
-				,	[MatchId]	= m.MatchId
-				,	[SportType]	= m.Sporttype
-				,	[EventDate]	= m.EventDate
-				,	[BetType]	= a.Bettype
+			INSERT INTO	#tmpStagingOSTrader (TraderId, MatchId, SportType, EventDate, BetType, UpdatedTime, ID)
+			SELECT	[TraderId]		= a.TraderID
+				,	[MatchId]		= m.MatchId
+				,	[SportType]		= m.Sporttype
+				,	[EventDate]		= m.EventDate
+				,	[BetType]		= a.bettype
+				,	[UpdatedTime]	= a.UpdatedTime
+				,	[ID]			= a.ID
 			FROM	bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
-			INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.MatchId
+				INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
+			WHERE m.EventDate BETWEEN @DotExtraPTDate AND @ToDateBK
+				AND	m.Sporttype <> 1
+				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
+				AND a.TraderId <> 0;
+
+			INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType)
+			SELECT	DISTINCT
+					[TraderId]	= a.TraderID
+				,	[MatchId]	= a.MatchId
+				,	[SportType]	= a.Sporttype
+				,	[EventDate]	= a.EventDate
+				,	[BetType]	= a.Bettype
+			FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
 			CROSS APPLY (
 							SELECT dt.TraderID, dt.MatchId, dt.Bettype,
 								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
-							FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS dt WITH (NOLOCK)
+							FROM #tmpStagingOSTrader AS dt WITH (NOLOCK)
 							WHERE   a.matchid = dt.matchid
 								AND a.bettype = dt.bettype		
 								AND a.TraderId <> 0
 							) dat
-			WHERE	m.EventDate BETWEEN @DotExtraPTDate AND @ToDateBK
-				AND	m.Sporttype <> 1
-				AND m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%'
-				AND a.TraderId <> 0
+			WHERE a.EventDate BETWEEN @DotExtraPTDate AND @ToDateBK
 				AND a.TraderID = dat.TraderID
 				AND a.MatchId = dat.MatchId
 				AND a.Bettype = dat.Bettype
@@ -618,6 +660,7 @@ BEGIN
 				INNER JOIN bodb_Archive.dbo.match_bk m WITH (NOLOCK) ON b.matchid = m.matchid
 				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.winlostdate = @WinLostDate
+					AND m.eventdate = @WinLostDate
 					AND	b.statusID IN (111,112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
@@ -715,32 +758,45 @@ BEGIN
 
 	IF	@IsGetDataFrom14 = 1
 	BEGIN
+		TRUNCATE TABLE #tmpStagingOSTrader;
 		TRUNCATE TABLE #tmpOSTrader;
 		TRUNCATE TABLE #ExtraPTSportbook;
+
 		SELECT @Date = '@FromDate14 = ' + CONVERT(NVARCHAR, @FromDate14, 120) + ', @ToDate14 = ' + CONVERT(NVARCHAR, @ToDate14, 120);
 
-		INSERT INTO	#tmpOSTrader(TraderId, MatchId, SportType, EventDate, BetType)
-		SELECT	DISTINCT
-				[TraderId]	= a.TraderId
-			,	[matchid]	= m.MatchId
-			,	[SportType]	= m.Sporttype
-			,	[EventDate]	= m.EventDate
-			,	[BetType]	= a.Bettype
+		INSERT INTO	#tmpStagingOSTrader (TraderId, MatchId, SportType, EventDate, BetType, UpdatedTime, ID)
+		SELECT	[TraderId]		= a.TraderID
+			,	[MatchId]		= m.MatchId
+			,	[SportType]		= m.Sporttype
+			,	[EventDate]		= m.EventDate
+			,	[BetType]		= a.bettype
+			,	[UpdatedTime]	= a.UpdatedTime
+			,	[ID]			= a.ID
 		FROM	bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK)
-		INNER JOIN	bodb02.dbo.match14 AS m WITH (NOLOCK) ON a.matchid = m.MatchId
-		CROSS APPLY (
-					SELECT dt.TraderID, dt.MatchId, dt.Bettype,
-						ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
-					FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
-					WHERE   a.matchid = dt.matchid
-						AND a.bettype = dt.bettype		
-						AND a.TraderId <> 0
-					) dat
-		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
+		INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK) ON a.matchid = m.matchid
+		WHERE m.EventDate BETWEEN @FromDate14 AND @ToDate14
 			AND	m.Sporttype <> 1
 			AND m.EventStatus = 'completed'
 			AND	m.MatchCode NOT LIKE '%hedge%'
-			AND a.TraderId <> 0
+			AND a.TraderId <> 0;
+
+		INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType)
+		SELECT	DISTINCT
+				[TraderId]	= a.TraderID
+			,	[MatchId]	= a.MatchId
+			,	[SportType]	= a.Sporttype
+			,	[EventDate]	= a.EventDate
+			,	[BetType]	= a.Bettype
+		FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
+		CROSS APPLY (
+						SELECT dt.TraderID, dt.MatchId, dt.Bettype,
+							ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
+						FROM #tmpStagingOSTrader AS dt WITH (NOLOCK)
+						WHERE   a.matchid = dt.matchid
+							AND a.bettype = dt.bettype		
+							AND a.TraderId <> 0
+						) dat
+		WHERE a.EventDate BETWEEN @FromDate14 AND @ToDate14
 			AND a.TraderID = dat.TraderID
 			AND a.MatchId = dat.MatchId
 			AND a.Bettype = dat.Bettype
@@ -795,6 +851,7 @@ BEGIN
 				INNER JOIN bodb02.dbo.match14 m WITH (NOLOCK) ON b.matchid = m.matchid
 				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.Winlostdate = @WinLostDate
+					AND m.eventdate = @WinLostDate
 					AND	b.StatusID IN (111, 112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1
@@ -890,32 +947,45 @@ BEGIN
 	
 	IF	@IsGetDataFromOrigin = 1
 	BEGIN
+		TRUNCATE TABLE #tmpStagingOSTrader;
 		TRUNCATE TABLE #tmpOSTrader;
 		TRUNCATE TABLE #ExtraPTSportbook;
+
 		SELECT @Date = '@FromDateOrigin = ' + CONVERT(NVARCHAR, @FromDateOrigin, 120) + ', @ToDateOrigin = ' + CONVERT(NVARCHAR, @ToDateOrigin, 120);
 
-		INSERT INTO	#tmpOSTrader(TraderId, MatchId, SportType, EventDate, BetType)
-		SELECT	DISTINCT
-				[TraderId]			= a.TraderID
-			,	[matchid]			= m.MatchId
-			,	[SportType]			= m.Sporttype
-			,	[EventDate]			= m.EventDate
-			,	[BetType]			= a.Bettype
+		INSERT INTO	#tmpStagingOSTrader (TraderId, MatchId, SportType, EventDate, BetType, UpdatedTime, ID)
+		SELECT	[TraderId]		= a.TraderID
+			,	[MatchId]		= m.MatchId
+			,	[SportType]		= m.Sporttype
+			,	[EventDate]		= m.EventDate
+			,	[BetType]		= a.bettype
+			,	[UpdatedTime]	= a.UpdatedTime
+			,	[ID]			= a.ID
 		FROM	bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK)
-		INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK) ON	a.matchid = m.MatchId
+		INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK) ON	a.matchid = m.matchid
+		WHERE m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
+			AND	m.Sporttype <> 1
+			AND m.EventStatus = 'completed'
+			AND	m.MatchCode NOT LIKE '%hedge%'
+			AND a.TraderId <> 0;
+
+		INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType)
+		SELECT	DISTINCT
+				[TraderId]	= a.TraderID
+			,	[MatchId]	= a.MatchId
+			,	[SportType]	= a.Sporttype
+			,	[EventDate]	= a.EventDate
+			,	[BetType]	= a.Bettype
+		FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
 		CROSS APPLY (
 						SELECT dt.TraderID, dt.MatchId, dt.Bettype,
 							ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.Bettype ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
-						FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
+						FROM #tmpStagingOSTrader AS dt WITH (NOLOCK)
 						WHERE   a.matchid = dt.matchid
 							AND a.bettype = dt.bettype		
 							AND a.TraderId <> 0
 						) dat
-		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
-			AND	m.Sporttype <> 1
-			AND m.EventStatus = 'completed'
-			AND	m.MatchCode NOT LIKE '%hedge%'
-			AND a.TraderId <> 0
+		WHERE a.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 			AND a.TraderID = dat.TraderID
 			AND a.MatchId = dat.MatchId
 			AND a.Bettype = dat.Bettype
@@ -970,6 +1040,7 @@ BEGIN
 				INNER JOIN bodb02.dbo.match m WITH (NOLOCK) ON b.matchid = m.matchid
 				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON b.bettype = sbm.BetType and m.sporttype = sbm.SportType
 			WHERE	b.winlostdate = @WinLostDate
+					AND m.eventdate = @WinLostDate
 					AND	b.StatusID IN (111, 112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
 					AND	b.LiveIndicator = 1

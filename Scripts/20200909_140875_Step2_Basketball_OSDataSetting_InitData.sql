@@ -52,6 +52,3 @@ SET [GroupBettypeId] = 2 WHERE BettypeId IN (401,402,403,404,601,602,603,604,605
 -- BettypeName
 UPDATE [dbo].[OSBettype] WITH(ROWLOCK)
 SET BettypeName = '1H Winning Margin 12 Way' WHERE BettypeId = 608;
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/
