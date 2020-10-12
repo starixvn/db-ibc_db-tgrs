@@ -478,7 +478,8 @@ BEGIN
 				AND	m.Sporttype <> 1
 				AND m.EventStatus = 'completed'
 				AND	m.MatchCode NOT LIKE '%hedge%'
-				AND	a.OperatorType < 3;
+				AND	a.OperatorType < 3
+				OPTION (RECOMPILE);
 		
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -579,7 +580,8 @@ BEGIN
 				AND	m.Sporttype <> 1
 				AND m.EventStatus = 'completed'
 				AND	m.MatchCode NOT LIKE '%hedge%'
-				AND	a.OperatorType < 3;
+				AND	a.OperatorType < 3
+				OPTION (RECOMPILE);
 
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
