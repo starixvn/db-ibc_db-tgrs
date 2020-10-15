@@ -20,6 +20,7 @@ AS
 		- 20200626@John.Ngo: TA Performance - Get lastest LeagueGroup [Redmine ID: 136438]
 		- 20200706@John.Ngo: TA Performance - Exclude major leagues from June 25 [Redmine ID: 137063]
 		- 20201013@John.Ngo: TA Performance - Add Major Leagues back to TA Auto Report [Redmine ID: 143370]
+		- 20201015@John.Ngo: TA Weekly Report - Add details figures [Redmine ID: 143476]
 
 	Param's Explanation: 
 		- @Model =  3: TA, 1: RT3
@@ -137,11 +138,17 @@ BEGIN
 	INSERT INTO @FilterSite(TypeSiteId, TypeSiteDesc)
 	SELECT DISTINCT TypeSiteId, TypeSiteDesc FROM dbo.FilteredSite WITH(NOLOCK);
 
+	DECLARE @TypeSites AS TABLE (TypeSiteId TINYINT PRIMARY KEY CLUSTERED);
 	IF @TypeSiteIds <> ''
 	BEGIN
-		DECLARE @TypeSites AS TABLE (TypeSiteId TINYINT PRIMARY KEY CLUSTERED);
 		INSERT INTO @TypeSites(TypeSiteId)
 		SELECT val FROM dbo.strSplit_Key(@TypeSiteIds,',');
+	END;
+
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
+	BEGIN
+		INSERT INTO @LeagueGroups(LeagueGroupId)
+		VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11);
 	END;
 
 	INSERT INTO #tmpRobotTrading(TraderId, MatchId, EventDate, BetType, LeagueId, LeagueGroupId, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR, TypeSiteId, [Type])
@@ -162,10 +169,10 @@ BEGIN
 		,	r.TypeSiteId
 		,	r.[Type]
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
+		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
-		AND r.LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11)
 		AND r.[Type] = @Model
 		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
 
@@ -179,15 +186,9 @@ BEGIN
 					) mm ON mm.LeagueId = c.LeagueId
 	WHERE mm.Row_Num = 1;
 
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
-	BEGIN
-		INSERT INTO @LeagueGroups(LeagueGroupId)
-		VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11);
-	END;
-
+	DECLARE @Leagues AS TABLE (LeagueId INT PRIMARY KEY CLUSTERED);
 	IF @IsExportExcel = 0
 	BEGIN
-		DECLARE @Leagues AS TABLE (LeagueId INT PRIMARY KEY CLUSTERED)
 		IF @LeagueIds <> ''
 		BEGIN
 			INSERT INTO @Leagues(LeagueId)
@@ -202,12 +203,7 @@ BEGIN
 		INSERT INTO @Leagues(LeagueId)
 		SELECT DISTINCT r.LeagueId
 		FROM #tmpRobotTrading AS r WITH(NOLOCK)
-			INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
-			INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-			LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
-		WHERE r.EventDate BETWEEN @FromDate AND @ToDate
-			AND r.[Type] = @Model
-			AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL);
+		WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
 	END;
 
 	-- 8RM performance
@@ -221,14 +217,9 @@ BEGIN
 		,	- SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
-		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
 		AND r.Is8RM = 1
-		AND r.[Type] = @Model
-		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 	GROUP BY r.LeagueGroupId, r.LeagueId, r.TypeSiteId;
 
 	INSERT INTO #tmpTotalPerformance(LeagueGroupId, LeagueId, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR, TypeSiteId)
@@ -242,13 +233,8 @@ BEGIN
 		,	SUM(r.WinLoss_AR - r.Comm_AR)
 		,	r.TypeSiteId
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
-		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
-		AND r.[Type] = @Model
-		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 	GROUP BY r.LeagueGroupId, r.LeagueId, r.TypeSiteId;
 
 	-- LeagueGroupId, LeagueId, MatchCount & BetCount by Event (LeagueGroupId) - LeagueId
@@ -259,14 +245,9 @@ BEGIN
 		,	r.MatchId
 		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-		INNER JOIN @LeagueGroups AS lgr ON r.LeagueGroupId = lgr.LeagueGroupId
 		INNER JOIN @Leagues AS lg ON r.LeagueId = lg.LeagueId
 		INNER JOIN bodb02.dbo.league AS l ON l.LeagueId = lg.LeagueId
-		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-		LEFT JOIN @TypeSites AS ts ON r.TypeSiteId = ts.TypeSiteId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate
-		AND r.[Type] = @Model
-		AND (@TypeSiteIds = '' OR ts.TypeSiteId IS NOT NULL)
 	GROUP BY r.LeagueGroupId, r.LeagueId, l.LeagueName, r.MatchId
 	
 	SELECT	lm.LeagueGroupId
