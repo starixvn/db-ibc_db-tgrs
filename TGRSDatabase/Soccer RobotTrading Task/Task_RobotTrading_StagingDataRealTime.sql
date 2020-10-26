@@ -16,6 +16,7 @@ AS
 		- 20200416@John.Ngo: [TGR] Extend league data type [Redmine ID: 132630]
 		- 20200504@John.Ngo: [TGR] Get ExtraPT from epositiontaking column in bettrans table [Redmine ID: 133409]
 		- 20200721@John.Ngo: New Negative Bettype No Of Corner HDP [Redmine ID: 138095]
+		- 20201017@John.Ngo: TGR - Integrate Adjustmnet Odds Spread of Licensee [Redmine ID: 142421]
 
 	Param's Explanation:
 
@@ -178,8 +179,11 @@ BEGIN
 		,	Scomm				MONEY
 		,	ExtraPT				DECIMAL(12, 8)
 		,	Stake				MONEY
-		,	WinLost				MONEY
-		,	SMAWinLost			MONEY
+		,	actual_stake		MONEY
+		,	winlost				MONEY
+		,	awinlost			MONEY
+		,	mwinlost			MONEY
+		,	swinlost			MONEY
 		,	MatchCode			VARCHAR(100)
 		,	EventDate			DATETIME
 		,	SportType			INT
@@ -189,6 +193,11 @@ BEGIN
 		,	AwayId				INT
 		,	LiveIndicator		BIT
 		,	Is8RM				BIT
+		,	AdjOdds				SMALLMONEY
+		,	OriOdds				SMALLMONEY
+		,	statuswinlost		TINYINT
+		,	oddstype			TINYINT
+		,	isDecOddsOnly		BIT
 	);
 		
 	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatch_CustId ON #tmpFilteredBettransByBatch (
@@ -371,8 +380,8 @@ BEGIN
 
 		TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 		INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, 
-				VirtualRate, ActualRate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Stake, WinLost, SMAWinLost, MatchCode,
-				EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM)
+					VirtualRate, ActualRate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost,
+					MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
 		SELECT	[TransId]			= b.transid
 			,	[CustId]			= b.custid
 			,	[MatchId]			= b.matchId
@@ -388,8 +397,11 @@ BEGIN
 			,	[Scomm]				= b.scomm
 			,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 			,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
-			,	[WinLost]			= winlost - actual_stake
-			,	[SMAWinLost]		= awinlost + mwinlost + swinlost
+			,	[actual_stake]		= b.actual_stake
+			,	[winlost]			= b.winlost
+			,	[awinlost]			= b.awinlost
+			,	[mwinlost]			= b.mwinlost
+			,	[swinlost]			= b.swinlost
 			,	[MatchCode]			= m.matchCode
 			,	[EventDate]			= m.EventDate
 			,	[SportType]			= m.SportType
@@ -399,16 +411,24 @@ BEGIN
 			,	[AwayId]			= m.AwayId
 			,	[LiveIndicator]		= b.liveindicator
 			,	[Is8RM]				= CASE WHEN t8.CustId IS NULL THEN 0 ELSE 1 END
+			,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
+			,	[OriOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN bi.OriginalOdds - 1 ELSE bi.OriginalOdds END
+			,	[statuswinlost]		= b.statuswinlost
+			,	[oddstype]			= b.oddstype
+			,	[isDecOddsOnly]		= CASE WHEN fdec.OddsType IS NOT NULL THEN 1 ELSE 0 END
 		FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
 				INNER JOIN #tmpScanningMatches AS m WITH (NOLOCK) ON b.matchid = m.matchid
 				INNER JOIN #tmpFilteredBettypes AS bt WITH(NOLOCK) ON b.bettype = bt.BetType
 				LEFT JOIN bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK) ON mm.MatchId = b.matchid
 					AND	mm.BetType = b.bettype
 				LEFT JOIN #tmp8RMMembers AS t8 WITH(NOLOCK) ON b.CustId = t8.CustId
+				LEFT JOIN bodb02.dbo.BettransInfo bi WITH (NOLOCK) ON b.transid = bi.transid
+				LEFT JOIN bodb02.dbo.f_Set_OddsTypeBettypes() fdec  ON b.bettype = fdec.BetType
 		WHERE	b.winlostdate = @WinlostDate
 				AND	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
-				AND b.liveindicator = 1;
+				AND b.liveindicator = 1
+		OPTION (RECOMPILE);
 			
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
@@ -425,6 +445,67 @@ BEGIN
 					FROM #tmpFilteredBettransByBatch
 				) AS b
 		WHERE b.rn > 1;
+
+		-- Odds Spread Setting - ReCalculate Original Winlost
+		UPDATE b WITH(ROWLOCK, UPDLOCK)
+		SET	   b.winlost =  CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN
+									CASE WHEN b.statuswinlost IN (1, 2) THEN 
+												b.winlost * b.OriOdds / b.AdjOdds -- won, half won   
+										ELSE b.winlost  
+									END  
+								ELSE   
+									CASE WHEN b.statuswinlost IN (3, 4) THEN 
+												b.winlost * b.OriOdds / b.AdjOdds -- lose, half lose
+										ELSE b.winlost  
+									END  
+								END
+			,	b.awinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
+									CASE WHEN b.statuswinlost IN (1, 2) THEN
+												b.awinlost * b.OriOdds / b.AdjOdds -- won, half won   
+										ELSE b.awinlost  
+									END  
+								ELSE   
+									CASE WHEN b.statuswinlost IN (3, 4) THEN 
+												b.awinlost * b.OriOdds / b.AdjOdds -- lose, half lose
+										ELSE b.awinlost  
+									END  
+								END
+			,	b.mwinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
+									CASE WHEN b.statuswinlost IN (1, 2) THEN 
+												b.mwinlost * b.OriOdds / b.AdjOdds -- won, half won   
+										ELSE b.mwinlost  
+									END  
+								ELSE   
+									CASE WHEN b.statuswinlost IN (3, 4) THEN 
+												b.mwinlost * b.OriOdds / b.AdjOdds -- lose, half lose
+										ELSE b.mwinlost  
+									END  
+								END
+			,	b.swinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
+									CASE WHEN b.statuswinlost IN (1, 2) THEN 
+												b.swinlost * b.OriOdds / b.AdjOdds -- won, half won   
+										ELSE b.swinlost  
+									END  
+								ELSE   
+									CASE WHEN b.statuswinlost IN (3, 4) THEN
+												b.swinlost * b.OriOdds / b.AdjOdds -- lose, half lose
+										ELSE b.swinlost  
+									END  
+								END
+			,	b.scomm = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
+									CASE WHEN b.statuswinlost IN (1, 2) THEN 
+												b.scomm * b.OriOdds / b.AdjOdds -- won, half won   
+										ELSE b.scomm  
+									END  
+								ELSE   
+									CASE WHEN b.statuswinlost IN (3, 4) THEN
+												b.scomm * b.OriOdds / b.AdjOdds -- lose, half lose
+										ELSE b.scomm  
+									END  
+								END
+		FROM #tmpFilteredBettransByBatch AS b
+		WHERE   b.winlostdate = @winlostdate
+			AND b.OriOdds IS NOT NULL;
 			
 		INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, Srecommend, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
 			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM, [Type])
@@ -444,8 +525,8 @@ BEGIN
 			,	[Grade]				= t.Grade
 			,	[BetType]			= ca.BetType
 			,	[Stake]				= b.Stake --Turnover
-			,	[WinLost]			= b.WinLost
-			,	[SMAWinLost]		= b.SMAWinLost
+			,	[WinLost]			= b.winlost - b.actual_stake
+			,	[SMAWinLost]		= b.awinlost + b.mwinlost + b.swinlost
 			,	[Comm]				= b.scomm --Commission
 			,	[BetCount]			= 1 --Live BetCount
 			,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
