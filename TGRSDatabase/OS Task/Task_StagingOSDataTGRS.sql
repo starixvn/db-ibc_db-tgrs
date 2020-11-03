@@ -282,6 +282,8 @@ BEGIN
 		,	@FromDateBK				SMALLDATETIME = NULL
 		,	@ToDateBK				SMALLDATETIME = NULL;
 	
+	DECLARE @Odds FLOAT;
+
 	-- No input date range: Default job run
 	IF (@IsRunningJob = 1)
 	BEGIN
@@ -710,65 +712,32 @@ BEGIN
 			WHERE b.rn > 1;
 
 			-- Odds Spread Setting - ReCalculate Original Winlost
-			UPDATE b WITH(ROWLOCK, UPDLOCK)
-			SET	   b.winlost =  CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.winlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.winlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.winlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.winlost  
-										END  
-								 END
-				,	b.awinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN
-												 b.awinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.awinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.awinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.awinlost  
-										END  
-								 END
-				,	b.mwinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.mwinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.mwinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.mwinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.mwinlost  
-										END  
-								 END
-				,	b.swinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.swinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.swinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN
-												 b.swinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.swinlost  
-										END  
-								 END
-				,	b.scomm = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.scomm * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.scomm  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN
-												 b.scomm * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.scomm  
-										END  
-								 END
+			UPDATE b
+			SET @Odds = CASE WHEN b.AdjOdds = 0 THEN 1
+							 WHEN
+								(
+									((b.isDecOddsOnly = 1 OR b.AdjOdds > 0) AND b.statuswinlost IN (1, 2))
+									OR (b.isDecOddsOnly <> 1 AND b.AdjOdds < 0 AND b.statuswinlost IN (3, 4))
+								) THEN b.OriOdds / b.AdjOdds
+							ELSE 1 END
+				,	b.winlost  = b.winlost * @Odds
+				,	b.swinlost = b.swinlost * @Odds
+				,	b.mwinlost = b.mwinlost * @Odds
+				,	b.awinlost = b.awinlost * @Odds
+				,	b.scomm    = b.scomm * @Odds
 			FROM #tmpFilteredBettransByBatch AS b
-			WHERE   b.winlostdate = @winlostdate
+			WHERE b.winlostdate = @winlostdate
 				AND b.OriOdds IS NOT NULL;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From BK - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
 			
 			INSERT INTO #tmpStagingOSTraderPerformance (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
@@ -1033,65 +1002,32 @@ BEGIN
 			WHERE b.rn > 1;
 			
 			-- Odds Spread Setting - ReCalculate Original Winlost
-			UPDATE b WITH(ROWLOCK, UPDLOCK)
-			SET	   b.winlost =  CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.winlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.winlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.winlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.winlost  
-										END  
-								 END
-				,	b.awinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN
-												 b.awinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.awinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.awinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.awinlost  
-										END  
-								 END
-				,	b.mwinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.mwinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.mwinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.mwinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.mwinlost  
-										END  
-								 END
-				,	b.swinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.swinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.swinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN
-												 b.swinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.swinlost  
-										END  
-								 END
-				,	b.scomm = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.scomm * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.scomm  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN
-												 b.scomm * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.scomm  
-										END  
-								 END
+			UPDATE b
+			SET @Odds = CASE WHEN b.AdjOdds = 0 THEN 1
+							 WHEN
+								(
+									((b.isDecOddsOnly = 1 OR b.AdjOdds > 0) AND b.statuswinlost IN (1, 2))
+									OR (b.isDecOddsOnly <> 1 AND b.AdjOdds < 0 AND b.statuswinlost IN (3, 4))
+								) THEN b.OriOdds / b.AdjOdds
+							ELSE 1 END
+				,	b.winlost  = b.winlost * @Odds
+				,	b.swinlost = b.swinlost * @Odds
+				,	b.mwinlost = b.mwinlost * @Odds
+				,	b.awinlost = b.awinlost * @Odds
+				,	b.scomm    = b.scomm * @Odds
 			FROM #tmpFilteredBettransByBatch AS b
-			WHERE   b.winlostdate = @winlostdate
+			WHERE b.winlostdate = @winlostdate
 				AND b.OriOdds IS NOT NULL;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From 14 - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
 
 			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
@@ -1356,65 +1292,32 @@ BEGIN
 			WHERE b.rn > 1;
 			
 			-- Odds Spread Setting - ReCalculate Original Winlost
-			UPDATE b WITH(ROWLOCK, UPDLOCK)
-			SET	   b.winlost =  CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.winlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.winlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.winlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.winlost  
-										END  
-								 END
-				,	b.awinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN
-												 b.awinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.awinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.awinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.awinlost  
-										END  
-								 END
-				,	b.mwinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.mwinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.mwinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN 
-												 b.mwinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.mwinlost  
-										END  
-								 END
-				,	b.swinlost = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.swinlost * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.swinlost  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN
-												 b.swinlost * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.swinlost  
-										END  
-								 END
-				,	b.scomm = CASE WHEN (b.isDecOddsOnly = 1 OR b.AdjOdds > 0) THEN   
-										CASE WHEN b.statuswinlost IN (1, 2) THEN 
-												 b.scomm * b.OriOdds / b.AdjOdds -- won, half won   
-											ELSE b.scomm  
-										END  
-								 ELSE   
-										CASE WHEN b.statuswinlost IN (3, 4) THEN
-												 b.scomm * b.OriOdds / b.AdjOdds -- lose, half lose
-											ELSE b.scomm  
-										END  
-								 END
+			UPDATE b
+			SET @Odds = CASE WHEN b.AdjOdds = 0 THEN 1
+							 WHEN
+								(
+									((b.isDecOddsOnly = 1 OR b.AdjOdds > 0) AND b.statuswinlost IN (1, 2))
+									OR (b.isDecOddsOnly <> 1 AND b.AdjOdds < 0 AND b.statuswinlost IN (3, 4))
+								) THEN b.OriOdds / b.AdjOdds
+							ELSE 1 END
+				,	b.winlost  = b.winlost * @Odds
+				,	b.swinlost = b.swinlost * @Odds
+				,	b.mwinlost = b.mwinlost * @Odds
+				,	b.awinlost = b.awinlost * @Odds
+				,	b.scomm    = b.scomm * @Odds
 			FROM #tmpFilteredBettransByBatch AS b
-			WHERE   b.winlostdate = @winlostdate
+			WHERE b.winlostdate = @winlostdate
 				AND b.OriOdds IS NOT NULL;
+
+			SELECT	@RowCount	= @@ROWCOUNT
+				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+				;
+
+			IF	@Debug = 1
+			BEGIN
+				-- Force the output to appear immediately
+				RAISERROR('From Origin - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+			END;
 
 			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
