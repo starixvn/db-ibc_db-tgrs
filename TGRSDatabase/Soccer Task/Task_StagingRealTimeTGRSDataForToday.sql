@@ -35,6 +35,7 @@ AS
 		- 20200504@John.Ngo: [TGR] Get ExtraPT from epositiontaking column in bettrans table [Redmine ID: 133409]
 		- 20200721@John.Ngo: New Negative Bettype No Of Corner HDP [Redmine ID: 138095]
 		- 20201017@John.Ngo: TGR - Integrate Adjustmnet Odds Spread of Licensee [Redmine ID: 142421]
+		- 20201112@John.Ngo: TGR - Enhance formula of calculating adjusted odds by Licensee [Redmine ID: 145246]
 
 	Param's Explanation:
 		
@@ -165,6 +166,9 @@ BEGIN
 		,	Virtualrate			FLOAT
 		,	Actualrate			FLOAT
 		,	Tpositiontaking		SMALLMONEY
+		,	spositiontaking		SMALLMONEY
+		,	mpositiontaking		SMALLMONEY
+		,	apositiontaking		SMALLMONEY
 		,	Srecommend			INT
 		,	Scomm				MONEY
 		,	ExtraPT				DECIMAL(12, 8)
@@ -245,7 +249,9 @@ BEGIN
 	DECLARE @CurrentDate DATE = CONVERT(DATE, GETDATE());
 	DECLARE @CurrentDateBefore1Hour DATE =  CONVERT(DATE, DATEADD(HOUR, -1, GETDATE()));
 
-	DECLARE @Odds FLOAT;
+	DECLARE @Odds		FLOAT
+		,	@winlost	MONEY
+		,	@UpdateById TINYINT = 1; -- 1: by odds, 2: by winlost
 
 	INSERT INTO #tmpRTWinlostdate (winlostdate)
 	SELECT DISTINCT winlostdate
@@ -371,8 +377,8 @@ BEGIN
 		END;	
 
 		TRUNCATE TABLE	#tmpRTFilteredBettransByBatch;
-		INSERT INTO	#tmpRTFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, Winlostdate, Bettype, Modds, 
-						Virtualrate, Actualrate, Tpositiontaking, Srecommend, Scomm, ExtraPT, Spread, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost, 
+		INSERT INTO	#tmpRTFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, Winlostdate, Bettype, Modds, Virtualrate, Actualrate, Tpositiontaking,
+						spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, ExtraPT, Spread, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost, 
 						MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, LiveIndicator, BetChoice, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
 			SELECT	[TransId]			= b.transid
 				,	[CustId]			= b.custid
@@ -394,6 +400,9 @@ BEGIN
 				,	[Virtualrate]		= b.virtualrate
 				,	[Actualrate]		= b.actualrate
 				,	[Tpositiontaking]	= b.tpositiontaking
+				,	[spositiontaking]	= b.spositiontaking
+				,	[mpositiontaking]	= b.mpositiontaking
+				,	[apositiontaking]	= b.apositiontaking
 				,	[Srecommend]		= b.srecommend
 				,	[Scomm]				= b.scomm
 				,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
@@ -447,32 +456,55 @@ BEGIN
 		WHERE b.rn > 1;
 
 		-- Odds Spread Setting - ReCalculate Original Winlost
-			UPDATE b
-			SET @Odds = CASE WHEN b.AdjOdds = 0 THEN 1
-							 WHEN
-								(
-									((b.isDecOddsOnly = 1 OR b.AdjOdds > 0) AND b.statuswinlost IN (1, 2))
-									OR (b.isDecOddsOnly <> 1 AND b.AdjOdds < 0 AND b.statuswinlost IN (3, 4))
-								) THEN b.OriOdds / b.AdjOdds
-							ELSE 1 END
-				,	b.winlost  = b.winlost * @Odds
-				,	b.swinlost = b.swinlost * @Odds
-				,	b.mwinlost = b.mwinlost * @Odds
-				,	b.awinlost = b.awinlost * @Odds
-				,	b.scomm    = b.scomm * @Odds
-			FROM #tmpRTFilteredBettransByBatch AS b
-			WHERE b.winlostdate = @winlostdate
-				AND b.OriOdds IS NOT NULL;
+		UPDATE b WITH(ROWLOCK, UPDLOCK)
+		SET   @UpdateById = CASE WHEN b.isDecOddsOnly = 1 OR b.OriOdds * b.AdjOdds > 0 THEN 1
+							ELSE 2 END
+			, @Odds = CASE WHEN
+							(
+								((b.isDecOddsOnly = 1 OR (b.OriOdds > 0 AND b.AdjOdds > 0)) AND b.statuswinlost IN (1, 2))
+								OR (b.isDecOddsOnly <> 1 AND b.OriOdds < 0 AND b.AdjOdds < 0 AND b.statuswinlost IN (3, 4))
+							) THEN CAST(b.OriOdds AS FLOAT) / b.AdjOdds
+						ELSE 1 END
+			, @winlost = CASE WHEN (b.OriOdds < 0 AND b.AdjOdds > 0) THEN
+									CASE WHEN b.statuswinlost = 2 THEN b.actual_stake -- won  
+											WHEN b.statuswinlost = 1 THEN b.actual_stake * 0.5-- half won  
+											WHEN b.statuswinlost = 4 THEN (-1) * (b.winlost * b.OriOdds) -- lose  
+											WHEN b.statuswinlost = 3 THEN (-1) * (b.winlost * b.OriOdds) * 0.5 -- half lose
+									END  
+									WHEN (b.OriOdds > 0 AND b.AdjOdds < 0) THEN  
+									CASE WHEN b.statuswinlost = 2 THEN b.actual_stake -- won  
+											WHEN b.statuswinlost = 1 THEN b.actual_stake * 0.5-- half won  
+											WHEN b.statuswinlost = 4 THEN (-1) * (b.winlost / b.AdjOdds) -- lose  
+											WHEN b.statuswinlost = 3 THEN (-1) * (b.winlost / b.AdjOdds) * 0.5 -- half lose
+									END
+								END
+			, b.winlost  = CASE @UpdateById
+								WHEN 1 THEN b.winlost * @Odds
+								WHEN 2 THEN @winlost END
+			, b.swinlost = CASE @UpdateById
+								WHEN 1 THEN b.swinlost * @Odds
+								WHEN 2 THEN b.spositiontaking * @winlost END
+			, b.mwinlost = CASE @UpdateById
+								WHEN 1 THEN b.mwinlost * @Odds
+								WHEN 2 THEN b.mpositiontaking * @winlost END
+			, b.awinlost = CASE @UpdateById
+								WHEN 1 THEN b.awinlost * @Odds
+								WHEN 2 THEN b.apositiontaking * @winlost END
+		FROM #tmpRTFilteredBettransByBatch AS b
+		WHERE b.winlostdate = @winlostdate
+			AND b.OriOdds IS NOT NULL
+			AND b.OriOdds <> 0
+			AND b.AdjOdds <> 0;
 
-			SELECT	@RowCount	= @@ROWCOUNT
-				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-				;
+		SELECT	@RowCount	= @@ROWCOUNT
+			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
+			;
 
-			IF	@Debug = 1
-			BEGIN
-				-- Force the output to appear immediately
-				RAISERROR('From Origin - ReCalculate Original Winlost #tmpRTFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
-			END;
+		IF	@Debug = 1
+		BEGIN
+			-- Force the output to appear immediately
+			RAISERROR('From Origin - ReCalculate Original Winlost #tmpRTFilteredBettransByBatch - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+		END;
 			
 		INSERT INTO	#tmpRTStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
