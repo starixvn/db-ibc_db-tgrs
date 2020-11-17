@@ -466,18 +466,18 @@ BEGIN
 							) THEN CAST(b.OriOdds AS FLOAT) / b.AdjOdds
 						ELSE 1 END
 			, @winlost = CASE WHEN (b.OriOdds < 0 AND b.AdjOdds > 0) THEN
-									CASE WHEN b.statuswinlost = 2 THEN b.actual_stake -- won  
-											WHEN b.statuswinlost = 1 THEN b.actual_stake * 0.5-- half won  
-											WHEN b.statuswinlost = 4 THEN (-1) * (b.winlost * b.OriOdds) -- lose  
-											WHEN b.statuswinlost = 3 THEN (-1) * (b.winlost * b.OriOdds) * 0.5 -- half lose
-									END  
-									WHEN (b.OriOdds > 0 AND b.AdjOdds < 0) THEN  
-									CASE WHEN b.statuswinlost = 2 THEN b.actual_stake -- won  
-											WHEN b.statuswinlost = 1 THEN b.actual_stake * 0.5-- half won  
-											WHEN b.statuswinlost = 4 THEN (-1) * (b.winlost / b.AdjOdds) -- lose  
-											WHEN b.statuswinlost = 3 THEN (-1) * (b.winlost / b.AdjOdds) * 0.5 -- half lose
+										CASE WHEN b.statuswinlost = 2 THEN (b.winlost / b.AdjOdds) -- won  
+											 WHEN b.statuswinlost = 1 THEN (b.winlost / b.AdjOdds) -- half won  
+											 WHEN b.statuswinlost = 4 THEN (-1) * (b.winlost * b.OriOdds) -- lose  
+											 WHEN b.statuswinlost = 3 THEN (-1) * (b.winlost * b.OriOdds) -- half lose
+										END  
+										WHEN (b.OriOdds > 0 AND b.AdjOdds < 0) THEN  
+										CASE WHEN b.statuswinlost = 2 THEN (-1) * (b.actual_stake * b.OriOdds / b.AdjOdds) -- won  
+											 WHEN b.statuswinlost = 1 THEN (-1) * (b.actual_stake * b.OriOdds / b.AdjOdds) * 0.5 -- half won  
+											 WHEN b.statuswinlost = 4 THEN (b.actual_stake / b.AdjOdds) -- lose  
+											 WHEN b.statuswinlost = 3 THEN (b.actual_stake / b.AdjOdds) * 0.5 -- half lose
+										END
 									END
-								END
 			, b.winlost  = CASE @UpdateById
 								WHEN 1 THEN b.winlost * @Odds
 								WHEN 2 THEN @winlost END
