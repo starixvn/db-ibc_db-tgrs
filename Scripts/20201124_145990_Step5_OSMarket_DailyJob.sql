@@ -228,6 +228,3 @@ IF	@@TRANCOUNT > 0
 -- Jump point -- Finish --
 EndSave:
 GO
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS_UAT"></info>*/

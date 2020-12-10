@@ -69,6 +69,3 @@ CREATE NONCLUSTERED INDEX [IX_OSSummaryMarketIdx] ON [dbo].[OSSummaryMarket]
 	[MarketId]		ASC
 ) ON [DATA]
 GO
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/

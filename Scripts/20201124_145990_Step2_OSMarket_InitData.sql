@@ -363,6 +363,3 @@ INSERT [dbo].[OSMarket] ([SportId], [MarketId], [MarketName], [CreatedBy], [Crea
 VALUES (55, 1, N'Winner', 20902509, @CurrentDate)
 
 SET IDENTITY_INSERT [dbo].[OSMarket] OFF
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/

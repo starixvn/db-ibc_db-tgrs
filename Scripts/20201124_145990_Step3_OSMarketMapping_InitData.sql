@@ -294,6 +294,3 @@ INSERT INTO [OSMarketMapping](SportId, LeagueNameMarket, BetTypeId, MarketId, Cr
 VALUES(55,NULL,2,1,20902509, @CurrentDate)
 	 ,(55,NULL,20,1,20902509, @CurrentDate)
 	 ,(55,NULL,NULL,0,20902509, @CurrentDate)
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/
