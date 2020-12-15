@@ -85,6 +85,3 @@ UPDATE [dbo].[OSMarket] WITH(ROWLOCK)
 SET MarketName = 'Full Time' WHERE SportId = 25 AND MarketId = 5;
 
 SET IDENTITY_INSERT [dbo].[OSMarket] OFF
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/

@@ -70,6 +70,3 @@ SET LeagueNameMarket = NULL, BetTypeId = 1 WHERE SportId = 18 AND MarketId = 1;
 
 INSERT INTO [OSMarketMapping](SportId, LeagueNameMarket, BetTypeId, MarketId, CreatedBy, CreatedDate)
 VALUES(18,NULL,20,1,20902509, @CurrentDate)
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/
