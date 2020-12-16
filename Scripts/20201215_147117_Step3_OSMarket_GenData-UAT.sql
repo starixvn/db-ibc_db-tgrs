@@ -19,6 +19,3 @@ DECLARE	@PrevFDate	DATE = DATEADD(YYYY, -1, @FDate)
 EXECUTE dbo.Task_OS_Market_StagingData_xtest  @Debug = 1, @GenerateFromDate = @FDate , @GenerateToDate = @TDate
 
 EXECUTE dbo.Task_OS_Market_StagingData_xtest  @Debug = 1, @GenerateFromDate = @PrevFDate , @GenerateToDate = @PrevTDate
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS_UAT"></info>*/

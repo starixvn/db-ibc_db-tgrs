@@ -21,6 +21,3 @@ SET IDENTITY_INSERT [dbo].[OSMarket] OFF
 
 UPDATE [dbo].[OSMarketMapping] WITH(ROWLOCK)
 SET SportId = 50 WHERE SportId = 27;
-
-GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/
