@@ -1,9 +1,9 @@
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_MatchDetails]
 		@TraderId			INT
 	,	@LeagueId			INT
-	,	@FromDate			DATE	 = '2016-01-01'
-	,	@ToDate				DATE	 = '2017-12-31'
-	,	@SportId			INT	 = - 1
+	,	@FromDate			DATE	 = '2021-02-01'
+	,	@ToDate				DATE	 = '2021-01-01'
+	,	@SportId			INT	 	 = - 1
 	,	@LiveType			SMALLINT = 1
 AS
 /*
@@ -15,6 +15,7 @@ AS
 	Revisions:
 		- 20181030@Long: Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
+		- 20210226@John.Ngo: Integrate Cricket AIO [Redmine ID: #150856]
 
 	Params Explaination:
 		- @LiveType: -1 All; 0 Nonlive; 1 Live
@@ -117,6 +118,8 @@ BEGIN
 		,	EventDate			DATETIME
 		,	HomeId				INT
 		,	AwayId				INT
+		,	ParentID			INT
+		,	ChildMatchType		TINYINT
 		,	Margin				MONEY
 		,	Turnover			MONEY
 		,	WinLoss				MONEY
@@ -270,6 +273,8 @@ BEGIN
 			,	EventDate
 			,	HomeId
 			,	AwayId
+			,	ParentID
+			,	ChildMatchType
 			,	Margin
 			,	Turnover
 			,	WinLoss
@@ -282,6 +287,8 @@ BEGIN
 			,	tp.EventDate
 			,	m.homeid AS HomeId
 			,	m.awayid AS AwayId
+			,	m.ParentID
+			,	200 --m.ChildMatchType
 			,	(SUM(tp.WinLoss) * 100 / SUM(tp.Turnover)) AS Margin
 			,	tp.Turnover
 			,	tp.Winloss
@@ -308,6 +315,8 @@ BEGIN
 			,	tp.EventDate
 			,	m.homeid
 			,	m.awayid
+			,	m.ParentID
+			--,	m.ChildMatchType
 			,	tp.Turnover		
 			,	tp.Winloss
 			,	tp.EventProductCount
@@ -322,6 +331,8 @@ BEGIN
 			,	EventDate
 			,	HomeId
 			,	AwayId
+			,	ParentID
+			,	ChildMatchType
 			,	Margin
 			,	Turnover
 			,	WinLoss
@@ -334,6 +345,8 @@ BEGIN
 			,	tp.EventDate
 			,	m.homeid AS HomeId
 			,	m.awayid AS AwayId
+			,	m.ParentID
+			,	m.ChildMatchType
 			,	(SUM(tp.WinLoss) * 100 / SUM(tp.Turnover)) AS Margin
 			,	tp.Turnover
 			,	tp.Winloss
@@ -359,7 +372,9 @@ BEGIN
 			,	tp.MatchId
 			,	tp.EventDate
 			,	m.homeid
-			,	m.awayid
+			,	m.awayid			
+			,	m.ParentID
+			,	m.ChildMatchType
 			,	tp.Turnover		
 			,	tp.Winloss
 			,	tp.EventProductCount
@@ -374,6 +389,8 @@ BEGIN
 			,	EventDate
 			,	HomeId
 			,	AwayId
+			,	ParentID
+			,	ChildMatchType
 			,	Margin
 			,	Turnover
 			,	WinLoss
@@ -386,6 +403,8 @@ BEGIN
 			,	tp.EventDate
 			,	m.homeid AS HomeId
 			,	m.awayid AS AwayId
+			,	m.ParentID
+			,	m.ChildMatchType
 			,	(SUM(tp.WinLoss) * 100 / SUM(tp.Turnover)) AS Margin
 			,	tp.Turnover
 			,	tp.Winloss
@@ -412,10 +431,64 @@ BEGIN
 			,	tp.EventDate
 			,	m.homeid
 			,	m.awayid
+			,	m.ParentID
+			,	m.ChildMatchType
 			,	tp.Turnover		
 			,	tp.Winloss
 			,	tp.EventProductCount
 			,	tp.Target;
+		IF @SportId = 50 -- Cricket (Main match is running)
+			BEGIN
+				IF	OBJECT_ID('tempdb..#tmpOrgMatches') IS NOT NULL
+				BEGIN
+					DROP TABLE #tmpOrgMatches;
+				END;
+
+				CREATE TABLE	#tmpOrgMatches (
+						MatchId				INT NOT NULL PRIMARY KEY
+				);
+
+				INSERT INTO #tmpOrgMatches (MatchId)
+				SELECT DISTINCT fn.ParentID FROM #tmpFinalResults fn WITH (NOLOCK) 
+				WHERE fn.eventdate BETWEEN @FromDateOrigin AND @ToDateOrigin
+					AND fn.ChildMatchType = 200;
+
+				INSERT INTO #tmpFinalResults (
+						LeagueId
+					,	MatchId
+					,	EventDate
+					,	HomeId
+					,	AwayId
+					,	ParentID
+					,	ChildMatchType
+					,	Margin
+					,	Turnover
+					,	WinLoss
+					,	Point
+					,	EventProductCount
+					,	BetCount
+				)
+				SELECT	m.LeagueId
+					,	m.MatchId
+					,	m.EventDate
+					,	m.homeid AS HomeId
+					,	m.awayid AS AwayId
+					,	m.ParentID
+					,	m.ChildMatchType
+					,	0 AS Margin
+					,	0 AS Turnover
+					,	0 AS Winloss
+					,	0 AS Point
+					,	0 AS EventProductCount
+					,	0 AS BetCount
+				FROM #tmpOrgMatches om WITH (NOLOCK)
+					INNER JOIN bodb02.dbo.match m WITH(NOLOCK) ON om.MatchId = m.matchid
+					LEFT JOIN #tmpFinalResults fn WITH(NOLOCK) ON om.MatchId = fn.matchid
+				WHERE m.eventdate BETWEEN @FromDateOrigin AND @ToDateOrigin
+					AND fn.MatchId IS NULL;
+
+			END;
+	
 	END;
 
 	SELECT	LeagueId
@@ -423,6 +496,8 @@ BEGIN
 		,	EventDate
 		,	HomeId
 		,	AwayId
+		,	ParentID
+		,	ChildMatchType
 		,	Margin
 		,	Turnover
 		,	WinLoss
@@ -433,6 +508,7 @@ BEGIN
 
 	DROP TABLE #tmpTraderPerformanceDetail;
 	DROP TABLE #tmpFinalResults;
+
 END;
 
 GO

@@ -1,7 +1,7 @@
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_Sport_League_Match_Bettype]
 		@SportId			INT
 	,	@LeagueId			INT
-	,	@MatchId			INT
+	,	@MatchIds			VARCHAR(MAX) = ''
 	,	@TraderId			INT
 	,	@FromDate			DATE
 	,	@ToDate				DATE
@@ -15,6 +15,7 @@ AS
 	Revisions:  
 		- 20181030@Long: Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
+		- 20210226@John.Ngo: Integrate Cricket AIO [Redmine ID: #150856]
 
 	Param's Explanation (filtered by):
 		- @ReportType = 1: Daily, 2: Monthly
@@ -25,6 +26,15 @@ BEGIN
 
 	DECLARE @FMark			DECIMAL(18, 2)
 		,	@TotalTurnover	MONEY;
+
+	IF	OBJECT_ID('tempdb..#tmpMatches') IS NOT NULL
+	BEGIN
+		DROP TABLE #tmpMatches;
+	END;
+
+	CREATE TABLE	#tmpMatches (
+			MatchId				INT NOT NULL PRIMARY KEY
+	);
 
 	IF OBJECT_ID('tempdb..#tmpOSBettypePerformance') IS NOT NULL
 	BEGIN
@@ -42,6 +52,10 @@ BEGIN
 		BettypeId			ASC
 	);
 
+	INSERT INTO #tmpMatches(MatchId)
+	SELECT val
+	FROM dbo.strSplit_Key(@MatchIds, ',');
+
 	INSERT INTO #tmpOSBettypePerformance (
 			BettypeId
 		,	Turnover
@@ -53,11 +67,11 @@ BEGIN
 		,	SUM(td.WinLoss - td.Comm) AS 'VWinLoss'
 		,	SUM(td.BetCount)
 	FROM dbo.OSDataTGRS td WITH (NOLOCK)
+		INNER JOIN #tmpMatches AS m WITH(NOLOCK) ON td.MatchId = m.MatchId
 	WHERE td.EventDate BETWEEN @FromDate AND @ToDate
 		AND td.TraderId = @TraderId
 		AND td.SportId = @SportId
 		AND td.LeagueId = @LeagueId
-		AND td.MatchId = @MatchId
 		AND (@LiveType = -1 OR td.IsLive = @LiveType)
 	GROUP BY td.BettypeId;
 	
