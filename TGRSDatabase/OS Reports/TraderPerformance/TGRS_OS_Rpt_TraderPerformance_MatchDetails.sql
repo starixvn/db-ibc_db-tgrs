@@ -288,7 +288,7 @@ BEGIN
 			,	m.homeid AS HomeId
 			,	m.awayid AS AwayId
 			,	m.ParentID
-			,	200 --m.ChildMatchType
+			,	m.ChildMatchType
 			,	(SUM(tp.WinLoss) * 100 / SUM(tp.Turnover)) AS Margin
 			,	tp.Turnover
 			,	tp.Winloss
@@ -316,7 +316,7 @@ BEGIN
 			,	m.homeid
 			,	m.awayid
 			,	m.ParentID
-			--,	m.ChildMatchType
+			,	m.ChildMatchType
 			,	tp.Turnover		
 			,	tp.Winloss
 			,	tp.EventProductCount
