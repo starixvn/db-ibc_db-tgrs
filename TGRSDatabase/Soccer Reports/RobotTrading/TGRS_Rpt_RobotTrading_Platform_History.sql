@@ -26,8 +26,7 @@ BEGIN
 		,	ph.FromDate
 		,	ph.ToDate
 		,	ph.IsLeagueGroup
-		,	ph.LeagueGroupID as LeagueGroupIDHistory
-		,	l.LeagueGroupID
+		,	ph.LeagueGroupID as LeagueGroupIDHistory	
 		,	ph.Event
 		,	ph.LeagueID
 		,	ph.MatchCount
@@ -62,8 +61,7 @@ BEGIN
 		,	ph.RealEx8RM1HOUTO
 		,	ph.RealEx8RM1HOUWL
 		,	ph.BetCount		
-	FROM dbo.TAPlatform_History AS ph WITH(NOLOCK)
-		INNER JOIN bodb02.dbo.League AS l WITH (NOLOCK) ON ph.LeagueID = l.LeagueId
+	FROM dbo.TAPlatform_History AS ph WITH(NOLOCK)		
 	WHERE ph.IsLess8 = @IsLess8
 		AND ph.IsLastWeek = @IsLastWeek
 		AND ph.IsMonitoringLeague = @IsMonitoringLeague
