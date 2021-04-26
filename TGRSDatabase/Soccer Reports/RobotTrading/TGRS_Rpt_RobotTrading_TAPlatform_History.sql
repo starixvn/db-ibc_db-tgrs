@@ -1,4 +1,4 @@
-ALTER PROCEDURE [dbo].[TGRS_Rpt_RobotTrading_Platform_History]
+ALTER PROCEDURE [dbo].[TGRS_Rpt_RobotTrading_TAPlatform_History]
 		@IsLess8			BIT = 0
 	,	@IsLastWeek			BIT = 0
 	,	@IsMonitoringLeague	BIT = 0
@@ -18,7 +18,7 @@ AS
 		- @IsLastWeek
 		- @IsMonitoringLeague
 		
-	Exam: EXECUTE dbo.TGRS_Rpt_RobotTrading_Platform_History @IsLess8 = 1, @IsLastWeek = 0, @IsMonitoringLeague = 0
+	Exam: EXECUTE dbo.TGRS_Rpt_RobotTrading_TAPlatform_History @IsLess8 = 1, @IsLastWeek = 0, @IsMonitoringLeague = 0
 */
 
 BEGIN	
