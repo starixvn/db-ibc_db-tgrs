@@ -67,6 +67,7 @@ BEGIN
 		,	GroupName			VARCHAR(20)
 		,	LeagueId			INT
 		,	LeagueName			NVARCHAR(500)
+		,	EventDate			DATE
 		,	BetType				SMALLINT
 		,   BetCount			INT
 		,   MatchCount			INT
@@ -78,6 +79,7 @@ BEGIN
 				LeagueGroupId	ASC
 			,	LeagueId		ASC
 			,	BetType			ASC
+			,	EventDate		ASC
 		)
 	);
 	
@@ -114,11 +116,12 @@ BEGIN
 		INNER JOIN bodb02.dbo.league AS lg ON r.LeagueId = lg.LeagueId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
 	
-	INSERT INTO #tmpTotalPerformance(LeagueGroupId, GroupName, LeagueId, LeagueName, BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+	INSERT INTO #tmpTotalPerformance(LeagueGroupId, GroupName, LeagueId, LeagueName, EventDate, BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT	r.LeagueGroupId
 		,	r.GroupName
 		,	r.LeagueId
 		,	r.LeagueName
+		,	r.EventDate
 		,	r.BetType
 		,	ISNULL(SUM(r.BetCount), 0) AS BetCount
 		,	COUNT(DISTINCT r.MatchId)
@@ -127,10 +130,11 @@ BEGIN
 		,	SUM(r.Stake_AR)
 		,	SUM(r.WinLoss_AR - r.Comm_AR)		
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-	GROUP BY r.LeagueGroupId, r.GroupName, r.LeagueId, r.LeagueName, r.BetType;
+	GROUP BY r.LeagueGroupId, r.GroupName, r.LeagueId, r.LeagueName, r.EventDate, r.BetType;
 		
 	SELECT 	t.LeagueId
 		,	t.LeagueName
+		,	t.EventDate
 		,	t.LeagueGroupId	
 		,	t.GroupName
 		,	t.BetType
