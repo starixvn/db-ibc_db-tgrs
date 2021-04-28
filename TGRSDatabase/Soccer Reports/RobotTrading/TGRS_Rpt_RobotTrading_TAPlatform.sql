@@ -52,9 +52,8 @@ BEGIN
 	);
 	
 	CREATE NONCLUSTERED INDEX	#IX_tmpRobotTradingIdx ON #tmpRobotTrading (
-			LeagueId			ASC
-		,	MatchId				ASC
-		,	BetType				ASC
+			LeagueGroupId		ASC
+		,	LeagueId			ASC				
 	);	
 	
 	IF	OBJECT_ID('tempdb..#tmpTotalPerformance') IS NOT NULL
@@ -113,8 +112,9 @@ BEGIN
 		,	r.Comm_AR
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @Leagues AS l ON r.LeagueId = l.LeagueId	
-		INNER JOIN bodb02.dbo.league AS lg ON r.LeagueId = lg.LeagueId
-	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
+		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
+		INNER JOIN bodb02.dbo.league AS lg ON r.LeagueId = lg.LeagueId		
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;	
 	
 	INSERT INTO #tmpTotalPerformance(LeagueGroupId, GroupName, LeagueId, LeagueName, EventDate, BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT	r.LeagueGroupId

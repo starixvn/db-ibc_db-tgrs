@@ -1,4 +1,5 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_LeagueSpread_Get]
+	@Is8Percent			BIT = 0
 
 AS
 /*
@@ -16,8 +17,21 @@ AS
 */
 
 BEGIN
-	SELECT ls.LeagueId
-	FROM dbo.LeagueSpread AS ls WITH(NOLOCK)
+	IF @Is8Percent = 1
+	BEGIN		
+		SELECT 	ls.LeagueId			
+		FROM dbo.LeagueSpread AS ls WITH(NOLOCK)
+			INNER JOIN bodb02.dbo.league AS lg WITH(NOLOCK) ON lg.LeagueId = ls.LeagueId
+		WHERE lg.sporttype = 1;
+	END;
+	
+	ELSE
+	BEGIN		
+		SELECT 	lg.LeagueId			
+		FROM dbo.LeagueSpread AS ls WITH(NOLOCK)
+			RIGHT OUTER JOIN bodb02.dbo.league AS lg WITH(NOLOCK) ON lg.LeagueId = ls.LeagueId
+			WHERE lg.sporttype = 1;
+	END;	
 END;
 
 GO
