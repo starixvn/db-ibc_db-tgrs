@@ -114,7 +114,7 @@ BEGIN
 		INNER JOIN @Leagues AS l ON r.LeagueId = l.LeagueId	
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 		INNER JOIN bodb02.dbo.league AS lg ON r.LeagueId = lg.LeagueId		
-	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;	
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate AND r.Type = 3;
 	
 	INSERT INTO #tmpTotalPerformance(LeagueGroupId, GroupName, LeagueId, LeagueName, EventDate, BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT	r.LeagueGroupId
