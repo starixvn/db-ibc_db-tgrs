@@ -11,7 +11,6 @@ Reviewer:
 
 CREATE TABLE [dbo].[LeagueSpread](
 	[LeagueId]			INT NOT NULL,
-	[Is8Percent]		TINYINT NOT NULL,
 	[CreatedBy]			INT NULL,
 	[CreatedDate]		DATETIME NULL,
 	CONSTRAINT [PK_LeagueSpread] PRIMARY KEY CLUSTERED(

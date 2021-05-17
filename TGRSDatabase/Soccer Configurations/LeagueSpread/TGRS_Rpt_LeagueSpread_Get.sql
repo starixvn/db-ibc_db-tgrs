@@ -17,12 +17,21 @@ AS
 */
 
 BEGIN
+	IF @Is8Percent = 1
 	BEGIN		
 		SELECT 	ls.LeagueId			
 		FROM dbo.LeagueSpread AS ls WITH(NOLOCK)
 			INNER JOIN bodb02.dbo.league AS lg WITH(NOLOCK) ON lg.LeagueId = ls.LeagueId
-		WHERE lg.sporttype = 1 AND ls.Is8Percent = @Is8Percent
+		WHERE lg.sporttype = 1;
 	END;
+	
+	ELSE
+	BEGIN		
+		SELECT 	lg.LeagueId			
+		FROM dbo.LeagueSpread AS ls WITH(NOLOCK)
+			RIGHT JOIN bodb02.dbo.league AS lg WITH(NOLOCK) ON lg.LeagueId = ls.LeagueId
+			WHERE lg.sporttype = 1 AND ls.LeagueId IS NULL
+	END;	
 END;
 
 GO
