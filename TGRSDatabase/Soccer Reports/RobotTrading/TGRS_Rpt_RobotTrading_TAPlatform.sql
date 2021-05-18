@@ -142,7 +142,7 @@ BEGIN
 		,	t.BetCount
 		
 		,	ABS(t.Stake_AR - t.Stake_VR) AS Stake_VAR
-		,	(t.WinLoss_AR - t.WinLoss_VR) AS Winloss_VAR
+		,	(t.WinLoss_AR - t.WinLoss_VR) AS WinLoss_VAR
 		,	CASE WHEN ISNULL(ABS(t.Stake_AR - t.Stake_VR), 0) <> 0 THEN (t.WinLoss_AR - t.WinLoss_VR)*100/ABS(t.Stake_AR - t.Stake_VR) ELSE NULL END AS Margin_VAR
 		
 		,	t.Stake_VR
@@ -150,7 +150,7 @@ BEGIN
 		,	CASE WHEN ISNULL(t.WinLoss_VR, 0) <> 0 THEN t.WinLoss_VR*100/t.Stake_VR ELSE NULL END AS Margin_VR
 		
 		,	t.Stake_AR AS Stake_AR8RM
-		,	t.WinLoss_AR AS Winloss_AR8RM
+		,	t.WinLoss_AR AS WinLoss_AR8RM
 		,	CASE WHEN ISNULL(t.Stake_AR, 0) <> 0 THEN t.WinLoss_AR*100/t.Stake_AR ELSE NULL END AS Margin_AR8RM		
 	FROM #tmpTotalPerformance AS t WITH(NOLOCK)		
 	WHERE t.BetCount IS NOT NULL

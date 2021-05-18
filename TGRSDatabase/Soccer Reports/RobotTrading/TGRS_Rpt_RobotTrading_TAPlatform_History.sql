@@ -25,9 +25,9 @@ BEGIN
 	BEGIN		
 		SELECT 	ph.Platform
 			,	ph.FromDate
-			,	ph.ToDate
+			,	ph.ToDate		
 			,	ph.IsLeagueGroup
-			,	ph.LeagueGroupID as LeagueGroupIDHistory	
+			,	ph.LeagueGroupID			
 			,	ph.Event
 			,	ph.LeagueID
 			,	ph.MatchCount
@@ -62,16 +62,16 @@ BEGIN
 			,	ph.RealEx8RM1HOUTO
 			,	ph.RealEx8RM1HOUWL
 			,	ph.BetCount		
-		FROM dbo.TAPlatform_History AS ph WITH(NOLOCK)		
-		WHERE ph.IsMonitoringLeague = 1
+		FROM dbo.TAPlatform_History AS ph WITH(NOLOCK)
+		WHERE ph.IsMonitoringLeague = @IsMonitoringLeague
 	END;	
 	ELSE
 	BEGIN		
 		SELECT 	ph.Platform
 			,	ph.FromDate
-			,	ph.ToDate
+			,	ph.ToDate		
 			,	ph.IsLeagueGroup
-			,	ph.LeagueGroupID as LeagueGroupIDHistory	
+			,	ph.LeagueGroupID			
 			,	ph.Event
 			,	ph.LeagueID
 			,	ph.MatchCount
@@ -106,8 +106,9 @@ BEGIN
 			,	ph.RealEx8RM1HOUTO
 			,	ph.RealEx8RM1HOUWL
 			,	ph.BetCount		
-		FROM dbo.TAPlatform_History AS ph WITH(NOLOCK)		
-		WHERE ph.IsMonitoringLeague = 0 AND ph.IsLess8 = @IsLess8
+		FROM dbo.TAPlatform_History AS ph WITH(NOLOCK)			
+		WHERE ph.IsMonitoringLeague = @IsMonitoringLeague
+			AND ph.IsLess8 = @IsLess8
 	END;	
 	
 END;
