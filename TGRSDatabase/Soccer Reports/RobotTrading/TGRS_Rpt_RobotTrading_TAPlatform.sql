@@ -81,12 +81,11 @@ BEGIN
 
 	CREATE TABLE	#tmpLM (
 			LeagueId			INT
-		,	MatchId				INT
+		,	MatchCount			INT
 		,   BetCount			INT
 
 		,	PRIMARY KEY CLUSTERED (
-				LeagueId		ASC
-			,	MatchId			ASC
+				LeagueId		ASC			
 		)
 	);
 	
@@ -120,12 +119,12 @@ BEGIN
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate AND r.Type = 3;
 		
-	INSERT INTO #tmpLM (LeagueId, MatchId, BetCount)
+	INSERT INTO #tmpLM (LeagueId, MatchCount, BetCount)
 	SELECT DISTINCT r.LeagueId
-		,	r.MatchId
-		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
+		,	COUNT(r.MatchId)
+		,   ISNULL(SUM(r.BetCount), 0)
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-	GROUP BY r.LeagueId, r.MatchId;
+	GROUP BY r.LeagueId;
 	
 	INSERT INTO #tmpTotalPerformance(LeagueId, EventDate, BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT 	r.LeagueId		
@@ -140,11 +139,11 @@ BEGIN
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
 	GROUP BY r.LeagueId, r.EventDate, r.BetType;
 	
-	-- LeagueId, MatchId & BetCount
-	SELECT  r.LeagueId
-		,	r.MatchId
-		,	r.BetCount
-	FROM #tmpLM AS r WITH(NOLOCK);
+	-- LeagueId, MatchCount & BetCount
+	SELECT  lm.LeagueId
+		,	lm.MatchCount
+		,	lm.BetCount
+	FROM #tmpLM AS lm WITH(NOLOCK);	
 	
 	-- Detailed
 	SELECT 	t.LeagueId
