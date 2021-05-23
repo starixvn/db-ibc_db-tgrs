@@ -17,7 +17,7 @@ AS
 		- @IsLastWeek
 		- @IsMonitoringLeague
 		
-	Exam: EXECUTE dbo.TGRS_Rpt_RobotTrading_TAPlatform @FromDate = '20210320', @ToDate = '20210420' 
+	Exam: EXECUTE dbo.TGRS_Rpt_RobotTrading_TAPlatform @FromDate = '20210320', @ToDate = '20210420', @LeagueIds='3,4,5,8,19'
 */
 
 BEGIN
@@ -58,19 +58,16 @@ BEGIN
 	END;
 	
 	CREATE TABLE	#tmpTotalPerformance (		
-			LeagueId			INT		
-		,	EventDate			DATE
+			LeagueId			INT				
 		,	BetType				SMALLINT
-		,   BetCount			INT
-		,   MatchCount			INT
+		,   BetCount			INT		
 		,	Stake_VR			MONEY
 		,	WinLoss_VR			MONEY
 		,	Stake_AR			MONEY
 		,	WinLoss_AR			MONEY		
 		,	PRIMARY KEY CLUSTERED (			
 				LeagueId		ASC
-			,	BetType			ASC
-			,	EventDate		ASC
+			,	BetType			ASC			
 		)
 	);
 	
@@ -127,18 +124,16 @@ BEGIN
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
 	GROUP BY r.LeagueId, r.MatchId;
 	
-	INSERT INTO #tmpTotalPerformance(LeagueId, EventDate, BetType, BetCount, MatchCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
-	SELECT 	r.LeagueId		
-		,	r.EventDate
+	INSERT INTO #tmpTotalPerformance(LeagueId, BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
+	SELECT 	r.LeagueId
 		,	r.BetType
 		,	ISNULL(SUM(r.BetCount), 0) AS BetCount
-		,	COUNT(DISTINCT r.MatchId)
 		,	SUM(r.Stake_VR)
 		,	SUM(r.WinLoss_VR - r.Comm_VR)
 		,	SUM(r.Stake_AR)
 		,	SUM(r.WinLoss_AR - r.Comm_AR)		
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-	GROUP BY r.LeagueId, r.EventDate, r.BetType;
+	GROUP BY r.LeagueId, r.BetType;
 	
 	-- LeagueId, MatchCount & BetCount
 	SELECT  lm.LeagueId
@@ -150,11 +145,9 @@ BEGIN
 	-- Detailed
 	SELECT 	t.LeagueId
 		,	l.LeagueName
-		,	t.EventDate
 		,	l.LeagueGroupID as LeagueGroupId
 		,	l.[Group] AS GroupName
-		,	t.BetType
-		,	t.MatchCount
+		,	t.BetType		
 		,	t.BetCount
 		
 		,	ABS(t.Stake_AR - t.Stake_VR) AS Stake_VAR
