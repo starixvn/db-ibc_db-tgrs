@@ -35,6 +35,8 @@ BEGIN
 	CREATE TABLE	#tmpRobotTrading (		
 			MatchId				INT
 		,	LeagueId			INT		
+		,	HomeId				INT
+		,	AwayId				INT
 		,	EventDate			DATE
 		,	BetType				SMALLINT
 		,	Is8RM				BIT
@@ -72,6 +74,24 @@ BEGIN
 		,	PRIMARY KEY CLUSTERED (			
 				BetType			ASC
 			,	EventDate		ASC
+		)
+	);
+	
+	IF	OBJECT_ID('tempdb..#tmpLM') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmpLM;
+	END;
+
+	CREATE TABLE	#tmpLM (
+			StartDate			DATE 
+		,	EndDate				DATE	
+		,	LeagueId			INT
+		,	MatchId				INT		
+		,	HomeId				INT
+		,	AwayId				INT
+		,	PRIMARY KEY CLUSTERED (
+				LeagueId		ASC		
+			,	MatchId			ASC				
 		)
 	);
 	
@@ -126,9 +146,11 @@ BEGIN
 	WHERE ID = (SELECT MAX(ID) FROM @Date);
 
 
-	INSERT INTO #tmpRobotTrading(MatchId, LeagueId, EventDate, BetType, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR)
+	INSERT INTO #tmpRobotTrading(MatchId, LeagueId, HomeId, AwayId, EventDate, BetType, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR)
 	SELECT	r.MatchId		
 		,	r.LeagueId
+		,	r.HomeId
+		,	r.AwayId
 		,	r.EventDate		
 		,	r.BetType
 		,	r.Is8RM
@@ -165,11 +187,22 @@ BEGIN
 				,	ISNULL(SUM(r.BetCount), 0) AS BetCount
 			FROM #tmpRobotTrading AS r WITH(NOLOCK)
 			WHERE r.EventDate BETWEEN @StartDate AND @EndDate;
+						
+			INSERT INTO #tmpLM (StartDate, EndDate, LeagueId, MatchId, HomeId, AwayId)
+			SELECT DISTINCT @StartDate
+				,	@EndDate
+				,	r.LeagueId
+				,	r.MatchId
+				,	r.HomeId
+				,	r.AwayId
+			FROM #tmpRobotTrading AS r WITH(NOLOCK)
+			WHERE r.EventDate BETWEEN @StartDate AND @EndDate
+			GROUP BY r.LeagueId, r.MatchId, r.HomeId, r.AwayId;	
 			
 			DELETE	d
 			FROM	@Date AS d
 			WHERE	d.WeekDays = @WeekDays;
-		END;
+		END;	
 	
 	INSERT INTO #tmpTotalPerformance(EventDate, BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT	r.EventDate
@@ -180,15 +213,25 @@ BEGIN
 		,	SUM(r.Stake_AR)
 		,	SUM(r.WinLoss_AR - r.Comm_AR)
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-	GROUP BY r.EventDate, r.BetType;
+	GROUP BY r.EventDate, r.BetType;		
+	
+	-- LeagueId MatchList
+	SELECT  lm.StartDate
+		,	lm.EndDate
+		,	lm.LeagueId		
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), lm2.HomeId), '-' , CONVERT(VARCHAR(MAX), lm2.AwayId)
+					FROM #tmpLM lm2 WITH (NOLOCK)
+					WHERE lm.StartDate = lm2.StartDate AND lm.EndDate = lm2.EndDate AND lm.LeagueId = lm2.LeagueId
+					FOR XML PATH('')), 1, 1, '') AS MatchList
+	FROM #tmpLM AS lm WITH(NOLOCK)
+	GROUP BY lm.StartDate, lm.EndDate, lm.LeagueId;
 		
-	-- MatchCount & BetCount by Week
+	-- BetCount by Week
 	SELECT	tm.StartDate
 		,	tm.EndDate
 		,	tm.LeagueIdList
-		,	tm.MatchCount
 		,	tm.BetCount
-	FROM #tmpTotalLMB AS tm WITH(NOLOCK) WHERE tm.MatchCount > 0;
+	FROM #tmpTotalLMB AS tm WITH(NOLOCK) WHERE tm.BetCount > 0;
 	
 	-- Detailed
 	SELECT 	t.EventDate	
@@ -212,6 +255,7 @@ BEGIN
 	DROP TABLE #tmpRobotTrading;
 	DROP TABLE #tmpTotalPerformance;
 	DROP TABLE #tmpTotalLMB;
+	DROP TABLE #tmpLM;
 END;
 
 GO

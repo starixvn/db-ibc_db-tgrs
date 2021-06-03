@@ -30,7 +30,9 @@ BEGIN
 	
 	CREATE TABLE	#tmpRobotTrading (		
 			MatchId				INT
-		,	LeagueId			INT		
+		,	LeagueId			INT
+		,	HomeId				INT
+		,	AwayId				INT
 		,	EventDate			DATE
 		,	BetType				SMALLINT
 		,	Is8RM				BIT
@@ -77,10 +79,11 @@ BEGIN
 	END;
 
 	CREATE TABLE	#tmpLM (
-			LeagueId			INT		
+			LeagueId			INT
 		,	MatchId				INT
 		,   BetCount			INT
-
+		,	HomeId				INT
+		,	AwayId				INT
 		,	PRIMARY KEY CLUSTERED (
 				LeagueId		ASC		
 			,	MatchId			ASC				
@@ -99,9 +102,11 @@ BEGIN
 		INSERT INTO @Bettypes(BettypeId)
 		VALUES (1), (3), (7), (8);
 
-	INSERT INTO #tmpRobotTrading(MatchId, LeagueId, EventDate, BetType, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR)
+	INSERT INTO #tmpRobotTrading(MatchId, LeagueId, HomeId, AwayId, EventDate, BetType, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR)
 	SELECT	r.MatchId		
 		,	r.LeagueId
+		,	r.HomeId
+		,	r.AwayId
 		,	r.EventDate		
 		,	r.BetType
 		,	r.Is8RM
@@ -117,12 +122,14 @@ BEGIN
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
 	WHERE r.EventDate BETWEEN @FromDate AND @ToDate AND r.Type = 3;
 	
-	INSERT INTO #tmpLM (LeagueId, MatchId, BetCount)
+	INSERT INTO #tmpLM (LeagueId, MatchId, BetCount, HomeId, AwayId)
 	SELECT DISTINCT r.LeagueId
 		,	r.MatchId
 		,   ISNULL(SUM(r.BetCount), 0) AS BetCount
+		,	r.HomeId
+		,	r.AwayId
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
-	GROUP BY r.LeagueId, r.MatchId;
+	GROUP BY r.LeagueId, r.MatchId, r.HomeId, r.AwayId;
 	
 	INSERT INTO #tmpTotalPerformance(LeagueId, BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT 	r.LeagueId
@@ -135,10 +142,13 @@ BEGIN
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
 	GROUP BY r.LeagueId, r.BetType;
 	
-	-- LeagueId, MatchCount & BetCount
+	-- LeagueId BetCount
 	SELECT  lm.LeagueId
-		,	COUNT(lm.MatchId) AS MatchCount
 		,	ISNULL(SUM(lm.BetCount), 0) AS BetCount
+		,	STUFF((SELECT ',', CONVERT(VARCHAR(MAX), lm2.HomeId), '-' , CONVERT(VARCHAR(MAX), lm2.AwayId)
+					FROM #tmpLM lm2 WITH (NOLOCK)
+					WHERE lm.LeagueId = lm2.LeagueId
+					FOR XML PATH('')), 1, 1, '') AS MatchList
 	FROM #tmpLM AS lm WITH(NOLOCK)
 	GROUP BY lm.LeagueId;
 	

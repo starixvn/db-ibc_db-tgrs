@@ -1,7 +1,7 @@
 /*
 Creator: 20210525@Long.Luu
 Task:  Init data for TAPlatform_History table [Redmine ID: 152889]
-Server:  bodb_TGRS
+Server:  DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
 
 Reviewer: Partrick
 */ 
@@ -691,4 +691,3 @@ WHERE l.leaguenametc = 'soccer';
 GO
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/

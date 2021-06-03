@@ -1,7 +1,7 @@
 /*
 Creator: 20200714@John.Ngo
 Task:  Init Data for Re-arrange bet type filter with parent-child [Redmine ID: 137273]
-Server:  bodb_TGRS
+Server:  DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
 
 Reviewer: Partrick
 */ 
@@ -69,4 +69,3 @@ CREATE NONCLUSTERED INDEX [IX_TAPlatform_History] ON [dbo].[TAPlatform_History]
 	);
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/
