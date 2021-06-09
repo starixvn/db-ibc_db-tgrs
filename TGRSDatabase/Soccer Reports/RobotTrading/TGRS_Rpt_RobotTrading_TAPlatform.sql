@@ -54,6 +54,16 @@ BEGIN
 		LeagueId	ASC				
 	);	
 	
+	CREATE TABLE	#tmp8RMPerformance (			
+			LeagueId			INT
+		,	BetType				SMALLINT
+		,	WinLoss_AR			MONEY		
+		,	PRIMARY KEY CLUSTERED (				
+				LeagueId		ASC			
+			,	BetType			ASC
+		)
+	);	
+	
 	IF	OBJECT_ID('tempdb..#tmpTotalPerformance') IS NOT NULL
 	BEGIN
 		DROP TABLE	#tmpTotalPerformance;
@@ -100,7 +110,7 @@ BEGIN
 
 	DECLARE @Bettypes AS TABLE (BettypeId SMALLINT PRIMARY KEY CLUSTERED);
 		INSERT INTO @Bettypes(BettypeId)
-		VALUES (1), (3), (7), (8);
+		VALUES (1), (3), (7), (8);	
 
 	INSERT INTO #tmpRobotTrading(MatchId, LeagueId, HomeId, AwayId, EventDate, BetType, Is8RM, BetCount, Stake_VR, WinLoss_VR, Comm_VR, Stake_AR, WinLoss_AR, Comm_AR)
 	SELECT	r.MatchId		
@@ -131,6 +141,16 @@ BEGIN
 	FROM #tmpRobotTrading AS r WITH(NOLOCK)
 	GROUP BY r.LeagueId, r.MatchId, r.HomeId, r.AwayId;
 	
+	-- 8RM performance
+	INSERT INTO #tmp8RMPerformance(LeagueId, BetType, WinLoss_AR)
+	SELECT	r.LeagueId
+		,	r.BetType		
+		,	- SUM(r.WinLoss_AR - r.Comm_AR)		
+	FROM #tmpRobotTrading AS r WITH(NOLOCK)
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate AND r.Is8RM = 1
+	GROUP BY r.LeagueId, r.BetType;
+	
+	-- Total performance
 	INSERT INTO #tmpTotalPerformance(LeagueId, BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT 	r.LeagueId
 		,	r.BetType
@@ -169,14 +189,16 @@ BEGIN
 		,	CASE WHEN ISNULL(t.WinLoss_VR, 0) <> 0 THEN t.WinLoss_VR*100/t.Stake_VR ELSE NULL END AS Margin_VR
 		
 		,	t.Stake_AR AS Stake_AR8RM
-		,	t.WinLoss_AR AS WinLoss_AR8RM
-		,	CASE WHEN ISNULL(t.Stake_AR, 0) <> 0 THEN t.WinLoss_AR*100/t.Stake_AR ELSE NULL END AS Margin_AR8RM		
-	FROM #tmpTotalPerformance AS t WITH(NOLOCK)	
+		,	(t.WinLoss_AR + (CASE WHEN r.BetType IS NULL THEN 0 ELSE r.WinLoss_AR END)) AS Winloss_AR
+		,	CASE WHEN ISNULL(t.Stake_AR, 0) <> 0 THEN (t.WinLoss_AR + (CASE WHEN r.BetType IS NULL THEN 0 ELSE r.WinLoss_AR END))*100/(t.Stake_AR) ELSE NULL END AS Margin_AR8RM	
+	FROM #tmpTotalPerformance AS t WITH(NOLOCK)		
 		INNER JOIN bodb02.dbo.league AS l ON l.LeagueId = t.LeagueId	
+		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.LeagueId = r.LeagueId AND t.Bettype = r.Bettype
 	WHERE t.BetCount IS NOT NULL
 	ORDER BY l.LeagueGroupID ASC, t.LeagueId ASC;
-	
+		
 	DROP TABLE #tmpRobotTrading;
+	DROP TABLE #tmp8RMPerformance;
 	DROP TABLE #tmpTotalPerformance;
 	DROP TABLE #tmpLM;
 END;

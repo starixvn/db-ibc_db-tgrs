@@ -58,6 +58,16 @@ BEGIN
 		LeagueId	ASC				
 	);	
 	
+	CREATE TABLE	#tmp8RMPerformance (
+			EventDate			DATE
+		,	BetType				SMALLINT						
+		,	WinLoss_AR			MONEY		
+		,	PRIMARY KEY CLUSTERED (
+				BetType		ASC
+			,	EventDate		ASC
+		)
+	);	
+	
 	IF	OBJECT_ID('tempdb..#tmpTotalPerformance') IS NOT NULL
 	BEGIN
 		DROP TABLE	#tmpTotalPerformance;
@@ -203,7 +213,17 @@ BEGIN
 			FROM	@Date AS d
 			WHERE	d.WeekDays = @WeekDays;
 		END;	
+		
+	-- 8RM performance
+	INSERT INTO #tmp8RMPerformance(EventDate, BetType, WinLoss_AR)
+	SELECT	r.EventDate
+		,	r.BetType					
+		,	- SUM(r.WinLoss_AR - r.Comm_AR)
+	FROM #tmpRobotTrading AS r WITH(NOLOCK)
+	WHERE r.EventDate BETWEEN @StartDate AND @EndDate AND r.Is8RM = 1		
+	GROUP BY r.EventDate, r.BetType;
 	
+	-- Total performance
 	INSERT INTO #tmpTotalPerformance(EventDate, BetType, BetCount, Stake_VR, WinLoss_VR, Stake_AR, WinLoss_AR)
 	SELECT	r.EventDate
 		,	r.BetType
@@ -247,12 +267,14 @@ BEGIN
 		,	CASE WHEN ISNULL(t.WinLoss_VR, 0) <> 0 THEN t.WinLoss_VR*100/t.Stake_VR ELSE NULL END AS Margin_VR
 		
 		,	t.Stake_AR AS Stake_AR8RM
-		,	t.WinLoss_AR AS WinLoss_AR8RM
-		,	CASE WHEN ISNULL(t.Stake_AR, 0) <> 0 THEN t.WinLoss_AR*100/t.Stake_AR ELSE NULL END AS Margin_AR8RM		
+		,	(t.WinLoss_AR + (CASE WHEN r.BetType IS NULL THEN 0 ELSE r.WinLoss_AR END)) AS Winloss_AR
+		,	CASE WHEN ISNULL(t.Stake_AR, 0) <> 0 THEN (t.WinLoss_AR + (CASE WHEN r.BetType IS NULL THEN 0 ELSE r.WinLoss_AR END))*100/(t.Stake_AR) ELSE NULL END AS Margin_AR8RM
 	FROM #tmpTotalPerformance AS t WITH(NOLOCK)	
+		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON t.EventDate = r.EventDate AND t.BetType = r.BetType
 	WHERE t.BetCount IS NOT NULL;
 	
 	DROP TABLE #tmpRobotTrading;
+	DROP TABLE #tmp8RMPerformance;
 	DROP TABLE #tmpTotalPerformance;
 	DROP TABLE #tmpTotalLMB;
 	DROP TABLE #tmpLM;
