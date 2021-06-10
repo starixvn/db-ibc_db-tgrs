@@ -174,7 +174,7 @@ BEGIN
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @Leagues AS l ON r.LeagueId = l.LeagueId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-	WHERE r.EventDate BETWEEN @FromDate AND @ToDate AND r.Type = 3;	
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
 	
 	WHILE	EXISTS (SELECT TOP(1) 1	FROM @Date)
 		BEGIN

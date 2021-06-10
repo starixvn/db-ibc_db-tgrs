@@ -214,5 +214,3 @@ WHERE l.[leaguename] IN (
 	'2014 FIFA WORLD CUP AFRICAN QUALIFIERS',
 	'Zayton Cup (In Germany)'
 );
-
-/*<info serverAlias="DBTGRS-bodb_TGRS"></info>*/
