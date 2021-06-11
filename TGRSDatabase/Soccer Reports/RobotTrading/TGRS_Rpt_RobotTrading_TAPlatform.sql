@@ -130,7 +130,7 @@ BEGIN
 	FROM dbo.RobotTrading AS r WITH(NOLOCK)
 		INNER JOIN @Leagues AS l ON r.LeagueId = l.LeagueId
 		INNER JOIN @Bettypes AS b ON r.BetType = b.BettypeId
-	WHERE r.EventDate BETWEEN @FromDate AND @ToDate;
+	WHERE r.EventDate BETWEEN @FromDate AND @ToDate AND r.Type = 3;
 	
 	INSERT INTO #tmpLM (LeagueId, MatchId, BetCount, HomeId, AwayId)
 	SELECT DISTINCT r.LeagueId
