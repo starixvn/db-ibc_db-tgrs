@@ -10,11 +10,11 @@ AS
  Original:  
   
  Revisions:      
-	- 20171127@Long:	Create new
-	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
-	- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
-	- 20190321@John:	Update Logic generating data [Redmine: #109599]
-   			
+	- 20171127@Long:		Create new
+	- 20180911@Long:		Support excluding Leagues from report [Redmine ID: #100322]
+	- 20190304@Long:		Calc Actual-rate values for Soccer [Redmine ID: 108920]
+	- 20190321@John:		Update Logic generating data [Redmine: #109599]
+   	- 20210802@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
  Param's Explanation:  
 	 
  Exam:
@@ -58,6 +58,12 @@ BEGIN;
 			,	[Turnover_AR]
 			,	[WinLoss_AR]
 			,	[Comm_AR]
+			,	[Is8RM]
+			,	[Stake_Real]
+			,	[WinLost_Real]
+			,	[Stake_VAR]
+			,	[WinLost_VAR]
+			,	[Comm_VAR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -72,6 +78,12 @@ BEGIN;
 			,	SUM(tpp.Turnover_AR) AS Turnover_AR
 			,	SUM(tpp.WinLoss_AR) AS WinLoss_AR
 			,	SUM(tpp.Comm_AR) AS Comm_AR
+			,	tpp.Is8RM
+			,	SUM(tpp.Stake_Real) AS Stake_Real
+			,	SUM(tpp.WinLost_Real) AS WinLost_Real
+			,	SUM(tpp.Stake_VAR) AS Stake_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+			,	SUM(tpp.Comm_VAR) AS Comm_VAR
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM [dbo].[TraderPerformance_Monthly] tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentYearStartDate AND @CurrentYearEndDate
@@ -79,7 +91,8 @@ BEGIN;
 			,	tpp.LeagueId
 			,	tpp.SportType
 			,	tpp.BetType
-			,	tpp.IsLive;
+			,	tpp.IsLive
+			,	tpp.Is8RM;
 		
 		-- Update data for TraderMatchCount_Yearly	
 		DELETE [dbo].[TraderMatchCount_Yearly]	
@@ -132,6 +145,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -146,6 +165,12 @@ BEGIN;
 				,	SUM(tpp.Turnover_AR) AS Turnover_AR
 				,	SUM(tpp.WinLoss_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM [dbo].[TraderPerformance_Monthly] tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastYearStartDate AND @LastYearEndDate
@@ -153,7 +178,8 @@ BEGIN;
 				,	tpp.LeagueId
 				,	tpp.SportType
 				,	tpp.BetType
-				,	tpp.IsLive;
+				,	tpp.IsLive
+				,	tpp.Is8RM;
 
 			-- Update data for TraderMatchCount_Yearly
 			DELETE [dbo].[TraderMatchCount_Yearly]	
@@ -238,6 +264,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT	tpp.CustId
@@ -252,6 +284,12 @@ BEGIN;
 				,	SUM(tpp.Turnover_AR) AS Turnover_AR
 				,	SUM(tpp.WinLoss_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM [dbo].[TraderPerformance_Monthly] tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @CurrentYearStartDate AND @CurrentYearEndDate
@@ -259,7 +297,8 @@ BEGIN;
 				,	tpp.LeagueId
 				,	tpp.SportType
 				,	tpp.BetType
-				,	tpp.IsLive;
+				,	tpp.IsLive
+				,	tpp.Is8RM;
 		
 			-- Update data for TraderMatchCount_Yearly	
 			DELETE [dbo].[TraderMatchCount_Yearly]	

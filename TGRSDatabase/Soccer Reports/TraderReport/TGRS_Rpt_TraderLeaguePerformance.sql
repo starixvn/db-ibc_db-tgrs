@@ -19,7 +19,7 @@ AS
 		- 20180912@Simon: add league exclusion
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
-
+		- 20210803@Adam.Tran:	Sports - Performance Real Figures - [Redmine: #158981]
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
 		- @ViewPermission = 0: all bet types
@@ -30,16 +30,18 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT
-		COUNT(DISTINCT t.MatchId) AS MatchCount,
-		l.leagueid, l.leaguename,
-		ISNULL(SUM(t.Stake),0) AS Turnover, 
-		ISNULL(SUM(t.WinLost),0) -  ISNULL(SUM(t.Comm),0) AS WinLost,
-		ISNULL(SUM(t.BetCount),0) AS BetCount,
-		CASE WHEN  ISNULL(SUM(t.Stake), 0) <> 0 THEN (ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm),0)) * 100/SUM(t.Stake) ELSE NULL END AS Margin,
-		t.IsLive
-	FROM
-		dbo.TraderPerformance t (NOLOCK)
+	SELECT	COUNT(DISTINCT t.MatchId) AS MatchCount
+		,	l.leagueid
+		,	l.leaguename
+		,	ISNULL(SUM(t.Stake),0) AS Turnover
+		,	ISNULL(SUM(t.WinLost),0) -  ISNULL(SUM(t.Comm),0) AS WinLost
+		,	ISNULL(SUM(t.BetCount),0) AS BetCount
+		,	CASE WHEN  ISNULL(SUM(t.Stake), 0) <> 0 THEN (ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm),0)) * 100/SUM(t.Stake) ELSE NULL END AS Margin
+		,	ISNULL(SUM(t.Stake_Real),0) AS StakeReal		
+		,	ISNULL(SUM(t.WinLost_Real),0) -  ISNULL(SUM(t.Comm),0) - ISNULL(SUM(t.Comm_VAR),0) AS WinLostReal
+		,	CASE WHEN ISNULL(SUM(t.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(t.WinLost_Real), 0) - ISNULL(SUM(t.Comm),0) - ISNULL(SUM(t.Comm_VAR),0)) * 100/SUM(t.Stake_Real) ELSE NULL END AS MarginReal
+		,	t.IsLive
+	FROM	dbo.TraderPerformance t (NOLOCK)
 		INNER JOIN bodb02.dbo.league l (NOLOCK) ON t.LeagueId = l.leagueid
 		INNER JOIN dbo.Bettype bt WITH(NOLOCK) ON bt.Bettype = t.Bettype
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON t.LeagueId = le.LeagueId
@@ -53,7 +55,9 @@ BEGIN
 		AND (@Market = -1 OR t.IsLive = @Market)
 		AND bt.[Disabled] = 0
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-	GROUP BY l.leagueid, l.leaguename, t.IsLive
+	GROUP BY l.leagueid
+		,	l.leaguename
+		,	t.IsLive
 	ORDER BY Margin DESC;
 END;
 

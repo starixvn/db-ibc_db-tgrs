@@ -10,11 +10,11 @@ AS
  Original:  
   
  Revisions:      
-	- 20171127@Long:	Create new
-	- 20180911@Long:	Support excluding Leagues from report [Redmine ID: #100322]
-	- 20190111@Long:	Change the way to sum Monthly & Yearly for bettypes [Redmine ID: 107602]
-	- 20190304@Long:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
-   			
+	- 20171127@Long:		Create new
+	- 20180911@Long:		Support excluding Leagues from report [Redmine ID: #100322]
+	- 20190111@Long:		Change the way to sum Monthly & Yearly for bettypes [Redmine ID: 107602]
+	- 20190304@Long:		Calc Actual-rate values for Soccer [Redmine ID: 108920]
+   	- 20210726@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
  Param's Explanation:  
 	 
  Exam:
@@ -53,6 +53,12 @@ BEGIN;
 			[Stake_AR]		MONEY NULL,
 			[WinLost_AR]	MONEY NULL,
 			[Comm_AR]		MONEY NULL,
+			[Is8RM]			BIT NULL,
+			[Stake_Real]	MONEY NULL,
+			[WinLost_Real]	MONEY NULL,
+			[Stake_VAR]		MONEY NULL,
+			[WinLost_VAR]	MONEY NULL,
+			[Comm_VAR]		MONEY NULL,
 			[BetCount]		INT NULL,
 			[HomeId]		INT NULL,
 			[AwayId]		INT NULL,
@@ -104,6 +110,12 @@ BEGIN;
 				[Stake_AR],
 				[WinLost_AR],
 				[Comm_AR],
+				[Is8RM],
+				[Stake_Real],
+				[WinLost_Real],
+				[Stake_VAR],
+				[WinLost_VAR],
+				[Comm_VAR],
 				[BetCount],
 				[HomeId],
 				[AwayId],
@@ -126,6 +138,12 @@ BEGIN;
 				tp.[Stake_AR],
 				tp.[WinLost_AR],
 				tp.[Comm_AR],
+				tp.[Is8RM],
+				tp.[Stake_Real],
+				tp.[WinLost_Real],
+				tp.[Stake_VAR],
+				tp.[WinLost_VAR],
+				tp.[Comm_VAR],
 				tp.[BetCount],
 				tp.[HomeId],
 				tp.[AwayId],
@@ -155,6 +173,12 @@ BEGIN;
 			,	[Turnover_AR]
 			,	[WinLoss_AR]
 			,	[Comm_AR]
+			,	[Is8RM]
+			,	[Stake_Real]
+			,	[WinLost_Real]
+			,	[Stake_VAR]
+			,	[WinLost_VAR]
+			,	[Comm_VAR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -169,6 +193,12 @@ BEGIN;
 			,	SUM(tpp.Stake_AR) AS Turnover_AR
 			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 			,	SUM(tpp.Comm_AR) AS Comm_AR
+			,	tpp.Is8RM
+			,	SUM(tpp.Stake_Real) AS Stake_Real
+			,	SUM(tpp.WinLost_Real) AS WinLost_Real
+			,	SUM(tpp.Stake_VAR) AS Stake_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+			,	SUM(tpp.Comm_VAR) AS Comm_VAR
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
@@ -176,7 +206,8 @@ BEGIN;
 			,	tpp.LeagueId
 			,	tpp.SportType
 			,	tpp.BetType
-			,	tpp.IsLive;
+			,	tpp.IsLive
+			,	tpp.Is8RM;
 
 		INSERT INTO [dbo].[TraderPerformance_Monthly]
 		(
@@ -192,6 +223,12 @@ BEGIN;
 			,	[Turnover_AR]
 			,	[WinLoss_AR]
 			,	[Comm_AR]
+			,	[Is8RM]
+			,	[Stake_Real]
+			,	[WinLost_Real]
+			,	[Stake_VAR]
+			,	[WinLost_VAR]
+			,	[Comm_VAR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -206,13 +243,20 @@ BEGIN;
 			,	SUM(tpp.Stake_AR) AS Turnover_AR
 			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 			,	SUM(tpp.Comm_AR) AS Comm_AR
+			,	tpp.Is8RM
+			,	SUM(tpp.Stake_Real) AS Stake_Real
+			,	SUM(tpp.WinLost_Real) AS WinLost_Real
+			,	SUM(tpp.Stake_VAR) AS Stake_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+			, 	SUM(tpp.Comm_VAR) AS Comm_VAR
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tpp.CustId
 			,	tpp.LeagueId
 			,	tpp.SportType
-			,	tpp.BetType;
+			,	tpp.BetType
+			,	tpp.Is8RM;
 
 		INSERT INTO [dbo].[TraderPerformance_Monthly]
 		(
@@ -228,6 +272,12 @@ BEGIN;
 			,	[Turnover_AR]
 			,	[WinLoss_AR]
 			,	[Comm_AR]
+			,	[Is8RM]
+			,	[Stake_Real]
+			,	[WinLost_Real]
+			,	[Stake_VAR]
+			,	[WinLost_VAR]
+			,	[Comm_VAR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -242,13 +292,20 @@ BEGIN;
 			,	SUM(tpp.Stake_AR) AS Turnover_AR
 			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 			,	SUM(tpp.Comm_AR) AS Comm_AR
+			,	tpp.Is8RM AS Is8RM
+			,	SUM(tpp.Stake_Real) AS Stake_Real
+			,	SUM(tpp.WinLost_Real) AS WinLost_Real
+			,	SUM(tpp.Stake_VAR) AS Stake_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+			,	SUM(tpp.Comm_VAR) AS Comm_VAR
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tpp.CustId
 			,	tpp.LeagueId
 			,	tpp.SportType
-			,	tpp.IsLive;
+			,	tpp.IsLive
+			,	tpp.Is8RM;
 
 		INSERT INTO [dbo].[TraderPerformance_Monthly]
 		(
@@ -264,6 +321,12 @@ BEGIN;
 			,	[Turnover_AR]
 			,	[WinLoss_AR]
 			,	[Comm_AR]
+			,	[Is8RM]
+			,	[Stake_Real]
+			,	[WinLost_Real]
+			,	[Stake_VAR]
+			,	[WinLost_VAR]
+			,	[Comm_VAR]
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -278,12 +341,19 @@ BEGIN;
 			,	SUM(tpp.Stake_AR) AS Turnover_AR
 			,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 			,	SUM(tpp.Comm_AR) AS Comm_AR
+			,	tpp.Is8RM
+			,	SUM(tpp.Stake_Real) AS Stake_Real
+			,	SUM(tpp.WinLost_Real) AS WinLost_Real
+			,	SUM(tpp.Stake_VAR) AS Stake_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+			,	SUM(tpp.Comm_VAR) AS Comm_VAR
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
 		GROUP BY tpp.CustId
 			,	tpp.LeagueId
-			,	tpp.SportType;
+			,	tpp.SportType
+			,	tpp.Is8RM;
 
 		-- Insert data for TraderMatchCount_Monthly table	
 		DELETE [dbo].[TraderMatchCount_Monthly]	
@@ -406,6 +476,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -420,6 +496,12 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
@@ -427,7 +509,8 @@ BEGIN;
 				,	tpp.LeagueId
 				,	tpp.SportType
 				,	tpp.BetType
-				,	tpp.IsLive;
+				,	tpp.IsLive
+				,	tpp.Is8RM;
 
 			INSERT INTO [dbo].[TraderPerformance_Monthly]
 			(
@@ -443,6 +526,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -457,13 +546,20 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
-				,	tpp.BetType;
+				,	tpp.BetType
+				,	tpp.Is8RM;
 			
 			INSERT INTO [dbo].[TraderPerformance_Monthly]
 			(
@@ -479,6 +575,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -493,13 +595,20 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
-				,	tpp.IsLive;
+				,	tpp.IsLive
+				,	tpp.Is8RM;
 			
 			INSERT INTO [dbo].[TraderPerformance_Monthly]
 			(
@@ -515,6 +624,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -529,12 +644,19 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
-				,	tpp.SportType;
+				,	tpp.SportType
+				,	tpp.Is8RM;
 
 			-- Insert data for TraderMatchCount_Monthly table	
 			DELETE [dbo].[TraderMatchCount_Monthly]	
@@ -686,6 +808,12 @@ BEGIN;
 					[Stake_AR],
 					[WinLost_AR],
 					[Comm_AR],
+					[Is8RM],
+					[Stake_Real],
+					[WinLost_Real],
+					[Stake_VAR],
+					[WinLost_VAR],
+					[Comm_VAR],
 					[BetCount],
 					[HomeId],
 					[AwayId],
@@ -708,6 +836,12 @@ BEGIN;
 					tp.[Stake_AR],
 					tp.[WinLost_AR],
 					tp.[Comm_AR],
+					tp.[Is8RM],
+					tp.[Stake_Real],
+					tp.[WinLost_Real],
+					tp.[Stake_VAR],
+					tp.[WinLost_VAR],
+					tp.[Comm_VAR],
 					tp.[BetCount],
 					tp.[HomeId],
 					tp.[AwayId],
@@ -737,6 +871,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -751,13 +891,20 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
 				,	tpp.BetType
-				,	tpp.IsLive;
+				,	tpp.IsLive
+				,	tpp.Is8RM;
 
 			INSERT INTO [dbo].[TraderPerformance_Monthly]
 			(
@@ -773,6 +920,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -787,12 +940,19 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
-				,	tpp.BetType;
+				,	tpp.BetType
+				,	tpp.Is8RM;
 
 			INSERT INTO [dbo].[TraderPerformance_Monthly]
 			(
@@ -808,6 +968,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -822,12 +988,19 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
 				,	tpp.SportType
-				,	tpp.IsLive;
+				,	tpp.IsLive
+				,	tpp.Is8RM;
 
 			INSERT INTO [dbo].[TraderPerformance_Monthly]
 			(
@@ -843,6 +1016,12 @@ BEGIN;
 				,	[Turnover_AR]
 				,	[WinLoss_AR]
 				,	[Comm_AR]
+				,	[Is8RM]
+				,	[Stake_Real]
+				,	[WinLost_Real]
+				,	[Stake_VAR]
+				,	[WinLost_VAR]
+				,	[Comm_VAR]
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -857,11 +1036,18 @@ BEGIN;
 				,	SUM(tpp.Stake_AR) AS Turnover_AR
 				,	SUM(tpp.WinLost_AR) AS WinLoss_AR
 				,	SUM(tpp.Comm_AR) AS Comm_AR
+				,	tpp.Is8RM
+				,	SUM(tpp.Stake_Real) AS Stake_Real
+				,	SUM(tpp.WinLost_Real) AS WinLost_Real
+				,	SUM(tpp.Stake_VAR) AS Stake_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
+				,	SUM(tpp.Comm_VAR) AS Comm_VAR
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
 				,	tpp.LeagueId
-				,	tpp.SportType;
+				,	tpp.SportType
+				,	tpp.Is8RM;
 
 			-- Insert data for TraderMatchCount_Monthly table	
 			DELETE [dbo].[TraderMatchCount_Monthly]	

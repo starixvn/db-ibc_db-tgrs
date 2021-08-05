@@ -20,6 +20,7 @@ AS
 		- 20190129@John:  Fix bug for League Exclusion [Redmine ID: 107809]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
+		- 20210803@Adam.Tran:	Sports - Performance Real Figures - [Redmine: #158981]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -36,18 +37,15 @@ BEGIN
 	SET NOCOUNT ON;
 	IF @ReportType = 1 -- by date
 	BEGIN
-		SELECT
-			ISNULL(SUM(P.Stake), 0) AS Turnover,
-			ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLost,
-			CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0))* 100/SUM(P.Stake) ELSE NULL END AS Margin,
-			ISNULL(COUNT(DISTINCT P.MatchID), 0) AS MatchCount,
-			P.IsLive
-		FROM 
-			dbo.TraderPerformance P WITH(NOLOCK)
+		SELECT	ISNULL(SUM(P.Stake), 0) AS Turnover
+			,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLost
+			,	CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0))* 100/SUM(P.Stake) ELSE NULL END AS Margin
+			,	ISNULL(COUNT(DISTINCT P.MatchID), 0) AS MatchCount
+			,	P.IsLive
+		FROM dbo.TraderPerformance P WITH(NOLOCK)
 			INNER JOIN Bettype bt WITH(NOLOCK) ON P.Bettype = bt.Bettype
 			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-		WHERE
-			P.CustId = @TraderId
+		WHERE	P.CustId = @TraderId
 			AND P.EventDate BETWEEN @FromDate AND @ToDate
 			AND (
 					@ViewPermission = 0
@@ -60,12 +58,11 @@ BEGIN
 	END
 	ELSE -- by month
 	BEGIN
-		SELECT
-			ISNULL(SUM(sm.Stake), 0) AS Turnover,
-			ISNULL(SUM(sm.WinLost), 0) - ISNULL(SUM(sm.Comm), 0) AS WinLost,
-			CASE WHEN ISNULL(SUM(sm.Stake), 0) <> 0 THEN (ISNULL(SUM(sm.WinLost), 0) - ISNULL(SUM(sm.Comm), 0))* 100/SUM(sm.Stake) ELSE NULL END AS Margin,
-			ISNULL(SUM(sm.MatchCount), 0) AS MatchCount,
-			sm.IsLive
+		SELECT	ISNULL(SUM(sm.Stake), 0) AS Turnover
+			,	ISNULL(SUM(sm.WinLost), 0) - ISNULL(SUM(sm.Comm), 0) AS WinLost
+			,	CASE WHEN ISNULL(SUM(sm.Stake), 0) <> 0 THEN (ISNULL(SUM(sm.WinLost), 0) - ISNULL(SUM(sm.Comm), 0))* 100/SUM(sm.Stake) ELSE NULL END AS Margin
+			,	ISNULL(SUM(sm.MatchCount), 0) AS MatchCount
+			,	sm.IsLive
 		FROM dbo.SummaryByTrader_Monthly sm (NOLOCK)
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON sm.LeagueId = le.LeagueId
 		WHERE

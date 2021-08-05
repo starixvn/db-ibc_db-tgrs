@@ -16,7 +16,8 @@ AS
 		- 20190116@John:		Support excluding Leagues from report [Redmine ID: #108008]
 		- 20190304@Long.Luu:	Calc Actual-rate values for Soccer [Redmine ID: 108920]
 		- 20190822@Long.Luu:	Suppport Non-Live Data [Redmine ID: 118959]
-   			
+   		- 20210726@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		
 	Param's Explanation:  
 	
 	Exam: 
@@ -63,6 +64,12 @@ BEGIN;
 		,	[Stake_AR]
 		,	[WinLost_AR]
 		,	[Comm_AR]
+		,	[Is8RM]
+		,	[Stake_Real]
+		,	[WinLost_Real]
+		,	[Stake_VAR]
+		,	[WinLost_VAR]
+		,	[Comm_VAR]
 		,	[BetCount]
 		,	[MatchCount]
 	)
@@ -77,6 +84,12 @@ BEGIN;
 		,	[Stake_AR]		= SUM(t.[Stake_AR]) 
 		,	[WinLost_AR]	= SUM(t.[WinLost_AR]) 
 		,	[Comm_AR]		= SUM(t.[Comm_AR]) 
+		,	[Is8RM]			= t.[Is8RM]
+		,	[Stake_Real]	= SUM(t.[Stake_Real])
+		,	[WinLost_Real]	= SUM(t.[WinLost_Real])
+		,	[Stake_VAR]		= SUM(t.[Stake_VAR])
+		,	[WinLost_VAR]	= SUM(t.[WinLost_VAR])
+		,	[Comm_VAR]		= SUM(t.[Comm_VAR])
 		,	[BetCount]		= SUM(t.[BetCount]) 
 		,	[MatchCount]	= COUNT(DISTINCT [MatchId])
 	FROM [dbo].[TraderPerformance] AS t WITH(NOLOCK)
@@ -84,7 +97,8 @@ BEGIN;
 	GROUP BY t.[LeagueId]
 		,	t.[BetType]
 		,	t.[WorkShift]
-		,	t.[IsLive];
+		,	t.[IsLive]
+		,	t.[Is8RM];
 
 	-- [SummaryByLeague_Daily] table
 	DELETE [dbo].[SummaryByLeague_Daily]	WHERE EventDate = @Date;
@@ -102,6 +116,12 @@ BEGIN;
 		,	[Stake_AR]
 		,	[WinLost_AR]
 		,	[Comm_AR]
+		,	[Is8RM]
+		,	[Stake_Real]
+		,	[WinLost_Real]
+		,	[Stake_VAR]
+		,	[WinLost_VAR]
+		,	[Comm_VAR]
 		,	[BetCount]
 		,	[MatchCount]
 	)
@@ -116,6 +136,12 @@ BEGIN;
 		,	[Stake_AR]		= SUM(s.[Stake_AR]) 
 		,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
 		,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+		,	[Is8RM]			= s.[Is8RM]
+		,	[Stake_Real]	= SUM(s.[Stake_Real])
+		,	[WinLost_Real]	= SUM(s.[WinLost_Real])
+		,	[Stake_VAR]		= SUM(s.[Stake_VAR])
+		,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
+		,	[Comm_VAR]		= SUM(s.[Comm_VAR])
 		,	[BetCount]		= SUM(s.[BetCount]) 
 		,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 	FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -124,7 +150,8 @@ BEGIN;
 	GROUP BY s.[LeagueId]
 		,	s.[WorkShift]
 		,	g.[BettypeGroup]
-		,	s.[IsLive];
+		,	s.[IsLive]
+		,	s.[Is8RM];	
 
 	-- [SummaryByTeam_Daily] table
 	DELETE [dbo].[SummaryByTeam_Daily]	WHERE EventDate = @Date;
@@ -143,6 +170,12 @@ BEGIN;
 		,	[Stake_AR]
 		,	[WinLost_AR]
 		,	[Comm_AR]
+		,	[Is8RM]
+		,	[Stake_Real]
+		,	[WinLost_Real]
+		,	[Stake_VAR]
+		,	[WinLost_VAR]
+		,	[Comm_VAR]
 		,	[BetCount]
 		,	[MatchCount]
 	)
@@ -158,6 +191,12 @@ BEGIN;
 		,	[Stake_AR]		= SUM(s.[Stake_AR]) 
 		,	[WinLost_AR]	= SUM(s.[WinLost_AR]) 
 		,	[Comm_AR]		= SUM(s.[Comm_AR]) 
+		,	[Is8RM]			= s.[Is8RM]
+		,	[Stake_Real]	= SUM(s.[Stake_Real])
+		,	[WinLost_Real]	= SUM(s.[WinLost_Real])
+		,	[Stake_VAR]		= SUM(s.[Stake_VAR])
+		,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
+		,	[Comm_VAR]		= SUM(s.[Comm_VAR])
 		,	[BetCount]		= SUM(s.[BetCount]) 
 		,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 	FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -167,7 +206,8 @@ BEGIN;
 		,	s.[LeagueId]
 		,	s.[WorkShift]
 		,	g.[BettypeGroup]
-		,	s.[IsLive];
+		,	s.[IsLive]
+		,	s.[Is8RM];
 END;
 
 GO
