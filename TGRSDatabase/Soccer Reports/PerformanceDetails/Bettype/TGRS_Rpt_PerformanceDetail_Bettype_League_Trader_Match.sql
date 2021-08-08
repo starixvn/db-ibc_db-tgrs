@@ -18,7 +18,8 @@ AS
 		- 20180912@Simon:		add league exclusion
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
-
+		- 202100809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		
 	Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
 	
@@ -34,7 +35,10 @@ BEGIN
 			ISNULL(SUM(P.Stake), 0) AS Turnover, 
 			ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss, 
 			ISNULL(SUM(P.BetCount), 0) as BetCount,
-			CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0)- ISNULL(SUM(P.Comm), 0)) * 100/ISNULL(SUM(P.Stake), 0) ELSE NULL END AS Margin	
+			CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0)- ISNULL(SUM(P.Comm), 0)) * 100/ISNULL(SUM(P.Stake), 0) ELSE NULL END AS Margin,
+			ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal,
+			ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal,
+			CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0) - ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
 		FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId 
 		WHERE	P.LeagueId = @LeagueId

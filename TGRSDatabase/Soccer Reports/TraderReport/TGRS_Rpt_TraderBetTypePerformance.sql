@@ -37,7 +37,7 @@ BEGIN
 		, 	ISNULL(SUM(t.WinLost),0) -  ISNULL(SUM(t.Comm),0) AS WinLost
 		,	ISNULL(SUM(t.BetCount),0) AS BetCount
 		,	CASE WHEN ISNULL(SUM(t.Stake), 0) <> 0 THEN (ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm),0)) * 100/SUM(t.Stake) ELSE NULL END AS Margin
-		,	ISNULL(SUM(t.Stake_Real),0) AS StakeReal		
+		,	ISNULL(SUM(t.Stake_Real),0) AS TurnoverReal		
 		,	ISNULL(SUM(t.WinLost_Real),0) -  ISNULL(SUM(t.Comm),0) - ISNULL(SUM(t.Comm_VAR),0) AS WinLostReal
 		,	CASE WHEN ISNULL(SUM(t.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(t.WinLost_Real), 0) - ISNULL(SUM(t.Comm),0) - ISNULL(SUM(t.Comm_VAR),0)) * 100/SUM(t.Stake_Real) ELSE NULL END AS MarginReal
 		,	t.IsLive

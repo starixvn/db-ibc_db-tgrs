@@ -55,7 +55,7 @@ SET NOCOUNT ON;
 		SELECT d.WLDate
 			,	ISNULL(SUM(t.Stake), 0) AS Turnover
 			,	ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm), 0) AS WinLost
-			,	ISNULL(SUM(t.Stake_Real),0) AS StakeReal
+			,	ISNULL(SUM(t.Stake_Real),0) AS TurnoverReal
 			,	ISNULL(SUM(t.WinLost_Real),0) -  ISNULL(SUM(t.Comm),0) - ISNULL(SUM(t.Comm_VAR),0) AS WinLostReal
 			,	t.IsLive
 		FROM dbo.TraderPerformance t (NOLOCK)
@@ -88,7 +88,7 @@ SET NOCOUNT ON;
 			SELECT d.WLDate
 				,	ISNULL(SUM(s.Stake), 0) AS Turnover
 				,	ISNULL(SUM(s.WinLost), 0) - ISNULL(SUM(s.Comm), 0) AS WinLost
-				,	ISNULL(SUM(s.Stake_Real),0) AS StakeReal
+				,	ISNULL(SUM(s.Stake_Real),0) AS TurnoverReal
 				,	ISNULL(SUM(s.WinLost_Real),0) -  ISNULL(SUM(s.Comm),0) - ISNULL(SUM(s.Comm_VAR),0) AS WinLostReal
 				,	s.IsLive
 			FROM dbo.SummaryByTrader_Monthly s (NOLOCK)
@@ -113,7 +113,7 @@ SET NOCOUNT ON;
 						DATEADD(MONTH, DATEDIFF(MONTH, 0, p.EventDate), 0) AS EventDate
 						,	ISNULL(SUM(p.Stake), 0) AS Turnover
 						,	ISNULL(SUM(p.WinLost), 0) - ISNULL(SUM(p.Comm), 0) AS WinLost
-						,	ISNULL(SUM(p.Stake_Real),0) AS StakeReal
+						,	ISNULL(SUM(p.Stake_Real),0) AS TurnoverReal
 						,	ISNULL(SUM(p.WinLost_Real),0) -  ISNULL(SUM(p.Comm),0) - ISNULL(SUM(p.Comm_VAR),0) AS WinLostReal
 						,	p.IsLive
 					FROM dbo.TraderPerformance p WITH(NOLOCK)

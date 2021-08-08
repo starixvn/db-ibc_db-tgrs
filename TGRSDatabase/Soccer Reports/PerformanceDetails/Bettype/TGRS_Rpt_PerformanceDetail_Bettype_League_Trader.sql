@@ -17,6 +17,7 @@ AS
 		- 20180912@Simon:		add league exclusion
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
+		- 202100809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
@@ -38,6 +39,9 @@ BEGIN
 		,	WinLossScore		MONEY
 		,	BetCount			INT
 		,	Margin				MONEY
+		,	TurnoverReal		MONEY
+		,	WinLossReal			MONEY
+		,	MarginReal			MONEY
 		,	SumCategory			MONEY
 		,	IsLive				BIT
 	);	
@@ -51,6 +55,9 @@ BEGIN
 		,	WinLossScore
 		,	BetCount
 		,	Margin
+		,	TurnoverReal
+		,	WinLossReal
+		,	MarginReal
 		,	SumCategory
 	)
 	SELECT	tp.CustId																			AS CustId
@@ -61,7 +68,10 @@ BEGIN
 		,	SUM( (tp.WinLost - tp.Comm) * CASE WHEN tp.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END) 	AS WinLossScore	
 		,	ISNULL(SUM(tp.BetCount), 0)															AS BetCount
 		,	CASE   WHEN SUM(tp.Stake) = 0 THEN NULL
-				   ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END				AS Margin		
+				   ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END				AS Margin
+		,	ISNULL(SUM(tp.Stake_Real),0) AS TurnoverReal
+		,	ISNULL(SUM(tp.WinLost_Real),0) -  ISNULL(SUM(tp.Comm),0) - ISNULL(SUM(tp.Comm_VAR),0) AS WinLossReal
+		,	CASE WHEN ISNULL(SUM(tp.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(tp.WinLost_Real), 0) - ISNULL(SUM(tp.Comm),0) - ISNULL(SUM(tp.Comm_VAR),0)) * 100/SUM(tp.Stake_Real) ELSE NULL END AS MarginReal
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
 		LEFT JOIN	dbo.TargetedMargin AS tm WITH (NOLOCK)
@@ -88,6 +98,9 @@ BEGIN
 		,	td.WinLoss
 		,	td.BetCount
 		,	td.Margin
+		,	td.TurnoverReal
+		,	td.WinLossReal
+		,	td.MarginReal
 		,	CASE WHEN td.SumCategory = 0 THEN NULL ELSE td.WinLossScore * 100 / td.SumCategory END AS Score
 		,	td.IsLive
 	FROM		#TraderDetail AS td WITH (NOLOCK)

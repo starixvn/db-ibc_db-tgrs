@@ -20,7 +20,7 @@ AS
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20200709@John.Ngo:	Performance Detail - Support filter by league group & Fix issue 'show betteam' [Redmine ID: 137276]
 		- 20200909@John.Ngo:	Performance Detail - Bettype - Support filter by LeagueName [Redmine ID: 141294]
-
+		- 202100809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 
@@ -30,6 +30,39 @@ AS
  
 BEGIN 
 	SET NOCOUNT ON;
+	
+	IF	OBJECT_ID('tempdb..#tmp8RMPerformanceBetChoice') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmp8RMPerformanceBetChoice;
+	END;
+	
+	CREATE TABLE	#tmp8RMPerformanceBetChoice (
+			BetChoice			NVARCHAR(10)
+		,	IsLive				BIT
+		,	TurnoverReal		MONEY
+		,	WinLossReal			MONEY
+		,	PRIMARY KEY CLUSTERED (
+				BetChoice		ASC
+			,	IsLive			ASC
+		)
+	);	
+	
+	IF	OBJECT_ID('tempdb..#tmpTraderPerformanceBetChoice') IS NOT NULL
+	BEGIN
+		DROP TABLE	#tmpTraderPerformanceBetChoice;
+	END;
+
+	CREATE TABLE #tmpTraderPerformanceBetChoice (
+			BetChoice			NVARCHAR(10)
+		,	IsLive				BIT				
+		,	LeagueCount			INT
+		,	MatchCount			INT
+		,	Turnover			MONEY
+		,	WinLoss				MONEY			
+		,	TurnoverReal		MONEY
+		,	WinLossReal			MONEY		
+		,	BetCount			INT		
+	);
 	
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
 	IF @LeagueGroupIds <> ''
@@ -52,13 +85,47 @@ BEGIN
 
 	IF (@LeagueName IS NULL OR @LeagueName = '')
 		BEGIN
-			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice,
-				P.IsLive											AS IsLive,
-				ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount, 
-				ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount, 
-				ISNULL(SUM(P.Stake), 0)								AS Turnover, 
-				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss, 
-				ISNULL(SUM(P.BetCount), 0)							AS BetCount
+			INSERT INTO #tmp8RMPerformanceBetChoice(BetChoice
+				,	IsLive
+				,	TurnoverReal
+				,	WinLossReal)
+			SELECT	ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
+				,	P.IsLive
+				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = @Bettype
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId			
+			WHERE	P.Is8RM = 1 
+				AND	P.Bettype = @Bettype
+				AND P.EventDate BETWEEN @FromDate AND @ToDate
+				AND (@Market = -1 OR P.IsLive = @Market)
+				AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
+				
+			INSERT INTO #tmpTraderPerformanceBetChoice (
+					BetChoice
+				,	IsLive				
+				,	LeagueCount
+				,	MatchCount
+				,	Turnover
+				,	WinLoss				
+				,	TurnoverReal
+				,	WinLossReal
+				,	BetCount)
+			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
+				,	P.IsLive											AS IsLive
+				,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
+				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
+				,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
+				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
+				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -70,18 +137,52 @@ BEGIN
 				AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice),
-				P.IsLive;
+			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 		END;
 	ELSE
 		BEGIN
-			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice,
-				P.IsLive											AS IsLive,
-				ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount, 
-				ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount, 
-				ISNULL(SUM(P.Stake), 0)								AS Turnover, 
-				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss, 
-				ISNULL(SUM(P.BetCount), 0)							AS BetCount
+			INSERT INTO #tmp8RMPerformanceBetChoice(BetChoice
+				,	IsLive
+				,	TurnoverReal
+				,	WinLossReal)
+			SELECT	ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
+				,	P.IsLive
+				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = @Bettype
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId		
+			WHERE	P.Is8RM = 1 
+				AND	P.Bettype = @Bettype
+				AND P.EventDate BETWEEN @FromDate AND @ToDate
+				AND L.LeagueName LIKE '%' + @LeagueName + '%'
+				AND (@Market = -1 OR P.IsLive = @Market)
+				AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
+				
+			INSERT INTO #tmpTraderPerformanceBetChoice (
+					BetChoice
+				,	IsLive				
+				,	LeagueCount
+				,	MatchCount
+				,	Turnover
+				,	WinLoss				
+				,	TurnoverReal
+				,	WinLossReal
+				,	BetCount)
+			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
+				,	P.IsLive											AS IsLive
+				,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
+				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
+				,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
+				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
+				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount				
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -94,9 +195,23 @@ BEGIN
 				AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice),
-				P.IsLive;
-		END;
+			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
+		END;	
+	
+	SELECT	b.BetChoice		
+		,	b.IsLive 
+		,	b.LeagueCount
+		,	b.MatchCount
+		,	b.Turnover
+		,	b.WinLoss		
+		,	b.TurnoverReal + r.TurnoverReal AS TurnoverReal
+		,	b.WinLossReal - r.WinLossReal AS WinLossReal
+	FROM 	#tmpTraderPerformanceBetChoice AS b WITH (NOLOCK)
+	LEFT JOIN #tmp8RMPerformanceBetChoice AS r WITH(NOLOCK) ON b.BetChoice = r.BetChoice 
+			AND b.IsLive = r.IsLive;
+	
+	DROP TABLE #tmp8RMPerformanceBetChoice;
+	DROP TABLE #tmpTraderPerformanceBetChoice;	
 END;
 
 GO
