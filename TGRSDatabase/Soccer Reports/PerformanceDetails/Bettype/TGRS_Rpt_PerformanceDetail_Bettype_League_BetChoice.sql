@@ -122,7 +122,7 @@ BEGIN
 		,	b.MarginReal		
 	FROM 	#tmpTraderPerformanceBetChoice AS b WITH (NOLOCK)
 	LEFT JOIN #tmp8RMPerformanceBetChoice AS r WITH(NOLOCK) ON b.BetChoice = r.BetChoice 
-			AND b.IsLive = r.IsLive;
+		AND b.IsLive = r.IsLive;
 	
 	DROP TABLE #tmp8RMPerformanceBetChoice;
 	DROP TABLE #tmpTraderPerformanceBetChoice;
