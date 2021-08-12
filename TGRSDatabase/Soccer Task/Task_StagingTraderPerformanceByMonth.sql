@@ -78,8 +78,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -99,8 +98,7 @@ BEGIN;
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		 FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -133,8 +131,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -153,8 +150,7 @@ BEGIN;
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
@@ -185,8 +181,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -205,8 +200,7 @@ BEGIN;
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -239,8 +233,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -260,8 +253,7 @@ BEGIN;
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -328,8 +320,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 				,	[MatchCount]
 			)
@@ -349,8 +340,7 @@ BEGIN;
 				,	[Stake_Real]	= SUM(s.[Stake_Real])
 				,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 				,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-				,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 				,	[BetCount]		= SUM(s.[BetCount]) 
 				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			 FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -383,8 +373,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 				,	[MatchCount]
 			)
@@ -403,8 +392,7 @@ BEGIN;
 				,	[Stake_Real]	= SUM(s.[Stake_Real])
 				,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 				,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-				,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])				
 				,	[BetCount]		= SUM(s.[BetCount]) 
 				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
@@ -435,8 +423,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 				,	[MatchCount]
 			)
@@ -455,8 +442,7 @@ BEGIN;
 				,	[Stake_Real]	= SUM(s.[Stake_Real])
 				,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 				,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-				,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])				
 				,	[BetCount]		= SUM(s.[BetCount]) 
 				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -489,8 +475,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 				,	[MatchCount]
 			)
@@ -510,8 +495,7 @@ BEGIN;
 				,	[Stake_Real]	= SUM(s.[Stake_Real])
 				,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 				,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-				,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+				,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])				
 				,	[BetCount]		= SUM(s.[BetCount]) 
 				,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 			FROM [dbo].[TraderPerformance] s WITH(NOLOCK)

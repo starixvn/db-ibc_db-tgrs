@@ -1131,7 +1131,7 @@ BEGIN
 			WHERE tp.EventDate = @Winlostdate;
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, 
-			Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount, Spread)
+			Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount, Spread)
 			SELECT	[CustId]			= t.TraderId
 				,	[WorkShift]			= t.WorkShift
 				,	[MatchId]			= t.MatchId
@@ -1153,10 +1153,9 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[Is8RM]				= t.Is8RM
 				,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 				,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-				,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-				,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+				,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)			
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
 			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
@@ -1179,7 +1178,7 @@ BEGIN
 				INNER JOIN #tmpDLFilteredBettypes AS bt ON tpc.BetType = bt.BetType
 			WHERE tpc.EventDate = @winlostdate;
 
-			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount)
+			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 			SELECT		[CustId]			= t.TraderId
 					,	[MatchId]			= t.matchId
 					,	[EventDate]			= t.EventDate
@@ -1196,10 +1195,9 @@ BEGIN
 					,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 					,	[Is8RM]				= t.Is8RM
 					,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-					,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+					,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 					,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-					,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-					,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+					,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)			
 					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
@@ -1627,7 +1625,7 @@ BEGIN
 			WHERE tp.EventDate = @winlostdate;
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, 
-			Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount, Spread)
+			Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount, Spread)
 			SELECT	[CustId]			= t.TraderId
 				,	[WorkShift]			= t.WorkShift
 				,	[MatchId]			= t.matchId
@@ -1649,10 +1647,9 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[Is8RM]				= t.Is8RM
 				,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 				,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-				,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-				,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+				,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)			
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
 			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
@@ -1675,7 +1672,7 @@ BEGIN
 				INNER JOIN #tmpDLFilteredBettypes AS bt ON tpc.BetType = bt.BetType
 			WHERE tpc.EventDate = @winlostdate;
 
-			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount)
+			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 			SELECT		[CustId]			= t.TraderId
 					,	[MatchId]			= t.matchId
 					,	[EventDate]			= t.EventDate
@@ -1692,10 +1689,9 @@ BEGIN
 					,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 					,	[Is8RM]				= t.Is8RM
 					,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-					,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+					,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 					,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-					,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-					,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+					,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)				
 					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK)
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
@@ -2132,7 +2128,7 @@ BEGIN
 			WHERE tp.EventDate = @winlostdate;
 
 			INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, IsLive, 
-			Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount, Spread)
+			Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount, Spread)
 			SELECT	[CustId]			= t.TraderId
 				,	[WorkShift]			= t.WorkShift
 				,	[MatchId]			= t.MatchId
@@ -2154,10 +2150,9 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[Is8RM]				= t.Is8RM
 				,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 				,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-				,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-				,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+				,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)			
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 				,	[Spread]			= MAX(t.Spread)
 			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK) 
@@ -2180,7 +2175,7 @@ BEGIN
 				INNER JOIN #tmpDLFilteredBettypes AS bt ON tpc.BetType = bt.BetType
 			WHERE tpc.EventDate = @winlostdate;
 
-			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount)
+			INSERT INTO	dbo.TraderPerformance_BetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 			SELECT		[CustId]			= t.TraderId
 					,	[MatchId]			= t.matchId
 					,	[EventDate]			= t.EventDate
@@ -2197,10 +2192,9 @@ BEGIN
 					,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 					,	[Is8RM]				= t.Is8RM
 					,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-					,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+					,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 					,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-					,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-					,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+					,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)			
 					,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 			FROM	#tmpDLStagingTraderPerformance AS t WITH(NOLOCK) 
 					LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14

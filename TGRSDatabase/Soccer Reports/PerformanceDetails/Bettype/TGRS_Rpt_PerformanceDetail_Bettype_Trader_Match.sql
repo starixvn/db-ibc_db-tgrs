@@ -99,8 +99,8 @@ BEGIN
 				,	WinLossReal)
 			SELECT	P.MatchId
 				,	P.IsLive
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0)		AS WinLossReal
 			FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -139,9 +139,9 @@ BEGIN
 				,	ISNULL(SUM(P.Stake), 0) AS Turnover
 				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss				
 				,	CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0)- ISNULL(SUM(P.Comm), 0)) * 100/ISNULL(SUM(P.Stake), 0) ELSE NULL END AS Margin
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0) - ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
+				,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0)		AS WinLossReal
+				,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
 			 FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 	 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -163,8 +163,8 @@ BEGIN
 				,	WinLossReal)
 			SELECT	P.MatchId
 				,	P.IsLive
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0)		AS WinLossReal
 			FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -204,9 +204,9 @@ BEGIN
 				,	ISNULL(SUM(P.Stake), 0) AS Turnover
 				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss				
 				,	CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0)- ISNULL(SUM(P.Comm), 0)) * 100/ISNULL(SUM(P.Stake), 0) ELSE NULL END AS Margin
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0) - ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
+				,	ISNULL(SUM(P.Stake_Real),0) 	AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0)	AS WinLossReal
+				,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
 			 FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 	 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -222,6 +222,14 @@ BEGIN
 			ORDER BY Margin DESC, P.EventDate ASC;
 		END;
 
+	UPDATE P
+	SET   P.TurnoverReal = P.TurnoverReal + r.TurnoverReal
+		, P.WinLossReal = P.WinLossReal - r.WinLossReal
+		, P.MarginReal		= CASE WHEN ISNULL(P.TurnoverReal + r.TurnoverReal, 0) <> 0 THEN (ISNULL(P.WinLossReal - r.WinLossReal, 0)) * 100/(P.TurnoverReal + r.TurnoverReal) ELSE NULL END
+	FROM #tmpTraderDetail AS P WITH(NOLOCK)
+	INNER JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON  r.MatchId = P.MatchId
+		AND r.IsLive = P.IsLive;
+
 	SELECT	b.MatchId
 		,	b.LeagueId
 		,	b.LeagueGroupId
@@ -233,8 +241,8 @@ BEGIN
 		,	b.Turnover
 		,	b.WinLoss		
 		,	b.Margin
-		,	b.TurnoverReal + r.TurnoverReal AS TurnoverReal
-		,	b.WinLossReal - r.WinLossReal AS WinLossReal
+		,	b.TurnoverReal
+		,	b.WinLossReal
 		,	b.MarginReal		
 	FROM 	#tmpTraderDetail AS b WITH (NOLOCK)
 	LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON b.MatchId = r.MatchId 

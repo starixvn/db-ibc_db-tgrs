@@ -37,7 +37,7 @@ BEGIN
 	END;
 	
 	CREATE TABLE	#tmp8RMPerformanceBetChoice (
-			BetChoice			NVARCHAR(10)
+			BetChoice			NVARCHAR(100)
 		,	IsLive				BIT
 		,	TurnoverReal		MONEY
 		,	WinLossReal			MONEY
@@ -53,7 +53,7 @@ BEGIN
 	END;
 
 	CREATE TABLE #tmpTraderPerformanceBetChoice (
-			BetChoice			NVARCHAR(10)
+			BetChoice			NVARCHAR(100)
 		,	IsLive				BIT				
 		,	LeagueCount			INT
 		,	MatchCount			INT
@@ -91,8 +91,8 @@ BEGIN
 				,	WinLossReal)
 			SELECT	ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
 				,	P.IsLive
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.Stake_Real),0) 					AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0)					AS WinLossReal
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -117,14 +117,14 @@ BEGIN
 				,	TurnoverReal
 				,	WinLossReal
 				,	BetCount)
-			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
+			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice
 				,	P.IsLive											AS IsLive
 				,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 				,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
 				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0)						AS WinLossReal
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
@@ -147,8 +147,8 @@ BEGIN
 				,	WinLossReal)
 			SELECT	ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
 				,	P.IsLive
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.Stake_Real),0) 					AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0)					AS WinLossReal
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -174,14 +174,14 @@ BEGIN
 				,	TurnoverReal
 				,	WinLossReal
 				,	BetCount)
-			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
+			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice
 				,	P.IsLive											AS IsLive
 				,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 				,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
 				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
-				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
+				,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal
+				,	ISNULL(SUM(P.WinLost_Real),0) 						AS WinLossReal
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount				
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
@@ -198,17 +198,22 @@ BEGIN
 			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 		END;	
 	
+	UPDATE P
+	SET  P.TurnoverReal = P.TurnoverReal + r.TurnoverReal
+		, P.WinLossReal = P.WinLossReal - r.WinLossReal		
+	FROM #tmpTraderPerformanceBetChoice AS P WITH(NOLOCK)
+	INNER JOIN #tmp8RMPerformanceBetChoice AS r WITH(NOLOCK) ON  r.BetChoice = P.BetChoice
+		AND r.IsLive = P.IsLive;
+	
 	SELECT	b.BetChoice		
 		,	b.IsLive 
 		,	b.LeagueCount
 		,	b.MatchCount
 		,	b.Turnover
 		,	b.WinLoss		
-		,	b.TurnoverReal + r.TurnoverReal AS TurnoverReal
-		,	b.WinLossReal - r.WinLossReal AS WinLossReal
+		,	b.TurnoverReal
+		,	b.WinLossReal
 	FROM 	#tmpTraderPerformanceBetChoice AS b WITH (NOLOCK)
-	LEFT JOIN #tmp8RMPerformanceBetChoice AS r WITH(NOLOCK) ON b.BetChoice = r.BetChoice 
-			AND b.IsLive = r.IsLive;
 	
 	DROP TABLE #tmp8RMPerformanceBetChoice;
 	DROP TABLE #tmpTraderPerformanceBetChoice;	

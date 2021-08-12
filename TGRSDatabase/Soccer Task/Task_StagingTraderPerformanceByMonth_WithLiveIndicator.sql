@@ -57,8 +57,7 @@ BEGIN;
 			[Stake_Real]	MONEY NULL,
 			[WinLost_Real]	MONEY NULL,
 			[Stake_VAR]		MONEY NULL,
-			[WinLost_VAR]	MONEY NULL,
-			[Comm_VAR]		MONEY NULL,
+			[WinLost_VAR]	MONEY NULL,			
 			[BetCount]		INT NULL,
 			[HomeId]		INT NULL,
 			[AwayId]		INT NULL,
@@ -114,8 +113,7 @@ BEGIN;
 				[Stake_Real],
 				[WinLost_Real],
 				[Stake_VAR],
-				[WinLost_VAR],
-				[Comm_VAR],
+				[WinLost_VAR],				
 				[BetCount],
 				[HomeId],
 				[AwayId],
@@ -142,8 +140,7 @@ BEGIN;
 				tp.[Stake_Real],
 				tp.[WinLost_Real],
 				tp.[Stake_VAR],
-				tp.[WinLost_VAR],
-				tp.[Comm_VAR],
+				tp.[WinLost_VAR],				
 				tp.[BetCount],
 				tp.[HomeId],
 				tp.[AwayId],
@@ -177,8 +174,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -197,8 +193,7 @@ BEGIN;
 			,	SUM(tpp.Stake_Real) AS Stake_Real
 			,	SUM(tpp.WinLost_Real) AS WinLost_Real
 			,	SUM(tpp.Stake_VAR) AS Stake_VAR
-			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-			,	SUM(tpp.Comm_VAR) AS Comm_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR			
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
@@ -227,8 +222,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -247,8 +241,7 @@ BEGIN;
 			,	SUM(tpp.Stake_Real) AS Stake_Real
 			,	SUM(tpp.WinLost_Real) AS WinLost_Real
 			,	SUM(tpp.Stake_VAR) AS Stake_VAR
-			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-			, 	SUM(tpp.Comm_VAR) AS Comm_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR			
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
@@ -276,8 +269,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -296,8 +288,7 @@ BEGIN;
 			,	SUM(tpp.Stake_Real) AS Stake_Real
 			,	SUM(tpp.WinLost_Real) AS WinLost_Real
 			,	SUM(tpp.Stake_VAR) AS Stake_VAR
-			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-			,	SUM(tpp.Comm_VAR) AS Comm_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR			
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
@@ -325,8 +316,7 @@ BEGIN;
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 		)
 		SELECT tpp.CustId
@@ -345,8 +335,7 @@ BEGIN;
 			,	SUM(tpp.Stake_Real) AS Stake_Real
 			,	SUM(tpp.WinLost_Real) AS WinLost_Real
 			,	SUM(tpp.Stake_VAR) AS Stake_VAR
-			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-			,	SUM(tpp.Comm_VAR) AS Comm_VAR
+			,	SUM(tpp.WinLost_VAR) AS WinLost_VAR			
 			,	SUM(tpp.BetCount) AS BetCount
 		FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 		WHERE tpp.EventDate BETWEEN @CurrentMonthStartDate AND @CurrentMonthEndDate
@@ -480,8 +469,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -500,8 +488,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
@@ -530,8 +517,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -550,8 +536,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
@@ -579,8 +564,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -599,8 +583,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
@@ -628,8 +611,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -648,8 +630,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			WHERE tpp.EventDate BETWEEN @LastMonthStartDate AND @LastMonthEndDate
@@ -812,8 +793,7 @@ BEGIN;
 					[Stake_Real],
 					[WinLost_Real],
 					[Stake_VAR],
-					[WinLost_VAR],
-					[Comm_VAR],
+					[WinLost_VAR],					
 					[BetCount],
 					[HomeId],
 					[AwayId],
@@ -840,8 +820,7 @@ BEGIN;
 					tp.[Stake_Real],
 					tp.[WinLost_Real],
 					tp.[Stake_VAR],
-					tp.[WinLost_VAR],
-					tp.[Comm_VAR],
+					tp.[WinLost_VAR],					
 					tp.[BetCount],
 					tp.[HomeId],
 					tp.[AwayId],
@@ -875,8 +854,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -895,8 +873,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
@@ -924,8 +901,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -944,8 +920,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
@@ -972,8 +947,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -992,8 +966,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId
@@ -1020,8 +993,7 @@ BEGIN;
 				,	[Stake_Real]
 				,	[WinLost_Real]
 				,	[Stake_VAR]
-				,	[WinLost_VAR]
-				,	[Comm_VAR]
+				,	[WinLost_VAR]				
 				,	[BetCount]
 			)
 			SELECT tpp.CustId
@@ -1040,8 +1012,7 @@ BEGIN;
 				,	SUM(tpp.Stake_Real) AS Stake_Real
 				,	SUM(tpp.WinLost_Real) AS WinLost_Real
 				,	SUM(tpp.Stake_VAR) AS Stake_VAR
-				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR
-				,	SUM(tpp.Comm_VAR) AS Comm_VAR
+				,	SUM(tpp.WinLost_VAR) AS WinLost_VAR				
 				,	SUM(tpp.BetCount) AS BetCount
 			FROM #tmpTraderPerformance tpp WITH(NOLOCK)
 			GROUP BY tpp.CustId

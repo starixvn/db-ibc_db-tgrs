@@ -30,7 +30,7 @@ BEGIN
 	END;
 	
 	CREATE TABLE	#tmp8RMPerformanceBetChoice (
-			BetChoice			NVARCHAR(10)		
+			BetChoice			NVARCHAR(100)		
 		,	IsLive				BIT
 		,	TurnoverReal		MONEY
 		,	WinLossReal			MONEY
@@ -47,7 +47,7 @@ BEGIN
 	END;
 
 	CREATE TABLE #tmpTraderPerformanceBetChoice (
-			BetChoice			NVARCHAR(10)					
+			BetChoice			NVARCHAR(100)					
 		,	IsLive				BIT			
 		,	MatchCount			INT
 		,	BetCount			INT		
@@ -66,9 +66,9 @@ BEGIN
 		,	MarginReal)
 	SELECT 	ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice
 		,	P.IsLive
-		,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-		,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
-		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0) - ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
+		,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal
+		,	ISNULL(SUM(P.WinLost_Real),0)		AS WinLossReal
+		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
 	FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 		LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = @Bettype  
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId 
@@ -78,8 +78,8 @@ BEGIN
 		AND (@Market = -1 OR P.IsLive = @Market)
 		AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)	
-	GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
-			
+	GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;	
+	
 	INSERT INTO #tmpTraderPerformanceBetChoice(BetChoice				
 				,	IsLive				
 				,	MatchCount
@@ -92,14 +92,14 @@ BEGIN
 				,	MarginReal)
 	SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice
 		,	P.IsLive											AS IsLive
-		,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount  
+		,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 		,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 		,	ISNULL(SUM(P.Stake), 0)								AS Turnover   
 		,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss   			
 		,	CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin
-		,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-		,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
-		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0) - ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
+		,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal
+		,	ISNULL(SUM(P.WinLost_Real),0)						AS WinLossReal
+		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
 	FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)    
 		LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = @Bettype  
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId  
@@ -110,6 +110,14 @@ BEGIN
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 	
+	UPDATE P
+	SET   P.TurnoverReal 	= P.TurnoverReal + r.TurnoverReal
+		, P.WinLossReal 	= P.WinLossReal - r.WinLossReal		
+		, P.MarginReal		= CASE WHEN ISNULL(P.TurnoverReal + r.TurnoverReal, 0) <> 0 THEN (ISNULL(P.WinLossReal - r.WinLossReal, 0)) * 100/(P.TurnoverReal + r.TurnoverReal) ELSE NULL END
+	FROM #tmpTraderPerformanceBetChoice AS P WITH(NOLOCK)
+	INNER JOIN #tmp8RMPerformanceBetChoice AS r WITH(NOLOCK) ON  r.BetChoice = P.BetChoice
+		AND r.IsLive = P.IsLive;
+	
 	SELECT	b.BetChoice			
 		,	b.IsLive 		
 		,	b.MatchCount
@@ -117,12 +125,10 @@ BEGIN
 		,	b.Turnover
 		,	b.WinLoss
 		,	b.Margin
-		,	b.TurnoverReal + r.TurnoverReal AS TurnoverReal
-		,	b.WinLossReal - r.WinLossReal AS WinLossReal
+		,	b.TurnoverReal
+		,	b.WinLossReal
 		,	b.MarginReal		
-	FROM 	#tmpTraderPerformanceBetChoice AS b WITH (NOLOCK)
-	LEFT JOIN #tmp8RMPerformanceBetChoice AS r WITH(NOLOCK) ON b.BetChoice = r.BetChoice 
-		AND b.IsLive = r.IsLive;
+	FROM 	#tmpTraderPerformanceBetChoice AS b WITH (NOLOCK);
 	
 	DROP TABLE #tmp8RMPerformanceBetChoice;
 	DROP TABLE #tmpTraderPerformanceBetChoice;

@@ -629,7 +629,7 @@ BEGIN
 		INNER JOIN dbo.Trader t WITH (NOLOCK) ON t.CustId IN (@IdForLiveUnassignedTrader, @IdForNonLiveUnassignedTrader) AND stp.TraderId = t.CustId;
 
 		INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, 
-			IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount, Spread)
+			IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount, Spread)
 		SELECT	[CustId]			= t.TraderId
 			,	[WorkShift]			= t.WorkShift
 			,	[MatchId]			= t.MatchId
@@ -651,10 +651,9 @@ BEGIN
 			,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 			,	[Is8RM]				= t.Is8RM
 			,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-			,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+			,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 			,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-			,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-			,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+			,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)		
 			,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 			,	[Spread]			= MAX(t.Spread)
 		FROM	#tmpRTStagingTraderPerformance AS t 
@@ -671,7 +670,7 @@ BEGIN
 			RAISERROR('	Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		INSERT INTO	[dbo].[TraderPerformance_BetChoice](CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, Comm_VAR, BetCount)
+		INSERT INTO	[dbo].[TraderPerformance_BetChoice](CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 		SELECT		[CustId]			= t.TraderId
 				,	[MatchId]			= t.MatchId
 				,	[EventDate]			= t.EventDate
@@ -688,10 +687,9 @@ BEGIN
 				,	[Comm_AR]			= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * t.ActualRate)
 				,	[Is8RM]				= t.Is8RM
 				,	[Stake_Real]		= SUM((CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END * ABS(t.Stake) * t.ActualRate) * (CASE WHEN t.VirtualRate/t.ActualRate > 0 THEN t.VirtualRate/t.ActualRate ELSE 1 END))
-				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate) + SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
+				,	[WinLost_Real]		= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate - ((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END)) + (((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate))
 				,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate/t.ActualRate -1 > 0 THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
-				,	[WinLost_VAR]		= SUM((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END))
-				,	[Comm_VAR]			= SUM((CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Comm * t.ExtraPT / (1 - t.TPositionTaking) END) ELSE 0 END)*(t.VirtualRate / t.ActualRate - 1)*t.ActualRate)
+				,	[WinLost_VAR] = SUM(((t.WinLost - t.Stake) + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.WinLost - t.Stake) * t.ExtraPT END) + (CASE WHEN t.VirtualRate<t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)				
 				,	[BetCount]			= SUM(CASE WHEN tc.custid IS NULL THEN t.BetCount ELSE 0 END)
 		FROM #tmpRTStagingTraderPerformance AS t
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
@@ -731,8 +729,7 @@ BEGIN
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -751,8 +748,7 @@ BEGIN
 			,	[Stake_Real]	= SUM(t.[Stake_Real])
 			,	[WinLost_Real]	= SUM(t.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(t.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(t.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(t.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(t.[WinLost_VAR])			
 			,	[BetCount]		= SUM(t.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT [MatchId])
 		FROM dbo.TraderPerformance AS t WITH(NOLOCK)
@@ -797,8 +793,7 @@ BEGIN
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -817,8 +812,7 @@ BEGIN
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM dbo.TraderPerformance s WITH(NOLOCK)
@@ -850,8 +844,7 @@ BEGIN
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -871,8 +864,7 @@ BEGIN
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM dbo.TraderPerformance s WITH(NOLOCK)
@@ -909,8 +901,7 @@ BEGIN
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -930,8 +921,7 @@ BEGIN
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -963,8 +953,7 @@ BEGIN
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]		
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -983,8 +972,7 @@ BEGIN
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] AS s WITH(NOLOCK)
@@ -1014,8 +1002,7 @@ BEGIN
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -1034,8 +1021,7 @@ BEGIN
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)
@@ -1067,8 +1053,7 @@ BEGIN
 			,	[Stake_Real]
 			,	[WinLost_Real]
 			,	[Stake_VAR]
-			,	[WinLost_VAR]
-			,	[Comm_VAR]
+			,	[WinLost_VAR]			
 			,	[BetCount]
 			,	[MatchCount]
 		)
@@ -1088,8 +1073,7 @@ BEGIN
 			,	[Stake_Real]	= SUM(s.[Stake_Real])
 			,	[WinLost_Real]	= SUM(s.[WinLost_Real])
 			,	[Stake_VAR]		= SUM(s.[Stake_VAR])
-			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])
-			,	[Comm_VAR]		= SUM(s.[Comm_VAR])
+			,	[WinLost_VAR]	= SUM(s.[WinLost_VAR])			
 			,	[BetCount]		= SUM(s.[BetCount]) 
 			,	[MatchCount]	= COUNT(DISTINCT s.[MatchId])
 		FROM [dbo].[TraderPerformance] s WITH(NOLOCK)

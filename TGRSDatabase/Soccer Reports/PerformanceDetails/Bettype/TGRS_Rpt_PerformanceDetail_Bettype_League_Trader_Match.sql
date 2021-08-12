@@ -75,9 +75,9 @@ BEGIN
 		,	MarginReal)
 	SELECT 	P.MatchId
 		,	P.IsLive
-		,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-		,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
-		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0) - ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
+		,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal
+		,	ISNULL(SUM(P.WinLost_Real),0)		AS WinLossReal
+		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
 	FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId 
 	WHERE	P.Is8RM = 1
@@ -110,9 +110,9 @@ BEGIN
 		,	ISNULL(SUM(P.Stake), 0) AS Turnover
 		,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss		
 		,	CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0)- ISNULL(SUM(P.Comm), 0)) * 100/ISNULL(SUM(P.Stake), 0) ELSE NULL END AS Margin
-		,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
-		,	ISNULL(SUM(P.WinLost_Real),0) -  ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0) AS WinLossReal
-		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0) - ISNULL(SUM(P.Comm),0) - ISNULL(SUM(P.Comm_VAR),0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
+		,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal
+		,	ISNULL(SUM(P.WinLost_Real),0)		AS WinLossReal
+		,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
 		FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 			LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId 
 		WHERE	P.LeagueId = @LeagueId
@@ -124,6 +124,14 @@ BEGIN
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate, P.IsLive
 	ORDER BY Margin DESC, P.EventDate ASC;
 		
+	UPDATE P
+	SET   P.TurnoverReal 	= P.TurnoverReal + r.TurnoverReal
+		, P.WinLossReal 	= P.WinLossReal - r.WinLossReal	
+		, P.MarginReal		= CASE WHEN ISNULL(P.TurnoverReal + r.TurnoverReal, 0) <> 0 THEN (ISNULL(P.WinLossReal - r.WinLossReal, 0)) * 100/(P.TurnoverReal + r.TurnoverReal) ELSE NULL END
+	FROM #tmpTraderPerformance AS P WITH(NOLOCK)
+	INNER JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON  r.MatchId = P.MatchId
+		AND r.IsLive = P.IsLive;
+	
 	SELECT	b.MatchId			
 		,	b.HomeId 	
 		,	b.AwayId
@@ -133,12 +141,10 @@ BEGIN
 		,	b.Turnover
 		,	b.WinLoss		
 		,	b.Margin
-		,	b.TurnoverReal + r.TurnoverReal AS TurnoverReal
-		,	b.WinLossReal - r.WinLossReal AS WinLossReal
+		,	b.TurnoverReal
+		,	b.WinLossReal
 		,	b.MarginReal		
-	FROM 	#tmpTraderPerformance AS b WITH (NOLOCK)
-		LEFT JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON b.MatchId = r.MatchId 
-			AND b.IsLive = r.IsLive;
+	FROM 	#tmpTraderPerformance AS b WITH (NOLOCK);
 	
 	DROP TABLE #tmpTraderPerformance;
 	DROP TABLE #tmp8RMPerformance;
