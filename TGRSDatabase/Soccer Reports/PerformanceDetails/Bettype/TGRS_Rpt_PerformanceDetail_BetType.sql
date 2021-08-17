@@ -159,13 +159,14 @@ BEGIN
 				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal
 				,	ISNULL(SUM(P.WinLost_Real),0) AS WinLossReal
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(P.WinLost_Real),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal				
-				,	ISNULL(SUM(P.BetCount), 0) AS BetCount				
+				,	ISNULL(SUM(P.BetCount), 0) AS BetCount			
 			FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 				LEFT JOIN @BettypeList bl ON p.bettype = bl.bettype
-			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+			WHERE	P.Is8RM = 0
+				AND	P.EventDate BETWEEN @FromDate AND @ToDate			
 				AND (@Bettypes = '0' OR bl.bettype IS NOT NULL)
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
@@ -198,13 +199,14 @@ BEGIN
 				,	ISNULL(SUM(P.Stake_Real),0) AS TurnoverReal		
 				,	ISNULL(SUM(P.WinLost_Real),0) AS WinLossReal
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(P.WinLost_Real),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal		
-				,	ISNULL(SUM(P.BetCount), 0) AS BetCount
+				,	ISNULL(SUM(P.BetCount), 0) AS BetCount				
 			FROM dbo.TraderPerformance AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 				LEFT JOIN @BettypeList bl ON p.bettype = bl.bettype
-			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate			
+			WHERE	P.Is8RM = 0
+				AND P.EventDate BETWEEN @FromDate AND @ToDate			
 				AND (@Bettypes = '0' OR bl.bettype IS NOT NULL)
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@Market = -1 OR P.IsLive = @Market)
@@ -219,7 +221,7 @@ BEGIN
 		,	P.MarginReal 	= CASE WHEN ISNULL(P.TurnoverReal + r.TurnoverReal, 0) <> 0 THEN (P.WinLossReal - r.WinLossReal	) * 100/(P.TurnoverReal + r.TurnoverReal) ELSE NULL END
 	FROM #tmpTraderPerformance AS P WITH(NOLOCK)
 	INNER JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON  r.BetType = P.BetType
-		AND r.IsLive = P.IsLive;		
+		AND r.IsLive = P.IsLive;
 
 	SELECT	m.BetType
 		,	TN.TypeName
