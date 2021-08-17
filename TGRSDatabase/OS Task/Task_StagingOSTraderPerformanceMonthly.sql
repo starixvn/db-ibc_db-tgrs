@@ -11,7 +11,7 @@ AS
 				- 20170227@Aaron: Added MatchCount, EventDate; removed Rptyear, RptMonth				
 				- 20170404@Long: Apply Juice
 				- 20200914@John.Ngo: Support AR, Live/Nonlive for OSDataTGRS [Redmine ID: 140875]
-				- 20210802@Adam.Tran: Sports - Performance Real Figures [Redmine: #158981]
+   			
 	Param's Explanation:  
 	
 	Exam:
@@ -51,12 +51,6 @@ BEGIN
 		   ,[StakeMYR_AR]
            ,[Juice_AR]
            ,[StakeMYRJuice_AR]
-		   ,[Is8RM]
-		   ,[Stake_Real]
-		   ,[WinLost_Real]
-		   ,[Stake_VAR]
-		   ,[WinLost_VAR]
-		   ,[Comm_VAR]
 		   ,[IsLive]
 		  )
 	SELECT [TraderId]
@@ -79,12 +73,6 @@ BEGIN
 		   ,SUM([StakeMYR_AR])
 		   ,SUM([Juice_AR])
 		   ,SUM([StakeMYRJuice_AR])
-		   ,[Is8RM]
-		   ,SUM([Stake_Real])
-		   ,SUM([WinLost_Real])
-		   ,SUM([Stake_VAR])
-		   ,SUM([WinLost_VAR])
-		   ,SUM([Comm_VAR])
 		   ,[IsLive]
 	 FROM [dbo].OSDataTGRS WITH(NOLOCK)
 	 WHERE EventDate BETWEEN @StartDate AND @EndDate
@@ -94,7 +82,6 @@ BEGIN
            ,[LeagueId]
 		   ,[Target]
 		   ,[IsLive]
-		   ,[Is8RM];
 
 	DELETE [dbo].OSSummaryByLeague_Monthly WHERE EventDate = @Month;
 
@@ -117,12 +104,6 @@ BEGIN
 		   ,[StakeMYR_AR]
            ,[Juice_AR]
            ,[StakeMYRJuice_AR]
-		   ,[Is8RM]
-		   ,[Stake_Real]
-		   ,[WinLost_Real]
-		   ,[Stake_VAR]
-		   ,[WinLost_VAR]
-		   ,[Comm_VAR]
 		   ,[IsLive]
 		  )
 	SELECT  [SportId]
@@ -143,12 +124,6 @@ BEGIN
 		   ,SUM([StakeMYR_AR])
 		   ,SUM([Juice_AR])
 		   ,SUM([StakeMYRJuice_AR])
-		   ,[Is8RM]
-		   ,SUM([Stake_Real])
-		   ,SUM([WinLost_Real])
-		   ,SUM([Stake_VAR])
-		   ,SUM([WinLost_VAR])
-		   ,SUM([Comm_VAR])
 		   ,[IsLive]
 	 FROM [dbo].OSDataTGRS WITH(NOLOCK)
 	 WHERE EventDate BETWEEN @StartDate AND @EndDate
@@ -156,7 +131,6 @@ BEGIN
            ,[LeagueId]
 		   ,[Target]
 		   ,[IsLive]
-		   ,[Is8RM];
 END;
 
 GO

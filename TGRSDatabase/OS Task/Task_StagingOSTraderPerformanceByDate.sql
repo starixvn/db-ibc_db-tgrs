@@ -13,7 +13,7 @@ AS
 				- 20170706@Billy: Fix bug duplicated data - [Redmine: #79615]
 				- 20190108@John:  Exclude Cashout tickets from Betcount figures in TGR reports [Redmine ID: 107602]
 				- 20200914@John.Ngo: Support AR, Live/Nonlive for OSDataTGRS [Redmine ID: 140875]
-				- 20210802@Adam.Tran: Sports - Performance Real Figures [Redmine: #158981]
+   			
 	Param's Explanation:  
 	
 	Exam: 
@@ -41,16 +41,10 @@ BEGIN
            ,[StakeMYRJuice]
 		   ,[Turnover_AR]
            ,[WinLoss_AR]
-           ,[Comm_AR]		  
+           ,[Comm_AR]
 		   ,[StakeMYR_AR]
            ,[Juice_AR]
            ,[StakeMYRJuice_AR]
-		   ,[Is8RM]
-		   ,[Stake_Real]
-		   ,[WinLost_Real]
-		   ,[Stake_VAR]
-		   ,[WinLost_VAR]
-		   ,[Comm_VAR]
 		   ,[IsLive]
            )
  
@@ -70,16 +64,10 @@ BEGIN
 		   ,SUM([StakeMYRJuice])
 		   ,SUM([Turnover_AR])
 		   ,SUM([WinLoss_AR])
-		   ,SUM([Comm_AR])		   
+		   ,SUM([Comm_AR])
 		   ,SUM([StakeMYR_AR])
 		   ,SUM([Juice_AR])
 		   ,SUM([StakeMYRJuice_AR])
-		   ,Is8RM
-		   ,SUM([Stake_Real])
-		   ,SUM([WinLost_Real])
-		   ,SUM([Stake_VAR])
-		   ,SUM([WinLost_VAR])
-		   ,SUM([Comm_VAR])
 		   ,[IsLive]
     FROM [dbo].OSDataTGRS WITH(NOLOCK)
     WHERE EventDate = @Date
@@ -89,8 +77,7 @@ BEGIN
            ,[BettypeId]
            ,[LeagueId]
 		   ,[Target]
-		   ,[IsLive]
-		   ,[Is8RM];
+		   ,[IsLive];
 END;
 
 GO

@@ -96,39 +96,4 @@ ALTER TABLE [dbo].SummaryByBetType_Monthly ADD
 	[Stake_VAR]		MONEY NULL,
 	[WinLost_VAR]	MONEY NULL;
 
-ALTER TABLE [dbo].OSDataTGRS ADD	
-	[Is8RM]			BIT NULL,
-	[Stake_Real]	MONEY NULL,
-	[WinLost_Real]	MONEY NULL,
-	[Stake_VAR]		MONEY NULL,
-	[WinLost_VAR]	MONEY NULL;
-
-ALTER TABLE [dbo].OSDataTGRS_BetChoice ADD
-	[Is8RM]			BIT NULL,
-	[Stake_Real]	MONEY NULL,
-	[WinLost_Real]	MONEY NULL,
-	[Stake_VAR]		MONEY NULL,
-	[WinLost_VAR]	MONEY NULL;
-
-ALTER TABLE [dbo].OSSummaryByTrader_Daily ADD	
-	[Is8RM]			BIT NULL,
-	[Stake_Real]	MONEY NULL,
-	[WinLost_Real]	MONEY NULL,
-	[Stake_VAR]		MONEY NULL,
-	[WinLost_VAR]	MONEY NULL;
-
-ALTER TABLE [dbo].OSSummaryByLeague_Monthly ADD	
-	[Is8RM]			BIT NULL,
-	[Stake_Real]	MONEY NULL,
-	[WinLost_Real]	MONEY NULL,
-	[Stake_VAR]		MONEY NULL,
-	[WinLost_VAR]	MONEY NULL;
-	
-ALTER TABLE [dbo].OSSummaryByTrader_Monthly ADD	
-	[Is8RM]			BIT NULL,
-	[Stake_Real]	MONEY NULL,
-	[WinLost_Real]	MONEY NULL,
-	[Stake_VAR]		MONEY NULL,
-	[WinLost_VAR]	MONEY NULL;
-
 GO
