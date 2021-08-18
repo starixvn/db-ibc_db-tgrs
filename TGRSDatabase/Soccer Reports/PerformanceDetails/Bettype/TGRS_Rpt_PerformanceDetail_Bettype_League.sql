@@ -32,45 +32,6 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-	IF	OBJECT_ID('tempdb..#tmp8RMPerformanceBetChoice') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmp8RMPerformanceBetChoice;
-	END;
-	
-	CREATE TABLE	#tmp8RMPerformanceBetChoice (
-			LeagueId			INT		
-		,	IsLive				BIT
-		,	TurnoverReal		MONEY
-		,	WinLossReal			MONEY
-		,	MarginReal			MONEY
-		,	PRIMARY KEY CLUSTERED (
-				LeagueId		ASC
-			,	IsLive			ASC
-		)
-	);
-	
-	IF	OBJECT_ID('tempdb..#tmpTraderPerformanceBetChoice') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpTraderPerformanceBetChoice;
-	END;
-
-	CREATE TABLE #tmpTraderPerformanceBetChoice (
-			LeagueId			INT
-		,	LeagueName			NVARCHAR(500)
-		,	LeagueGroupID		INT
-		,	IsLive				BIT	
-		,	TraderCount			INT		
-		,	MatchCount			INT
-		,	BetChoiceCount		INT
-		,	BetCount			INT
-		,	Turnover			MONEY
-		,	WinLoss				MONEY
-		,	Margin				MONEY
-		,	TurnoverReal		MONEY
-		,	WinLossReal			MONEY	
-		,	MarginReal			MONEY		
-	);
-	
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
 	IF @LeagueGroupIds <> ''
 	BEGIN
@@ -92,42 +53,6 @@ BEGIN
 	
 	IF (@LeagueName IS NULL OR @LeagueName = '')
 		BEGIN
-			INSERT INTO #tmp8RMPerformanceBetChoice(LeagueId
-				,	IsLive
-				,	TurnoverReal
-				,	WinLossReal
-				,	MarginReal)
-			SELECT 	P.LeagueId		
-				,	P.IsLive 
-				,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0) 		AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
-			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK) 
-				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-			WHERE 	 P.Is8RM = 1
-				AND	 P.EventDate BETWEEN @FromDate AND @ToDate		
-				AND  P.Bettype = @Bettype
-				AND (@Market = -1 OR P.IsLive = @Market)
-				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY P.LeagueId, P.IsLive;
-		
-			INSERT INTO #tmpTraderPerformanceBetChoice(LeagueId
-				,	LeagueName
-				,	LeagueGroupID
-				,	IsLive
-				,	TraderCount
-				,	MatchCount
-				,	BetChoiceCount
-				,	BetCount
-				,	Turnover
-				,	WinLoss
-				,	Margin
-				,	TurnoverReal
-				,	WinLossReal
-				,	MarginReal)
 			SELECT P.LeagueId,
 				L.LeagueName,
 				L.LeagueGroupID,
@@ -139,9 +64,9 @@ BEGIN
 				ISNULL(SUM(P.Stake), 0) 				AS Turnover, 
 				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss, 				
 				CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin,
-				ISNULL(SUM(P.Stake_Real),0) 			AS TurnoverReal,
-				ISNULL(SUM(P.WinLost_Real),0)			AS WinLossReal,
-				CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
+				ISNULL(SUM(P.Stake_Real),0) 			AS TurnoverReal,				
+				ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal,
+				CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -155,44 +80,7 @@ BEGIN
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;
 	ELSE
-		BEGIN
-			INSERT INTO #tmp8RMPerformanceBetChoice(LeagueId
-				,	IsLive
-				,	TurnoverReal
-				,	WinLossReal
-				,	MarginReal)
-			SELECT 	P.LeagueId		
-				,	P.IsLive 
-				,	ISNULL(SUM(P.Stake_Real),0) 	AS TurnoverReal
-				,	ISNULL(SUM(P.WinLost_Real),0)   AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END AS MarginReal
-			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK) 
-				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-			WHERE 	 P.Is8RM = 1
-				AND  P.EventDate BETWEEN @FromDate AND @ToDate
-				AND  P.Bettype = @Bettype
-				AND  L.LeagueName LIKE '%' + @LeagueName + '%'
-				AND (@Market = -1 OR P.IsLive = @Market)
-				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY P.LeagueId, P.IsLive;
-			
-			INSERT INTO #tmpTraderPerformanceBetChoice(LeagueId
-				,	LeagueName
-				,	LeagueGroupID
-				,	IsLive
-				,	TraderCount
-				,	MatchCount
-				,	BetChoiceCount
-				,	BetCount
-				,	Turnover
-				,	WinLoss
-				,	Margin
-				,	TurnoverReal
-				,	WinLossReal
-				,	MarginReal)
+		BEGIN			
 			SELECT P.LeagueId,
 				L.LeagueName,
 				L.LeagueGroupID,
@@ -205,8 +93,8 @@ BEGIN
 				ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss,				
 				CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Stake) ELSE NULL END AS Margin,
 				ISNULL(SUM(P.Stake_Real),0) 			AS TurnoverReal,
-				ISNULL(SUM(P.WinLost_Real),0) 			AS WinLossReal,
-				CASE WHEN ISNULL(SUM(P.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(P.WinLost_Real), 0)) * 100/SUM(P.Stake_Real) ELSE NULL END 	AS MarginReal
+				ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal,
+				CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal				
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -220,33 +108,7 @@ BEGIN
 			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive 	
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;
-	
-	UPDATE P
-	SET   P.TurnoverReal 	= P.TurnoverReal + r.TurnoverReal
-		, P.WinLossReal 	= P.WinLossReal - r.WinLossReal	
-		, P.MarginReal		= CASE WHEN ISNULL(P.TurnoverReal + r.TurnoverReal, 0) <> 0 THEN (ISNULL(P.WinLossReal - r.WinLossReal, 0)) * 100/(P.TurnoverReal + r.TurnoverReal) ELSE NULL END
-	FROM #tmpTraderPerformanceBetChoice AS P WITH(NOLOCK)
-	INNER JOIN #tmp8RMPerformanceBetChoice AS r WITH(NOLOCK) ON  r.LeagueId = P.LeagueId
-		AND r.IsLive = P.IsLive;
-	
-	SELECT	b.LeagueId	
-		,	b.LeagueName
-		,	b.LeagueGroupID
-		,	b.IsLive
-		,	b.TraderCount
-		,	b.MatchCount
-		,	b.BetChoiceCount
-		,	b.BetCount
-		,	b.Turnover
-		,	b.WinLoss
-		,	b.Margin
-		,	b.TurnoverReal
-		,	b.WinLossReal
-		,	b.MarginReal		
-	FROM 	#tmpTraderPerformanceBetChoice AS b WITH (NOLOCK);
-	
-	DROP TABLE #tmp8RMPerformanceBetChoice;
-	DROP TABLE #tmpTraderPerformanceBetChoice;	
+		
 END;
 
 GO

@@ -2,12 +2,11 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_BetType]
 		@FromDate			DATE
 	,	@ToDate				DATE
 	,	@LeagueName			NVARCHAR(500)= ''
-	,	@LeagueGroupIds		VARCHAR(2000) = ''
+	,	@LeagueGroupIds		VARCHAR(2000) = ''	
 	,	@Turnover			MONEY = NULL
 	,	@WinLoss			MONEY = NULL
 	,	@MarginFrom			MONEY = NULL
-	,	@MarginTo			MONEY = NULL
-	,	@IsReal				BIT = 0
+	,	@MarginTo			MONEY = NULL		
 	,	@TurnoverReal		MONEY = NULL
 	,	@WinLossReal		MONEY = NULL
 	,	@MarginFromReal		MONEY = NULL
@@ -191,19 +190,19 @@ BEGIN
 		,	m.TurnoverReal
 		,	m.WinLossReal
 		,	m.MarginReal
+		,	m.BetCount
 	FROM 	#tmpTraderPerformance AS m WITH (NOLOCK)
 		LEFT JOIN dbo.BetType AS TN WITH (NOLOCK) ON TN.BetType = m.BetType
-	WHERE	(@Turnover IS NULL OR m.Turnover >= @Turnover)
-		AND (@WinLoss IS NULL  OR m.WinLoss >= @WinLoss)
-		AND (@MarginFrom IS NULL  OR m.Margin >= @MarginFrom)
-		AND (@MarginTo IS NULL OR m.Margin <= @MarginTo)	
-		AND (@IsReal=0 
-			OR (@IsReal=1 
-				AND (@TurnoverReal IS NULL OR m.TurnoverReal >= @TurnoverReal)
+	WHERE	((@Turnover IS NULL OR m.Turnover >= @Turnover)
+				AND (@WinLoss IS NULL  OR m.WinLoss >= @WinLoss)
+				AND (@MarginFrom IS NULL  OR m.Margin >= @MarginFrom)
+				AND (@MarginTo IS NULL OR m.Margin <= @MarginTo))
+			OR (
+				(@TurnoverReal IS NULL OR m.TurnoverReal >= @TurnoverReal)
 				AND (@WinLossReal IS NULL  OR m.WinLossReal >= @WinLossReal)
 				AND (@MarginFromReal IS NULL  OR m.MarginReal >= @MarginFromReal)
 				AND (@MarginToReal IS NULL OR m.MarginReal <= @MarginToReal)
-			))
+			)			
 	ORDER BY m.Margin, m.Bettype ASC;
 		
 	DROP TABLE #tmpTraderPerformance;	

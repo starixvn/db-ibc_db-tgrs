@@ -30,23 +30,6 @@ AS
  
 BEGIN 
 	SET NOCOUNT ON;
-
-	IF	OBJECT_ID('tempdb..#tmp8RMPerformance') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmp8RMPerformance;
-	END;
-	
-	CREATE TABLE	#tmp8RMPerformance (
-			CustID				INT	
-		,	IsLive				BIT
-		,	TurnoverReal		MONEY
-		,	WinLossReal			MONEY
-		,	MarginReal			MONEY
-		,	PRIMARY KEY CLUSTERED (
-				CustID			ASC
-			,	IsLive			ASC
-		)
-	);
 	
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
 	IF @LeagueGroupIds <> ''
@@ -94,30 +77,7 @@ BEGIN
 	); 
 
 	IF (@LeagueName IS NULL OR @LeagueName = '')
-		BEGIN
-			INSERT INTO #tmp8RMPerformance(CustID
-				,	IsLive
-				,	TurnoverReal
-				,	WinLossReal
-				,	MarginReal)
-			SELECT 	tp.CustId
-				,	tp.IsLive
-				,	ISNULL(SUM(tp.Stake_Real),0) 		AS TurnoverReal
-				,	ISNULL(SUM(tp.WinLost_Real),0)		AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(tp.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(tp.WinLost_Real), 0)) * 100/SUM(tp.Stake_Real) ELSE NULL END AS MarginReal
-			FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-				LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON	tm.BetType = tp.BetType	AND	tm.WorkShift = tp.WorkShift
-				LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
-				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
-			WHERE	tp.Is8RM = 1
-				AND	tp.EventDate BETWEEN @FromDate AND @ToDate		
-				AND (@Market = -1 OR tp.IsLive = @Market)
-				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY tp.CustId, tp.IsLive;
-		
+		BEGIN			
 			INSERT INTO #tmpTraderDetail (
 					CustID
 				,	IsLive
@@ -144,8 +104,8 @@ BEGIN
 				,	CASE   WHEN SUM(tp.Stake) = 0 THEN NULL
 							ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END				AS Margin	
 				,	ISNULL(SUM(tp.Stake_Real),0) 														AS TurnoverReal
-				,	ISNULL(SUM(tp.WinLost_Real),0)														AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(tp.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(tp.WinLost_Real), 0)) * 100/SUM(tp.Stake_Real) ELSE NULL END AS MarginReal
+				,	ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) 				AS WinLossReal
+				,	CASE WHEN ISNULL(SUM(tp.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(tp.Stake_Real),0) ELSE NULL END AS MarginReal
 				,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 			FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
@@ -161,32 +121,7 @@ BEGIN
 			GROUP BY tp.CustId, tp.IsLive;
 		END;
 	ELSE
-		BEGIN
-			INSERT INTO #tmp8RMPerformance(CustID
-				,	IsLive
-				,	TurnoverReal
-				,	WinLossReal
-				,	MarginReal)
-			SELECT 	tp.CustId
-				,	tp.IsLive
-				,	ISNULL(SUM(tp.Stake_Real),0) 		AS TurnoverReal
-				,	ISNULL(SUM(tp.WinLost_Real),0)		AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(tp.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(tp.WinLost_Real), 0)) * 100/SUM(tp.Stake_Real) ELSE NULL END AS MarginReal
-			FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
-				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-				LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON	tm.BetType = tp.BetType	AND	tm.WorkShift = tp.WorkShift
-				LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
-				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
-			WHERE	tp.Is8RM = 1
-				AND	tp.BetType = @Bettype
-				AND	tp.EventDate BETWEEN @FromDate AND @ToDate
-				AND L.LeagueName LIKE '%' + @LeagueName + '%'
-				AND (@Market = -1 OR tp.IsLive = @Market)
-				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY tp.CustId, tp.IsLive;
-			
+		BEGIN			
 			INSERT INTO #tmpTraderDetail (
 					CustID
 				,	IsLive
@@ -213,8 +148,8 @@ BEGIN
 				,	CASE   WHEN SUM(tp.Stake) = 0 THEN NULL
 							ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END				AS Margin
 				,	ISNULL(SUM(tp.Stake_Real),0) 														AS TurnoverReal
-				,	ISNULL(SUM(tp.WinLost_Real),0) 														AS WinLossReal
-				,	CASE WHEN ISNULL(SUM(tp.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(tp.WinLost_Real), 0)) * 100/SUM(tp.Stake_Real) ELSE NULL END AS MarginReal							
+				,	ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) 				AS WinLossReal
+				,	CASE WHEN ISNULL(SUM(tp.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(tp.Stake_Real),0) ELSE NULL END AS MarginReal					
 				,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 			FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
@@ -230,14 +165,6 @@ BEGIN
 					AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY tp.CustId, tp.IsLive;
 		END;
-	
-	UPDATE P
-	SET   P.TurnoverReal 	= P.TurnoverReal + r.TurnoverReal
-		, P.WinLossReal 	= P.WinLossReal - r.WinLossReal	
-		, P.MarginReal		= CASE WHEN ISNULL(P.TurnoverReal + r.TurnoverReal, 0) <> 0 THEN (ISNULL(P.WinLossReal - r.WinLossReal, 0)) * 100/(P.TurnoverReal + r.TurnoverReal) ELSE NULL END
-	FROM #tmpTraderDetail AS P WITH(NOLOCK)
-	INNER JOIN #tmp8RMPerformance AS r WITH(NOLOCK) ON  r.CustID = P.CustID
-		AND r.IsLive = P.IsLive;
 	
 	SELECT	td.CustID
 		,	t.Username
@@ -260,8 +187,7 @@ BEGIN
 		INNER JOIN	dbo.Team AS tm WITH (NOLOCK) ON	t.TeamId = tm.TeamId		
 	ORDER BY td.Margin DESC, t.Username ASC;
 	
-	DROP TABLE #tmpTraderDetail;
-	DROP TABLE #tmp8RMPerformance;
+	DROP TABLE #tmpTraderDetail;	
 END;
 
 GO
