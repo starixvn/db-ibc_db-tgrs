@@ -1,7 +1,7 @@
 /*
 	Creator:	20210726@Adam.Tran
 	Task:		Sports - Performance Real Figures - [Redmine: #158981]
-	Server:		DB06.bodb_TGRS
+	Server:		DB06.bodb_TGRS & DBTP.bodb_TGRS_UAT
 */
 
 USE bodb_TGRS

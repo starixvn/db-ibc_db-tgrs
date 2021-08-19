@@ -19,7 +19,6 @@ AS
 		- 20180912@Simon: add league exclusion
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
-		- 20210803@Adam.Tran:	Sports - Performance Real Figures - [Redmine: #158981]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -31,16 +30,13 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT 	b.BetType
-		, 	b.TypeName 
-		,	ISNULL(SUM(t.Stake),0) AS Turnover
-		, 	ISNULL(SUM(t.WinLost),0) -  ISNULL(SUM(t.Comm),0) AS WinLost
-		,	ISNULL(SUM(t.BetCount),0) AS BetCount
-		,	CASE WHEN ISNULL(SUM(t.Stake), 0) <> 0 THEN (ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm),0)) * 100/SUM(t.Stake) ELSE NULL END AS Margin
-		,	ISNULL(SUM(t.Stake_Real),0) AS TurnoverReal		
-		,	ISNULL(SUM(t.WinLost_Real),0) -  ISNULL(SUM(t.Comm),0) - ISNULL(SUM(t.Comm_VAR),0) AS WinLostReal
-		,	CASE WHEN ISNULL(SUM(t.Stake_Real), 0) <> 0 THEN (ISNULL(SUM(t.WinLost_Real), 0) - ISNULL(SUM(t.Comm),0) - ISNULL(SUM(t.Comm_VAR),0)) * 100/SUM(t.Stake_Real) ELSE NULL END AS MarginReal
-		,	t.IsLive
+	SELECT
+		b.BetType, b.TypeName, 
+		ISNULL(SUM(t.Stake),0) AS Turnover, 
+		ISNULL(SUM(t.WinLost),0) -  ISNULL(SUM(t.Comm),0) AS WinLost,
+		ISNULL(SUM(t.BetCount),0) AS BetCount,
+		CASE WHEN ISNULL(SUM(t.Stake), 0) <> 0 THEN (ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm),0)) * 100/SUM(t.Stake) ELSE NULL END AS Margin,
+		t.IsLive 
 	FROM dbo.TraderPerformance t (NOLOCK)
 		INNER JOIN dbo.BetType b (NOLOCK) ON t.BetType = b.BetType
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON t.LeagueId = le.LeagueId
@@ -53,12 +49,8 @@ BEGIN
 		AND (@Market = -1 OR t.IsLive = @Market)
 		AND b.[Disabled] = 0
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-	GROUP BY b.BetType
-		, b.TypeName
-		, b.OrderId
-		, t.IsLive
-	ORDER BY Margin DESC
-		, b.OrderId;
+	GROUP BY b.BetType, b.TypeName, b.OrderId, t.IsLive
+	ORDER BY Margin DESC, b.OrderId;
 END;
 
 GO

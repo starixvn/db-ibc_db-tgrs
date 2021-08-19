@@ -193,16 +193,14 @@ BEGIN
 		,	m.BetCount
 	FROM 	#tmpTraderPerformance AS m WITH (NOLOCK)
 		LEFT JOIN dbo.BetType AS TN WITH (NOLOCK) ON TN.BetType = m.BetType
-	WHERE	((@Turnover IS NULL OR m.Turnover >= @Turnover)
-				AND (@WinLoss IS NULL  OR m.WinLoss >= @WinLoss)
-				AND (@MarginFrom IS NULL  OR m.Margin >= @MarginFrom)
-				AND (@MarginTo IS NULL OR m.Margin <= @MarginTo))
-			OR (
-				(@TurnoverReal IS NULL OR m.TurnoverReal >= @TurnoverReal)
-				AND (@WinLossReal IS NULL  OR m.WinLossReal >= @WinLossReal)
-				AND (@MarginFromReal IS NULL  OR m.MarginReal >= @MarginFromReal)
-				AND (@MarginToReal IS NULL OR m.MarginReal <= @MarginToReal)
-			)			
+	WHERE	(@Turnover IS NULL OR m.Turnover >= @Turnover)
+		AND (@WinLoss IS NULL  OR m.WinLoss >= @WinLoss)
+		AND (@MarginFrom IS NULL  OR m.Margin >= @MarginFrom)
+		AND (@MarginTo IS NULL OR m.Margin <= @MarginTo)			
+		AND (@TurnoverReal IS NULL OR m.TurnoverReal >= @TurnoverReal)
+		AND (@WinLossReal IS NULL  OR m.WinLossReal >= @WinLossReal)
+		AND (@MarginFromReal IS NULL  OR m.MarginReal >= @MarginFromReal)
+		AND (@MarginToReal IS NULL OR m.MarginReal <= @MarginToReal)					
 	ORDER BY m.Margin, m.Bettype ASC;
 		
 	DROP TABLE #tmpTraderPerformance;	
