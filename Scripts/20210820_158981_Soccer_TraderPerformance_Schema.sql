@@ -1,7 +1,7 @@
 /*
 	Creator:	20210726@Adam.Tran
 	Task:		Sports - Performance Real Figures - [Redmine: #158981]
-	Server:		DB06.bodb_TGRS & DBTP.bodb_TGRS_UAT
+	DB:			DB06.bodb_TGRS_UAT
 */
 
 USE bodb_TGRS
@@ -97,3 +97,5 @@ ALTER TABLE [dbo].SummaryByBetType_Monthly ADD
 	[WinLost_VAR]	MONEY NULL;
 
 GO
+
+

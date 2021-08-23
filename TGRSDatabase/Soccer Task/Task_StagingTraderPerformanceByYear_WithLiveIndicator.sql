@@ -6,8 +6,8 @@ AS
 /*
  Created:	20171127@Long
  Task :		Staging Data on TGRS DB By Year for Live & Non-Live tickets
- DB:		DBTGRS.bodb_TGRS
- Original:  
+ DB:		DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
+ Original:   
   
  Revisions:      
 	- 20171127@Long:		Create new
@@ -330,3 +330,4 @@ BEGIN;
 	END;
 END;
 
+/*<info serverAlias="DB06-bodb_TGRS_UAT" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

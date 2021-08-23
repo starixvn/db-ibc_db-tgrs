@@ -4,7 +4,7 @@ AS
 /*
 	Created:	20171017@Long.Luu
 	Task :		Staging Data for Today on TGRS DB
-	DB:			DBTGRS.bodb_TGRS
+	DB:			DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
 	Original:
   
 	Revisions:
@@ -1606,4 +1606,4 @@ BEGIN
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DB06-bodb_TGRS_UAT" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

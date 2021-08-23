@@ -11,7 +11,7 @@ AS
 /*  
 	Created:	20160315@Thai.Tran
 	Task:		Detail report - View Match detail from Bet Type, League and Trader
-	DB:			DBTGRS.bodb_TGRS
+	DB:			DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
 	Original:      
 	  			
 	Revision:
@@ -115,4 +115,5 @@ BEGIN
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+
+/*<info serverAlias="DB06-bodb_TGRS_UAT" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
