@@ -21,7 +21,7 @@ AS
 		- 20200709@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 		- 20200731@John.Ngo:	View down bet choice from League performance [Redmine ID: 137278]
 		- 20200909@John.Ngo:	Performance Detail - Bettype - Support filter by LeagueName [Redmine ID: 141294]
-		- 202100809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
 
@@ -113,4 +113,4 @@ END;
 
 GO
 
-/*<info serverAlias="DB06-bodb_TGRS_UAT" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

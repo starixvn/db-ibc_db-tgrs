@@ -17,7 +17,7 @@ AS
 		- 20180912@Simon:		add league exclusion
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
-		- 202100809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
@@ -110,4 +110,4 @@ END;
 
 GO
 
-/*<info serverAlias="DB06-bodb_TGRS_UAT" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

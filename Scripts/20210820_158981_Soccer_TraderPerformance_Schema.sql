@@ -1,7 +1,7 @@
 /*
 	Creator:	20210726@Adam.Tran
 	Task:		Sports - Performance Real Figures - [Redmine: #158981]
-	DB:			DB06.bodb_TGRS_UAT
+	DB:			DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
 */
 
 USE bodb_TGRS
@@ -98,4 +98,4 @@ ALTER TABLE [dbo].SummaryByBetType_Monthly ADD
 
 GO
 
-
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
