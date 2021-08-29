@@ -323,7 +323,7 @@ BEGIN
 				INNER JOIN bodb02.dbo.league AS l WITH (NOLOCK) ON l.leagueid = m.leagueid
 				LEFT JOIN bodb02.dbo.team AS t WITH (NOLOCK) ON t.teamid = HomeId
 				LEFT JOIN dbo.TraderPerformance AS tp WITH(NOLOCK) ON tp.MatchId = m.matchid
-		WHERE	m.EventDate = @WinlostDate AND tp.EventDate = @WinlostDate
+		WHERE	m.EventDate = @WinlostDate
 				AND	m.SportType = 1
 				AND m.EventStatus = 'completed'
 				AND	m.MatchCode NOT LIKE '%hedge%'
