@@ -19,6 +19,7 @@ AS
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20200713@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
+		- 20210827@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 
 	Param's Explanation: 
 		- @Market: -1 All; 0 Nonlive; 1 Live   	
@@ -59,11 +60,19 @@ BEGIN
 	    SELECT bt.BetType 
     FROM	dbo.BetType AS bt WITH (NOLOCK);
 	   
-	SELECT P.MatchId, P.LeagueId, P.HomeId, P.AwayId, P.EventDate, P.IsLive,
-		ISNULL(SUM(P.Stake), 0) AS Turnover, 
-		ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss, 
-		ISNULL(SUM(P.BetCount), 0) as BetCount,
-		CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0)- ISNULL(SUM(P.Comm), 0)) * 100/ISNULL(SUM(P.Stake), 0) ELSE NULL END AS Margin
+	SELECT P.MatchId
+	, 	P.LeagueId
+	, 	P.HomeId
+	, 	P.AwayId
+	, 	P.EventDate
+	, 	P.IsLive
+	,	ISNULL(SUM(P.Stake), 0) 								AS Turnover
+	, 	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) 		AS WinLoss	
+	,	CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0)- ISNULL(SUM(P.Comm), 0)) * 100/ISNULL(SUM(P.Stake), 0) ELSE NULL END AS Margin
+	,	ISNULL(SUM(P.Stake_Real),0) 							AS TurnoverReal
+	,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) 	AS WinLossReal
+	,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END 							   				  AS MarginReal
+	, 	ISNULL(SUM(P.BetCount), 0) as BetCount
 	FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 		INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 		LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId

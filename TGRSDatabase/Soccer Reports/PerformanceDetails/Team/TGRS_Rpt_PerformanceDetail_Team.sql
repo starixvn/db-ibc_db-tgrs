@@ -7,6 +7,10 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team]
 	,	@WinLoss			MONEY = NULL
 	,	@MarginFrom			MONEY = NULL
 	,	@MarginTo			MONEY = NULL
+	,	@TurnoverReal		MONEY = NULL
+	,	@WinLossReal		MONEY = NULL
+	,	@MarginFromReal		MONEY = NULL
+	,	@MarginToReal		MONEY = NULL
 	,	@Bettypes			VARCHAR(2000) =  '0'
 	,	@IsExcludeLeagues	BIT = 1
 	,	@Market				SMALLINT = 1
@@ -26,6 +30,7 @@ AS
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20200713@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
+		- 20210827@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -77,9 +82,12 @@ BEGIN
 		,	LeagueCount		INT
 		,	MatchCount		INT
 		,	Turnover		MONEY
-		,	WinLoss			MONEY
-		,	BetCount		INT
+		,	WinLoss			MONEY		
 		,	Margin			MONEY
+		,	TurnoverReal	MONEY
+		,	WinLossReal		MONEY		
+		,	MarginReal		MONEY
+		,	BetCount		INT
 		,	Score			MONEY
 		,	IsLive			BIT
 	);
@@ -136,12 +144,12 @@ BEGIN
 			,	COUNT(DISTINCT tp.LeagueId)								AS LeagueCount
 			,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
 			,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
-			,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss
+			,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss			
+			,	CASE WHEN ISNULL(SUM(tp.Stake), 0) = 0 THEN NULL ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)   END														 AS Margin
+			,	ISNULL(SUM(tp.Stake_Real),0) 							AS TurnoverReal
+			,	ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) 	AS WinLossReal
+			,	CASE WHEN ISNULL(SUM(tp.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(tp.Stake_Real),0) ELSE NULL END 							   AS MarginReal
 			,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
-			,	CASE	WHEN ISNULL(SUM(tp.Stake), 0) = 0
-						THEN NULL
-						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
-				END														AS Margin
 		FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
 			INNER JOIN	dbo.Trader AS t WITH (NOLOCK) ON	t.CustId = tp.CustId
@@ -155,14 +163,42 @@ BEGIN
 			AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 		GROUP BY t.TeamId, tp.IsLive
 	)
-	INSERT INTO @Team (TeamId, TeamName, TraderCount, LeagueCount, MatchCount, Turnover, WinLoss, BetCount, Margin, IsLive)
-	SELECT	td.TeamId, t.TeamName, td.TraderCount, td.LeagueCount, td.MatchCount, td.Turnover, td.WinLoss, td.BetCount, td.Margin, td.IsLive
+	INSERT INTO @Team (TeamId
+		, 	TeamName
+		, 	TraderCount
+		, 	LeagueCount
+		, 	MatchCount
+		, 	Turnover
+		, 	WinLoss		
+		, 	Margin
+		, 	TurnoverReal
+		, 	WinLossReal
+		, 	MarginReal
+		, 	BetCount
+		, 	IsLive)
+	SELECT	td.TeamId
+		, 	t.TeamName
+		, 	td.TraderCount
+		, 	td.LeagueCount
+		, 	td.MatchCount
+		, 	td.Turnover
+		, 	td.WinLoss
+		, 	td.Margin
+		, 	td.TurnoverReal
+		, 	td.WinLossReal
+		, 	td.MarginReal
+		, 	td.BetCount
+		, 	td.IsLive
 	FROM	TeamDetail td
 		INNER JOIN	dbo.Team AS t WITH (NOLOCK) ON t.TeamId = td.TeamId
 	WHERE	(@Turnover IS NULL OR td.Turnover >= @Turnover)
 		AND	(@WinLoss IS NULL OR td.WinLoss >= @WinLoss)
 		AND	(@MarginFrom IS NULL OR td.Margin >= @MarginFrom)
-		AND	(@MarginTo IS NULL OR td.Margin <= @MarginTo);
+		AND	(@MarginTo IS NULL OR td.Margin <= @MarginTo)
+		AND (@TurnoverReal IS NULL OR td.TurnoverReal >= @TurnoverReal)
+		AND (@WinLossReal IS NULL  OR td.WinLossReal >= @WinLossReal)
+		AND (@MarginFromReal IS NULL  OR td.MarginReal >= @MarginFromReal)
+		AND (@MarginToReal IS NULL OR td.MarginReal <= @MarginToReal);
 
 	WITH score AS (
 		SELECT	t.TeamId
@@ -184,9 +220,12 @@ BEGIN
 		,	t.LeagueCount
 		,	t.MatchCount
 		,	t.Turnover
-		,	t.WinLoss
-		,	t.BetCount
+		,	t.WinLoss		
 		,	t.Margin
+		,	t.TurnoverReal
+		,	t.WinLossReal		
+		,	t.MarginReal
+		,	t.BetCount
 		,	t.Score 
 		,	t.IsLive
 	FROM	@Team AS t

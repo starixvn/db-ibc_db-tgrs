@@ -6,6 +6,10 @@ ALTER PROCEDURE	[dbo].[TGRS_Rpt_PerformanceDetail_Grade]
 	,	@WinLoss			MONEY			= NULL
 	,	@MarginFrom			MONEY			= NULL
 	,	@MarginTo			MONEY			= NULL
+	,	@TurnoverReal		MONEY 			= NULL
+	,	@WinLossReal		MONEY 			= NULL
+	,	@MarginFromReal		MONEY 			= NULL
+	,	@MarginToReal		MONEY 			= NULL
 	,	@Bettypes			VARCHAR(2000)	= '0'
 	,	@IsExcludeLeagues	BIT				= 1
 	,	@Market				SMALLINT		= 1
@@ -26,6 +30,7 @@ AS
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20200713@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
+		- 20210827@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -74,9 +79,12 @@ BEGIN
 		,	LeagueCount		INT
 		,	MatchCount		INT
 		,	Turnover		MONEY
-		,	WinLoss			MONEY
-		,	BetCount		INT
+		,	WinLoss			MONEY		
 		,	Margin			MONEY
+		,	TurnoverReal	MONEY
+		,	WinLossReal		MONEY		
+		,	MarginReal		MONEY
+		,	BetCount		INT
 		,	Score			MONEY
 		,	IsLive			BIT
 	);
@@ -125,11 +133,11 @@ BEGIN
 			,	COUNT(DISTINCT tp.MatchId)								AS MatchCount
 			,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
 			,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss
+			,	CASE WHEN ISNULL(SUM(tp.Stake), 0) = 0 THEN NULL ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0) END														  AS Margin
+			,	ISNULL(SUM(tp.Stake_Real),0) 							AS TurnoverReal
+			,	ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) 	AS WinLossReal
+			,	CASE WHEN ISNULL(SUM(tp.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(tp.Stake_Real),0) ELSE NULL END 							   AS MarginReal
 			,	ISNULL(SUM(tp.BetCount), 0)								AS BetCount
-			,	CASE	WHEN ISNULL(SUM(tp.Stake), 0) = 0
-						THEN NULL
-						ELSE (ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)) * 100 / ISNULL(SUM(tp.Stake), 0)
-				END														AS Margin
 		FROM	dbo.TraderPerformance	AS tp WITH (NOLOCK)
 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
 			LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -141,13 +149,39 @@ BEGIN
 			AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 		GROUP BY	tp.Grade, tp.IsLive
 	)
-	INSERT INTO @Grade (Grade, TraderCount, LeagueCount, MatchCount, Turnover, WinLoss, BetCount, Margin, IsLive)
-	SELECT	gd.Grade, gd.TraderCount, gd.LeagueCount, gd.MatchCount, gd.Turnover, gd.WinLoss, gd.BetCount, gd.Margin, gd.IsLive
+	INSERT INTO @Grade (Grade
+		, 	TraderCount
+		, 	LeagueCount
+		, 	MatchCount
+		, 	Turnover
+		, 	WinLoss		
+		, 	Margin
+		, 	TurnoverReal
+		, 	WinLossReal
+		, 	MarginReal
+		, 	BetCount
+		, 	IsLive)
+	SELECT	gd.Grade
+		, 	gd.TraderCount
+		, 	gd.LeagueCount
+		, 	gd.MatchCount
+		, 	gd.Turnover
+		, 	gd.WinLoss		
+		, 	gd.Margin
+		, 	gd.TurnoverReal
+		, 	gd.WinLossReal
+		, 	gd.MarginReal
+		, 	gd.BetCount
+		, 	gd.IsLive
 	FROM	GradeDetail gd
 	WHERE	(@Turnover IS NULL OR gd.Turnover >= @Turnover)
 		AND	(@WinLoss IS NULL OR gd.WinLoss >= @WinLoss)
 		AND	(@MarginFrom IS NULL OR gd.Margin >= @MarginFrom)
-		AND	(@MarginTo IS NULL OR gd.Margin <= @MarginTo);
+		AND	(@MarginTo IS NULL OR gd.Margin <= @MarginTo)
+		AND (@TurnoverReal IS NULL OR gd.TurnoverReal >= @TurnoverReal)
+		AND (@WinLossReal IS NULL  OR gd.WinLossReal >= @WinLossReal)
+		AND (@MarginFromReal IS NULL  OR gd.MarginReal >= @MarginFromReal)
+		AND (@MarginToReal IS NULL OR gd.MarginReal <= @MarginToReal);
 
 	WITH score AS (
 		SELECT	sd.Grade
@@ -166,9 +200,12 @@ BEGIN
 		,	LeagueCount
 		,	MatchCount
 		,	Turnover
-		,	WinLoss
-		,	BetCount
+		,	WinLoss		
 		,	Margin
+		,	TurnoverReal
+		,	WinLossReal
+		,	MarginReal
+		,	BetCount
 		,	Score 
 		,	IsLive
 	FROM	@Grade
