@@ -21,6 +21,7 @@ AS
 		- 20190129@John:  Fix bug for League Exclusion [Redmine ID: 107809]
 		- 20190919@John.Ngo:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
+		- 20210901@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 
 	Param's Explanation (filtered by):
 		- @Market:	-1 All; 0 Nonlive; 1 Live
@@ -51,10 +52,12 @@ SET NOCOUNT ON;
 			SELECT @FDate = DATEADD(DAY, 1, @FDate)
 		END
 
-		SELECT d.WLDate,
-			ISNULL(SUM(t.Stake), 0) AS Turnover,
-			ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm), 0) AS WinLost,
-			t.IsLive
+		SELECT 	d.WLDate
+			,	ISNULL(SUM(t.Stake), 0)	 							AS Turnover
+			,	ISNULL(SUM(t.WinLost), 0) - ISNULL(SUM(t.Comm), 0) 	AS WinLoss
+			,	ISNULL(SUM(t.Stake_Real),0) 						AS TurnoverReal
+			,	ISNULL(SUM(CASE WHEN t.Is8RM = 0 THEN t.WinLost_Real ELSE 0 END),0) 	AS WinLossReal
+			,	t.IsLive
 		FROM dbo.TraderPerformance t (NOLOCK)
 			RIGHT JOIN @Date d ON t.EventDate = d.WLDate AND CustId = @TraderId
 			INNER JOIN Bettype bt WITH(NOLOCK) ON t.Bettype = bt.Bettype
@@ -82,10 +85,12 @@ SET NOCOUNT ON;
 		
 		IF (@FDate = @FromDate AND @TDate = @ToDate) -- Report by month - month
 		BEGIN
-			SELECT d.WLDate,
-				ISNULL(SUM(s.Stake), 0) AS Turnover,
-				ISNULL(SUM(s.WinLost), 0) - ISNULL(SUM(s.Comm), 0) AS WinLost,
-				s.IsLive
+			SELECT 	d.WLDate
+				,	ISNULL(SUM(s.Stake), 0) 							AS Turnover
+				,	ISNULL(SUM(s.WinLost), 0) - ISNULL(SUM(s.Comm), 0) 	AS WinLoss
+				,	ISNULL(SUM(s.Stake_Real),0) 						AS TurnoverReal
+				,	ISNULL(SUM(CASE WHEN s.Is8RM = 0 THEN s.WinLost_Real ELSE 0 END),0) 	AS WinLossReal
+				,	s.IsLive
 			FROM dbo.SummaryByTrader_Monthly s (NOLOCK)
 				RIGHT JOIN @Date d ON s.Eventdate = d.WLDate AND CustId = @TraderId
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON s.LeagueId = le.LeagueId
@@ -96,17 +101,20 @@ SET NOCOUNT ON;
 		END
 		ELSE -- Report by date - month
 		BEGIN
-			SELECT d.WLDate,
-				ISNULL(SUM(s.Turnover), 0) AS Turnover,
-				ISNULL(SUM(s.WinLost), 0) AS WinLost,
-				s.IsLive
+			SELECT 	d.WLDate
+				,	ISNULL(SUM(s.Turnover), 0) 		AS Turnover
+				,	ISNULL(SUM(s.WinLoss), 0) 		AS WinLoss
+				,	ISNULL(SUM(s.TurnoverReal), 0) 	AS TurnoverReal
+				,	ISNULL(SUM(s.WinLossReal), 0) 	AS WinLossReal
+				,	s.IsLive
 			FROM
 				(
-					SELECT
-						DATEADD(MONTH, DATEDIFF(MONTH, 0, p.EventDate), 0) AS EventDate,
-						ISNULL(SUM(p.Stake), 0) AS Turnover,
-						ISNULL(SUM(p.WinLost), 0) - ISNULL(SUM(p.Comm), 0) AS WinLost,
-						p.IsLive
+					SELECT	DATEADD(MONTH, DATEDIFF(MONTH, 0, p.EventDate), 0) 	AS EventDate
+						,	ISNULL(SUM(p.Stake), 0) 							AS Turnover
+						,	ISNULL(SUM(p.WinLost), 0) - ISNULL(SUM(p.Comm), 0) 	AS WinLoss
+						,	ISNULL(SUM(p.Stake_Real),0) 						AS TurnoverReal
+						,	ISNULL(SUM(CASE WHEN p.Is8RM = 0 THEN p.WinLost_Real ELSE 0 END),0) 	AS WinLossReal
+						,	p.IsLive
 					FROM dbo.TraderPerformance p WITH(NOLOCK)
 						 INNER JOIN Bettype bt WITH(NOLOCK) ON p.Bettype = bt.Bettype
 						 LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON p.LeagueId = le.LeagueId
