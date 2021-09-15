@@ -193,6 +193,7 @@ BEGIN
 		,	LiveIndicator		BIT
 		,	hdp1				SMALLMONEY
 		,	hdp2				SMALLMONEY
+		,	oddsspread			MONEY
 		,	Is8RM				BIT
 		,   BetChoice			NVARCHAR(10)
 		,	AdjOdds				SMALLMONEY
@@ -234,6 +235,7 @@ BEGIN
 		,	LiveIndicator		BIT
 		,	hdp1				SMALLMONEY
 		,	hdp2				SMALLMONEY
+		,	oddsspread			MONEY
 		,	Is8RM				BIT
 		,   BetChoice			NVARCHAR(10) 
 	);
@@ -395,7 +397,7 @@ BEGIN
 		TRUNCATE TABLE	#tmpRTFilteredBettransByBatch;
 		INSERT INTO	#tmpRTFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, Winlostdate, Bettype, Modds, Virtualrate, Actualrate, Tpositiontaking,
 						spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, ExtraPT, Spread, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost, 
-						MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, LiveIndicator, hdp1, hdp2, Is8RM, BetChoice, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
+						MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
 			SELECT	[TransId]			= b.transid
 				,	[CustId]			= b.custid
 				,	[MatchId]			= b.matchId
@@ -438,6 +440,7 @@ BEGIN
 				,	[LiveIndicator]		= b.liveindicator
 				,	[hdp1]				= b.hdp1
 				,	[hdp2]				= b.hdp2
+				,	[oddsspread]		= b.oddsspread
 				,	[Is8RM]				= CASE WHEN t8.CustId IS NULL THEN 0 ELSE 1 END
 				,	[BetChoice]			= b.betteam
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
@@ -527,7 +530,7 @@ BEGIN
 		END;
 			
 		INSERT INTO	#tmpRTStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
-			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, Is8RM, BetChoice)
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice)
 		SELECT		[TraderId]			= CASE WHEN b.LiveIndicator = 0 THEN @IdForNonLiveUnassignedTrader ELSE ISNULL(t.TraderId, @IdForLiveUnassignedTrader) END
 				,	[CustId]			= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
@@ -554,6 +557,7 @@ BEGIN
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[hdp1]				= b.hdp1
 				,	[hdp2]				= b.hdp2
+				,	[oddsspread]		= b.oddsspread
 				,	[Is8RM]				= b.Is8RM
 				,	[BetChoice]			= b.BetChoice 
 		FROM	#tmpRTFilteredBettransByBatch AS b WITH (NOLOCK)
@@ -679,7 +683,7 @@ BEGIN
 			RAISERROR('	Insert TraderPerformance - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		INSERT INTO	[dbo].[TraderPerformance_BetChoice](CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, hdp1, hdp2, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
+		INSERT INTO	[dbo].[TraderPerformance_BetChoice](CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 		SELECT		[CustId]			= t.TraderId
 				,	[MatchId]			= t.MatchId
 				,	[EventDate]			= t.EventDate
@@ -690,6 +694,7 @@ BEGIN
 				,	[IsLive]			= t.LiveIndicator
 				,	[hdp1]				= t.hdp1
 				,	[hdp2]				= t.hdp2
+				,	[oddsspread]		= t.oddsspread
 				,	[Stake]				= SUM(t.Stake * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
 				,	[WinLost]			= SUM(((-(t.WinLost + t.SMAWinLost)) + t.WinLost * t.ExtraPT) * t.VirtualRate)
 				,	[Comm]				= SUM((t.Comm - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (t.Comm * t.ExtraPT/(1 - t.TPositionTaking)) END)) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
@@ -705,7 +710,7 @@ BEGIN
 		FROM #tmpRTStagingTraderPerformance AS t
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 		WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
-		GROUP BY t.TraderId, t.MatchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.Is8RM;
+		GROUP BY t.TraderId, t.MatchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.hdp1, t.hdp2, t.oddsspread, t.Is8RM;
 				
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())

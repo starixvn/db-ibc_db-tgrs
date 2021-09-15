@@ -31,7 +31,8 @@ CREATE TABLE [dbo].[BetChoice_FastMarketMapping](
 	[hdp2]				SMALLMONEY NULL,	
 	[BetTeam]			SMALLMONEY NULL,
 	[BetOption]			NVARCHAR(50) NULL,
-	[Interval]			NVARCHAR(50) NULL
+	[Interval]			NVARCHAR(50) NULL,
+	[oddsspread]		MONEY NULL
 )
 
 CREATE CLUSTERED INDEX [CIX_BetChoice_FastMarketMapping_BetType] ON [dbo].[BetChoice_FastMarketMapping]
