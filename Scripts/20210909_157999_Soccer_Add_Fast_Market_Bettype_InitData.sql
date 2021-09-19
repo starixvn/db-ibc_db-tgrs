@@ -21,6 +21,11 @@ INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, Be
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 8, 8, 'Free Kick-Yes', NULL);
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 16, 16, 'Goal Kick-Yes', NULL);
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 32, 32, 'Throw In-Yes', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 2, 0, 'Goal - No', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 4, 0, 'Corner - No', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 8, 0, 'Free Kick - No', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 16, 0, 'Goal Kick - No', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, NULL, 32, 0, 'Throw In - No', NULL);
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, 0, NULL, NULL, NULL, '00:00-00:59');
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, 1, NULL, NULL, NULL, '01:00-01:59');
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(221, 2, NULL, NULL, NULL, '02:00-02:59');
@@ -118,6 +123,12 @@ INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, Be
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 4, 0, 'Corner-No', NULL);
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 128, 128, 'Penalty-Yes', NULL);
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 128, 0, 'Penalty-No', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 8, 8, 'Free Kick - Yes', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 8, 0, 'Free Kick - No', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 16, 16, 'Goal Kick - Yes', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 16, 0, 'Goal Kick - No', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 32, 32, 'Throw In - Yes', NULL);
+INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, NULL, 32, 0, 'Throw In - No', NULL);
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, 0, NULL, NULL, NULL, '00:00-04:59');
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, 1, NULL, NULL, NULL, '01:00-05:59');
 INSERT INTO [dbo].[BetChoice_FastMarketMapping](BetType, hdp1, hdp2, betteam, BetOption, Interval) VALUES(222, 2, NULL, NULL, NULL, '02:00-06:59');

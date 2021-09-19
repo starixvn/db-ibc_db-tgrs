@@ -14,7 +14,7 @@ AS
  
 	 Revisions:
 		- 20200731@John.Ngo:	View down bet choice from League performance [Redmine ID: 137278]
-		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		- 20210915@Adam.Tran: 	Add Fast Market Bettype - [Redmine: #157999]
 		
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -37,8 +37,10 @@ BEGIN
 	
 	IF @IsFMBetType = 1
 		BEGIN
-			SELECT 	ISNULL(fm.BetOption, P.BetChoice)					AS BetChoice							
-				,	P.IsLive											AS IsLive
+			SELECT 	P.betteam											AS BetTeam
+				,	FM.BetOption										AS BetOption
+				,	P.oddsspread										AS OddsSpread
+				,	P.IsLive											AS IsLive				
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 				,	ISNULL(SUM(P.Stake), 0)								AS Turnover
@@ -47,19 +49,18 @@ BEGIN
 				,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal		
 				,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
-			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)    
-				LEFT JOIN dbo.BetChoice_FastMarketMapping AS fm WITH (NOLOCK) ON fm.BetType = @Bettype AND fm.BetTeam = P.BetChoice
-				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId  
+			FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK) 
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+				LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = @Bettype AND FM.betteam = P.betteam				 
 			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
 				AND	P.Bettype = @Bettype AND P.LeagueId = @LeagueId
-				AND (@Market = -1 OR P.IsLive = @Market)
-				AND (P.BetChoice = fm.BetTeam)
+				AND (@Market = -1 OR P.IsLive = @Market)				
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-			GROUP BY ISNULL(fm.BetOption, P.BetChoice), P.IsLive;				
+			GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;				
 		END;
 	ELSE
 		BEGIN
-			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice		
+			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice				
 				,	P.IsLive											AS IsLive
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
