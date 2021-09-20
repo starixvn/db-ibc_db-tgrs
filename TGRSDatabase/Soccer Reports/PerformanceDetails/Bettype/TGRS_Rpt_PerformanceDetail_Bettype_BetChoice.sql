@@ -81,8 +81,8 @@ BEGIN
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-						LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = @Bettype AND FM.betteam = P.betteam	
-					WHERE	P.Bettype = @Bettype
+						LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType
+					WHERE	P.BetType = @Bettype
 						AND P.EventDate BETWEEN @FromDate AND @ToDate
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
@@ -134,7 +134,7 @@ BEGIN
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-						LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = @Bettype AND FM.betteam = P.betteam
+						LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType
 					WHERE	P.Bettype = @Bettype
 						AND P.EventDate BETWEEN @FromDate AND @ToDate
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'

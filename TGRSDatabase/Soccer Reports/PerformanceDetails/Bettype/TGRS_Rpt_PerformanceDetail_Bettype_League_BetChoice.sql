@@ -51,9 +51,9 @@ BEGIN
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 			FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK) 
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-				LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = @Bettype AND FM.betteam = P.betteam				 
+				LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam				 
 			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
-				AND	P.Bettype = @Bettype AND P.LeagueId = @LeagueId
+				AND	P.BetType = @Bettype AND P.LeagueId = @LeagueId
 				AND (@Market = -1 OR P.IsLive = @Market)				
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 			GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;				
