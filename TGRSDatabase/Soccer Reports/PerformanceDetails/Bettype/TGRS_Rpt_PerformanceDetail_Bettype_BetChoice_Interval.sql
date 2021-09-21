@@ -39,7 +39,7 @@ BEGIN
 	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND	P.BetType = @BetType
 		AND P.betteam = @BetTeam
-		AND	(@Oddsspread IS NULL OR P.Oddsspread = @Oddsspread)
+		AND	(@Oddsspread = -1 OR P.Oddsspread = @Oddsspread)
 		AND (@Market = -1 OR P.IsLive = @Market)	
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 	GROUP BY IG.Interval
