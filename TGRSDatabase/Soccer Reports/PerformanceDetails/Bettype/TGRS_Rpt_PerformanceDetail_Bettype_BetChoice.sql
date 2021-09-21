@@ -78,9 +78,9 @@ BEGIN
 						,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 					FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-						LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
+						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId						
 					WHERE	P.BetType = @BetType
 						AND P.EventDate BETWEEN @FromDate AND @ToDate
 						AND (@Market = -1 OR P.IsLive = @Market)
@@ -131,9 +131,9 @@ BEGIN
 					,	ISNULL(SUM(P.BetCount), 0)							AS BetCount				
 					FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-						LEFT JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
+						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId						
 					WHERE	P.BetType = @BetType
 						AND P.EventDate BETWEEN @FromDate AND @ToDate
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
