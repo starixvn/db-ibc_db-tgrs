@@ -28,10 +28,9 @@ BEGIN
 	
 	SET @IsFMBetType = 
 		CASE 
-			WHEN EXISTS (
-				SELECT TOP(1) b.BetType
-				FROM dbo.BetChoice_FastMarketMapping AS b
-				WHERE b.BetType = @BetType) THEN 1
+			WHEN EXISTS (SELECT (1)
+						 FROM dbo.BetChoice_FastMarketMapping AS b
+						 WHERE b.BetType = @BetType) THEN 1
 			ELSE 0
 		END;	
 	
