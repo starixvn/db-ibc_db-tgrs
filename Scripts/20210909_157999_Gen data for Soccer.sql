@@ -1,14 +1,14 @@
 /*
-	Creator:	20210823@John.Ngo
-	Task:		Sports - Performance Real Figures - [Redmine: #158981]
-	Server:		DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
+	Creator:	20210923@John.Ngo
+	Task:		Add Fast Market Bettype - [Redmine: #157999]
+	Server:		DB061.bodb_TGRS
 
 	Reviewer:   Brice
 */
 
-USE bodb_TGRS_UAT
+USE bodb_TGRS
 
-DECLARE @FDate	DATE = '20210601'
+DECLARE @FDate	DATE = '20210101'
 	,	@TDate	DATE = GETDATE();
 
 ---- GEN Data
