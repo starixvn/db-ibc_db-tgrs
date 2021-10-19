@@ -21,6 +21,7 @@ AS
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20210825@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		- 20211019@Adam.Tran:	Fix bug - Match wrong column and value [Redmine: #163382]
 		
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live  	
@@ -79,10 +80,10 @@ BEGIN
 		,	ISNULL(SUM(tp.Stake), 0)												AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)					AS WinLoss		
 		,	SUM( (tp.WinLost - tp.Comm) * CASE WHEN tp.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END) 	AS WinLossScore	
+		,	CASE WHEN SUM(tp.Stake) = 0 THEN NULL ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END AS Margin
 		,	ISNULL(SUM(tp.Stake_Real),0) 											AS TurnoverReal
 		,	ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) 	AS WinLossReal
-		,	CASE WHEN ISNULL(SUM(tp.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(tp.Stake_Real),0) ELSE NULL END AS MarginReal
-		,	CASE WHEN SUM(tp.Stake) = 0 THEN NULL ELSE (SUM(tp.WinLost) - SUM(tp.Comm)) * 100 / SUM(tp.Stake) END AS Margin		
+		,	CASE WHEN ISNULL(SUM(tp.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(tp.Stake_Real),0) ELSE NULL END AS MarginReal				
 		,	ISNULL(SUM(tp.BetCount), 0)												AS BetCount
 		,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0)		AS SumCategory
 	FROM		dbo.TraderPerformance AS tp WITH (NOLOCK)
@@ -126,3 +127,5 @@ BEGIN
 END;
 
 GO
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
