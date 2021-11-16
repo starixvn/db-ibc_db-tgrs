@@ -1,6 +1,6 @@
 /*
-	Creator:	20210923@John.Ngo
-	Task:		Add Fast Market Bettype - [Redmine: #157999]
+	Creator:	20211116@John.Ngo
+	Task:		[TGR Soccer] Support generate data for Real Performance - [Redmine: #164695]
 	Server:		DB061.bodb_TGRS
 
 	Reviewer:   Brice
@@ -8,8 +8,8 @@
 
 USE bodb_TGRS
 
-DECLARE @FDate	DATE = '20210101'
-	,	@TDate	DATE = GETDATE();
+DECLARE @FDate	DATE = '20200101'
+	,	@TDate	DATE = '20201231';
 
 ---- GEN Data
 
