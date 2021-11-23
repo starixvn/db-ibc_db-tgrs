@@ -46,17 +46,18 @@ BEGIN
 				ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount, 
 				ISNULL(SUM(P.Turnover), 0)							AS Turnover, 
 				ISNULL(SUM(P.WinLoss), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss, 
-				ISNULL(SUM(P.BetCount), 0)							AS BetCount
+				ISNULL(SUM(P.BetCount), 0)							AS BetCount,				
+				ISNULL(COUNT(b.betid), 0)							AS BetIdMappingCount
 			FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.OSBetChoice_QuarterMapping AS b WITH (NOLOCK) ON b.BettypeId = P.BettypeId AND b.betid = P.betid
 			WHERE	P.BettypeId = @Bettype
 				AND P.EventDate BETWEEN @FromDate AND @ToDate
 				AND P.SportId = 2
 				AND (@LiveType = -1 OR P.IsLive = @LiveType)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY P.BetChoice,
-				P.IsLive;
+			GROUP BY P.BetChoice, P.IsLive;
 		END;
 	ELSE
 		BEGIN
@@ -66,19 +67,21 @@ BEGIN
 				ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount, 
 				ISNULL(SUM(P.Turnover), 0)							AS Turnover, 
 				ISNULL(SUM(P.WinLoss), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss, 
-				ISNULL(SUM(P.BetCount), 0)							AS BetCount
+				ISNULL(SUM(P.BetCount), 0)							AS BetCount,				
+				ISNULL(COUNT(b.betid), 0)							AS BetIdMappingCount
 			FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN dbo.OSBetChoice_QuarterMapping AS b WITH (NOLOCK) ON b.BettypeId = P.BettypeId AND b.betid = P.betid
 			WHERE	P.BettypeId = @Bettype
 				AND P.EventDate BETWEEN @FromDate AND @ToDate
 				AND P.SportId = 2
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@LiveType = -1 OR P.IsLive = @LiveType)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-			GROUP BY P.BetChoice,
-				P.IsLive;
+			GROUP BY P.BetChoice, P.IsLive;
 		END;
+		
 END;
 
 GO
