@@ -51,7 +51,7 @@ BEGIN
 				  ISNULL(SUM(P.BetCount), 0) 						AS BetCount,  
 				  CASE WHEN ISNULL(SUM(P.Turnover), 0) <> 0 THEN (ISNULL(SUM(P.WinLoss), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Turnover) ELSE NULL END AS Margin    
 			FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)  
-				INNER JOIN dbo.OSBetChoice_QuarterMapping AS q WITH(NOLOCK) ON P.BettypeId = q.BettypeId AND P.betid = q.betid 
+				INNER JOIN dbo.OSBetChoice_Basketball_QuarterMapping AS q WITH(NOLOCK) ON P.BettypeId = q.BettypeId AND P.betid = q.betid 
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
@@ -75,7 +75,7 @@ BEGIN
 					ISNULL(SUM(P.BetCount), 0) 						AS BetCount,  
 					CASE WHEN ISNULL(SUM(P.Turnover), 0) <> 0 THEN (ISNULL(SUM(P.WinLoss), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Turnover) ELSE NULL END AS Margin    
 			FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)
-				INNER JOIN dbo.OSBetChoice_QuarterMapping AS q WITH(NOLOCK) ON P.BettypeId = q.BettypeId AND P.betid = q.betid 
+				INNER JOIN dbo.OSBetChoice_Basketball_QuarterMapping AS q WITH(NOLOCK) ON P.BettypeId = q.BettypeId AND P.betid = q.betid 
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 			WHERE P.EventDate BETWEEN @FromDate AND @ToDate

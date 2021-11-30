@@ -9,13 +9,13 @@ USE bodb_TGRS
 ALTER TABLE [dbo].[OSDataTGRS_BetChoice] ADD	
 	[betid]			BIGINT	NULL
 
-CREATE TABLE [dbo].[OSBetChoice_QuarterMapping] (
+CREATE TABLE [dbo].[OSBetChoice_Basketball_QuarterMapping] (
 	[BettypeId]			SMALLINT NOT NULL,
 	[betid]				BIGINT	NOT NULL,
 	[Quarter]			NVARCHAR(100) NOT NULL
 )
 
-CREATE CLUSTERED INDEX [CIX_OSBetChoice_QuarterMappingIdx] ON [dbo].[OSBetChoice_QuarterMapping]
+CREATE CLUSTERED INDEX [CIX_OSBetChoice_Basketball_QuarterMappingIdx] ON [dbo].[OSBetChoice_Basketball_QuarterMapping]
 (
 	[BettypeId]	ASC,
 	[betid]		ASC
