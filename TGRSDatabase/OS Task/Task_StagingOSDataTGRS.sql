@@ -994,9 +994,9 @@ BEGIN
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 			INSERT INTO #tmpFilteredBettransByBatch 
 					(TransId, CustId, MatchId, MatchCode, Winlostdate, SportType, LeagueId, Bettype, Modds, Stake, Actual_stake, Virtualrate, Actualrate, Winlost, Awinlost, Mwinlost, Swinlost, Tpositiontaking,
-					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
+					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
 			SELECT	b.transid, b.custid, b.matchid, m.matchcode, b.winlostdate, m.sporttype, m.leagueid, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.actualrate, b.winlost, b.awinlost,
-					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam
+					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam, b.betid
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
 				,	[OriOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN bi.OriginalOdds - 1 ELSE bi.OriginalOdds END
 				,	[statuswinlost]		= b.statuswinlost
@@ -1309,9 +1309,9 @@ BEGIN
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 			INSERT INTO #tmpFilteredBettransByBatch 
 					(TransId, CustId, MatchId, MatchCode, Winlostdate, SportType, LeagueId, Bettype, Modds, Stake, Actual_stake, Virtualrate, Actualrate, Winlost, Awinlost, Mwinlost, Swinlost, Tpositiontaking,
-					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
+					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
 			SELECT	b.transid, b.custid, b.matchid, m.matchcode, b.winlostdate, m.sporttype, m.leagueid, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.actualrate, b.winlost, b.awinlost,
-					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam
+					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam, b.betid
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
 				,	[OriOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN bi.OriginalOdds - 1 ELSE bi.OriginalOdds END
 				,	[statuswinlost]		= b.statuswinlost
@@ -1401,7 +1401,7 @@ BEGIN
 				RAISERROR('From Origin - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
-			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice)
+			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, betid)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
 				,	[MemberCustId]		= b.custid
 				,	[EventDate]			= b.winlostdate
@@ -1420,6 +1420,7 @@ BEGIN
 				,	[ActualRate]		= b.actualrate
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[BetChoice]			= b.BetChoice
+				,	[betid]				= b.betid
 			FROM	#tmpFilteredBettransByBatch AS b
 				LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid

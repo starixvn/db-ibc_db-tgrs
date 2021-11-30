@@ -14,7 +14,8 @@ AS
   
 	Revisions: 	
    		- 20200918@John.Ngo: Basketball Performance Detail - Bettype - BetChoice [Redmine ID: 140875]
-
+		- 20211130@Adam.Tran: Basketball - View report to Set X Game Y [Redmine: #164165]
+		
 	Param's Explanation:  	
 		- @LiveType: -1 All; 0 Nonlive; 1 Live
 
