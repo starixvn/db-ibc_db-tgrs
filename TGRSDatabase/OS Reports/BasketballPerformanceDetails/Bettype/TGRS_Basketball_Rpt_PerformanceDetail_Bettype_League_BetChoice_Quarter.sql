@@ -25,7 +25,7 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-	SELECT  q.Quarter											AS Quarter			
+	SELECT  P.betid												AS BetId			
 		,	P.IsLive											AS IsLive
 		,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 		,	ISNULL(SUM(P.Turnover), 0)							AS Turnover
@@ -33,14 +33,13 @@ BEGIN
 		,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 		,	CASE WHEN ISNULL(SUM(P.Turnover), 0) <> 0 THEN (ISNULL(SUM(P.WinLoss), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Turnover) ELSE NULL END AS Margin		
 	FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)
-		INNER JOIN dbo.OSBetChoice_Basketball_QuarterMapping AS q WITH(NOLOCK) ON P.BettypeId = q.BettypeId AND P.betid = q.betid 
 	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.SportId = 2
 		AND	P.BettypeId = @Bettype 
 		AND P.LeagueId = @LeagueId
 		AND P.BetChoice = @BetChoice
 		AND (@LiveType = -1 OR P.IsLive = @LiveType)
-	GROUP BY q.Quarter, P.BetChoice, P.IsLive;
+	GROUP BY P.betid, P.BetChoice, P.IsLive;
 END;
 
 GO

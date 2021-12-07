@@ -8,18 +8,6 @@ USE bodb_TGRS
 
 ALTER TABLE [dbo].[OSDataTGRS_BetChoice] ADD	
 	[betid]			BIGINT	NULL
-
-CREATE TABLE [dbo].[OSBetChoice_Basketball_QuarterMapping] (
-	[BettypeId]			SMALLINT NOT NULL,
-	[betid]				BIGINT	NOT NULL,
-	[Quarter]			NVARCHAR(100) NOT NULL
-)
-
-CREATE CLUSTERED INDEX [CIX_OSBetChoice_Basketball_QuarterMappingIdx] ON [dbo].[OSBetChoice_Basketball_QuarterMapping]
-(
-	[BettypeId]	ASC,
-	[betid]		ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [DATA]
 	
 GO
 

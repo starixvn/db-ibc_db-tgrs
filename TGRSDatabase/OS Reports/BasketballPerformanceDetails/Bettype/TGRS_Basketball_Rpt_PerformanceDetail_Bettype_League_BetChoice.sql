@@ -33,9 +33,7 @@ BEGIN
 		,	ISNULL(SUM(P.WinLoss), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
 		,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 		,	CASE WHEN ISNULL(SUM(P.Turnover), 0) <> 0 THEN (ISNULL(SUM(P.WinLoss), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Turnover) ELSE NULL END AS Margin
-		,	ISNULL(COUNT(b.betid), 0)							AS BetIdMappingCount
 	FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)
-		LEFT JOIN dbo.OSBetChoice_Basketball_QuarterMapping AS b WITH (NOLOCK) ON b.BettypeId = P.BettypeId AND b.betid = P.betid
 	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.SportId = 2
 		AND	P.BettypeId = @Bettype AND P.LeagueId = @LeagueId
