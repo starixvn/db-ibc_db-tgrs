@@ -4,10 +4,12 @@
 	DB:			DB06.bodb_TGRS_UAT & DB061.bodb_TGRS
 */
 
-USE bodb_TGRS
-
+/*
 ALTER TABLE [dbo].[OSDataTGRS_BetChoice] ADD	
 	[betid]			BIGINT	NULL
+*/
+
+DROP TABLE dbo.OSBetChoice_Basketball_QuarterMapping;
 	
 GO
 
