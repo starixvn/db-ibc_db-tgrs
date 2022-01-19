@@ -54,6 +54,8 @@ AS
 		- 20201112@John.Ngo: TGR - Enhance formula of calculating adjusted odds by Licensee [Redmine ID: 145246]
    		- 20210726@Adam.Tran: TGR - Sports - Performance Real Figures [Redmine: #158981]
 		- 20210916@John.Ngo: Add Fast Market Bettype [Redmine: #157999]
+		- 20220117@John.Ngo: Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
+		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
 	Exam:
@@ -95,7 +97,7 @@ BEGIN
 
 	CREATE TABLE	#tmpDLSupportedBettypes (
 			BetType					SMALLINT PRIMARY KEY
-		,	IsFastMarket			BIT DEFAULT ((0))
+		,	IsBetChoiceDetail		BIT DEFAULT ((0))
 	);
 	
 	IF	OBJECT_ID('tempdb..#tmpDLFilteredBettypes') IS NOT NULL
@@ -123,10 +125,9 @@ BEGIN
 			WHERE	b.BetType < 0;
 		END;
 
-	INSERT INTO #tmpDLSupportedBettypes(BetType, IsFastMarket)
-	SELECT	DISTINCT b.bettype, CASE WHEN gb.GroupBettypeName = 'Fast Market' THEN 1 ELSE 0 END AS IsFastMarket
+	INSERT INTO #tmpDLSupportedBettypes(BetType, IsBetChoiceDetail)
+	SELECT	DISTINCT b.bettype, b.IsBetChoiceDetail
 	FROM	dbo.BetType AS b WITH (NOLOCK)
-	INNER JOIN dbo.GroupBettype AS gb WITH (NOLOCK) ON b.GroupBettypeId = gb.GroupBettypeId
 	WHERE	b.BetType > 0;
 
 	DECLARE @tmpDLSpread1x2 TABLE (
@@ -364,7 +365,7 @@ BEGIN
 		,	oddsspread			MONEY
 		,	Is8RM				BIT
 		,   BetChoice			NVARCHAR(10) 
-		,	IsFastMarket		BIT
+		,	IsBetChoiceDetail	BIT
 	);
 	
 	CREATE CLUSTERED INDEX #CIX_tmpDLStagingTraderPerformanceIdx ON #tmpDLStagingTraderPerformance (
@@ -1031,7 +1032,7 @@ BEGIN
 			END;
 			
 			INSERT INTO	#tmpDLStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
-			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsFastMarket)
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail)
 			SELECT	[TraderId]			= CASE WHEN b.LiveIndicator = 0 THEN @IdForNonLiveUnassignedTrader ELSE ISNULL(t.TraderId, @IdForLiveUnassignedTrader) END
 				,	[CustId]			= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
@@ -1061,7 +1062,7 @@ BEGIN
 				,	[oddsspread]		= b.oddsspread
 				,	[Is8RM]				= b.Is8RM				
 				,	[BetChoice]			= b.BetChoice
-				,	[IsFastMarket]		= bt.IsFastMarket
+				,	[IsBetChoiceDetail]	= bt.IsBetChoiceDetail
 			FROM	#tmpDLFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 				LEFT JOIN #tmpDLTraderbk AS t WITH (NOLOCK)
@@ -1232,11 +1233,11 @@ BEGIN
 			END;
 
 			DELETE tpc WITH(ROWLOCK) 
-			FROM dbo.TraderPerformance_FastMarketBetChoice AS tpc
+			FROM dbo.TraderPerformance_BetChoice_Detail AS tpc
 				INNER JOIN #tmpDLSupportedBettypes AS bt ON tpc.BetType = bt.BetType
-			WHERE tpc.EventDate = @winlostdate AND bt.IsFastMarket = 1;
+			WHERE tpc.EventDate = @winlostdate AND bt.IsBetChoiceDetail = 1;
 
-			INSERT INTO	dbo.TraderPerformance_FastMarketBetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
+			INSERT INTO	dbo.TraderPerformance_BetChoice_Detail (CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 			SELECT		[CustId]			= t.TraderId
 					,	[MatchId]			= t.matchId
 					,	[EventDate]			= t.EventDate
@@ -1264,7 +1265,7 @@ BEGIN
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 			WHERE t.EventDate = @winlostdate 
 				AND t.BetChoice IS NOT NULL
-				AND t.IsFastMarket = 1
+				AND t.IsBetChoiceDetail = 1
 			GROUP BY t.TraderId, t.matchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.hdp1, t.hdp2, t.oddsspread, t.Is8RM;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1274,7 +1275,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately
-				RAISERROR('From BK - Insert TraderPerformance_FastMarketBetChoice - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From BK - Insert TraderPerformance_BetChoice_Detail - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
 			DELETE	d
@@ -1578,7 +1579,7 @@ BEGIN
 			END;
 
 			INSERT INTO	#tmpDLStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
-			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsFastMarket)
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail)
 			SELECT	[TraderId]			= CASE WHEN b.LiveIndicator = 0 THEN @IdForNonLiveUnassignedTrader ELSE ISNULL(t.TraderId, @IdForLiveUnassignedTrader) END
 				,	[CustId]			= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
@@ -1608,7 +1609,7 @@ BEGIN
 				,	[oddsspread]		= b.oddsspread
 				,	[Is8RM]				= b.Is8RM				
 				,	[BetChoice]			= b.BetChoice
-				,	[IsFastMarket]		= bt.IsFastMarket
+				,	[IsBetChoiceDetail]	= bt.IsBetChoiceDetail
 			FROM	#tmpDLFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 				LEFT JOIN #tmpDLTrader AS t WITH (NOLOCK)
@@ -1779,11 +1780,11 @@ BEGIN
 			END;
 
 			DELETE tpc WITH(ROWLOCK) 
-			FROM dbo.TraderPerformance_FastMarketBetChoice AS tpc
+			FROM dbo.TraderPerformance_BetChoice_Detail AS tpc
 				INNER JOIN #tmpDLSupportedBettypes AS bt ON tpc.BetType = bt.BetType
-			WHERE tpc.EventDate = @winlostdate AND bt.IsFastMarket = 1;
+			WHERE tpc.EventDate = @winlostdate AND bt.IsBetChoiceDetail = 1;
 
-			INSERT INTO	dbo.TraderPerformance_FastMarketBetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
+			INSERT INTO	dbo.TraderPerformance_BetChoice_Detail (CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 			SELECT		[CustId]			= t.TraderId
 					,	[MatchId]			= t.matchId
 					,	[EventDate]			= t.EventDate
@@ -1811,7 +1812,7 @@ BEGIN
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 			WHERE t.EventDate = @winlostdate 
 				AND t.BetChoice IS NOT NULL
-				AND t.IsFastMarket = 1
+				AND t.IsBetChoiceDetail = 1
 			GROUP BY t.TraderId, t.matchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.hdp1, t.hdp2, t.oddsspread, t.Is8RM;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1821,7 +1822,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately
-				RAISERROR('From 14 - Insert TraderPerformance_FastMarketBetChoice - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From 14 - Insert TraderPerformance_BetChoice_Detail - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			DELETE	d
@@ -2134,7 +2135,7 @@ BEGIN
 			END;
 
 			INSERT INTO	#tmpDLStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
-			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsFastMarket)
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail)
 			SELECT	[TraderId]			= CASE WHEN b.LiveIndicator = 0 THEN @IdForNonLiveUnassignedTrader ELSE ISNULL(t.TraderId, @IdForLiveUnassignedTrader) END
 				,	[CustId]			= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
@@ -2164,7 +2165,7 @@ BEGIN
 				,	[oddsspread]		= b.oddsspread
 				,	[Is8RM]				= b.Is8RM
 				,	[BetChoice]			= b.BetChoice 
-				,	[IsFastMarket]		= bt.IsFastMarket
+				,	[IsBetChoiceDetail]	= bt.IsBetChoiceDetail
 			FROM	#tmpDLFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 				LEFT JOIN #tmpDLTrader AS t WITH (NOLOCK)
@@ -2335,11 +2336,11 @@ BEGIN
 			END;
 
 			DELETE tpc WITH(ROWLOCK) 
-			FROM dbo.TraderPerformance_FastMarketBetChoice AS tpc
+			FROM dbo.TraderPerformance_BetChoice_Detail AS tpc
 				INNER JOIN #tmpDLSupportedBettypes AS bt ON tpc.BetType = bt.BetType
-			WHERE tpc.EventDate = @winlostdate AND bt.IsFastMarket = 1;
+			WHERE tpc.EventDate = @winlostdate AND bt.IsBetChoiceDetail = 1;
 
-			INSERT INTO	dbo.TraderPerformance_FastMarketBetChoice (CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
+			INSERT INTO	dbo.TraderPerformance_BetChoice_Detail (CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 			SELECT		[CustId]			= t.TraderId
 					,	[MatchId]			= t.matchId
 					,	[EventDate]			= t.EventDate
@@ -2367,7 +2368,7 @@ BEGIN
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 			WHERE t.EventDate = @winlostdate 
 				AND t.BetChoice IS NOT NULL
-				AND t.IsFastMarket = 1
+				AND t.IsBetChoiceDetail = 1
 			GROUP BY t.TraderId, t.matchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.hdp1, t.hdp2, t.oddsspread, t.Is8RM;
 				
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -2377,7 +2378,7 @@ BEGIN
 			IF	@Debug = 1
 			BEGIN
 				-- Force the output to appear immediately
-				RAISERROR('From Origin - Insert TraderPerformance_FastMarketBetChoice - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
+				RAISERROR('From Origin - Insert TraderPerformance_BetChoice_Detail - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
 			DELETE	d

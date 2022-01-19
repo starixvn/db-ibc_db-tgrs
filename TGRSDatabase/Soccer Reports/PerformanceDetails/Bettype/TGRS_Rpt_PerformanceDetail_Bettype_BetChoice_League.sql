@@ -23,6 +23,7 @@ AS
 		- 20210419@John.Ngo:	Wrong data Bettype betchoice league detail [Redmine ID: 153628]
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20210921@Adam.Tran:	Add Fast Market Bettype - [Redmine: #157999]
+		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 
@@ -67,7 +68,7 @@ BEGIN
 						,	ISNULL(SUM(P.Stake_Real),0) 		AS TurnoverReal				
 						,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 						,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
-					FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK)
+					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId						
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId

@@ -38,6 +38,7 @@ AS
 		- 20201112@John.Ngo: TGR - Enhance formula of calculating adjusted odds by Licensee [Redmine ID: 145246]
 		- 20210811@Adam.Tran: TGR - Sports - Performance Real Figures [Redmine: #158981]
 		- 20210916@John.Ngo: Add Fast Market Bettype [Redmine: #157999]
+		- 20220117@John.Ngo: Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 	Param's Explanation:
 		
 	Exam:
@@ -85,13 +86,12 @@ BEGIN
 
 	CREATE TABLE	#tmpRTSupportedBettypes (
 			BetType					SMALLINT PRIMARY KEY
-		,	IsFastMarket			BIT DEFAULT ((0))
+		,	IsBetChoiceDetail		BIT DEFAULT ((0))
 	);
 	
-	INSERT INTO #tmpRTSupportedBettypes(BetType, IsFastMarket)
-	SELECT	DISTINCT b.bettype, CASE WHEN gb.GroupBettypeName = 'Fast Market' THEN 1 ELSE 0 END AS IsFastMarket
+	INSERT INTO #tmpRTSupportedBettypes(BetType, IsBetChoiceDetail)
+	SELECT	DISTINCT b.bettype, b.IsBetChoiceDetail
 	FROM	dbo.BetType AS b WITH (NOLOCK)
-	INNER JOIN dbo.GroupBettype AS gb WITH (NOLOCK) ON b.GroupBettypeId = gb.GroupBettypeId
 	WHERE	b.BetType > 0;
 
 	-- STEP #1: STAGING DATA
@@ -240,7 +240,7 @@ BEGIN
 		,	oddsspread			MONEY
 		,	Is8RM				BIT
 		,   BetChoice			NVARCHAR(10)
-		,	IsFastMarket		BIT
+		,	IsBetChoiceDetail	BIT
 	);
 	
 	CREATE CLUSTERED INDEX #CIX_tmpRTStagingTraderPerformanceIdx ON #tmpRTStagingTraderPerformance (
@@ -533,7 +533,7 @@ BEGIN
 		END;
 			
 		INSERT INTO	#tmpRTStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
-			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsFastMarket)
+			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail)
 		SELECT		[TraderId]			= CASE WHEN b.LiveIndicator = 0 THEN @IdForNonLiveUnassignedTrader ELSE ISNULL(t.TraderId, @IdForLiveUnassignedTrader) END
 				,	[CustId]			= b.custid
 				,	[WorkShift]			= ISNULL(b.WorkShift, 1)
@@ -563,7 +563,7 @@ BEGIN
 				,	[oddsspread]		= b.oddsspread
 				,	[Is8RM]				= b.Is8RM
 				,	[BetChoice]			= b.BetChoice
-				,	[IsFastMarket]		= bt.IsFastMarket
+				,	[IsBetChoiceDetail]	= bt.IsBetChoiceDetail
 		FROM	#tmpRTFilteredBettransByBatch AS b WITH (NOLOCK)
 			INNER JOIN #tmpRTSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 			LEFT JOIN	#tmpRTTrader AS t WITH (NOLOCK)
@@ -723,7 +723,7 @@ BEGIN
 			RAISERROR('From - Insert TraderPerformance_BetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 
-		INSERT INTO	[dbo].[TraderPerformance_FastMarketBetChoice](CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
+		INSERT INTO	[dbo].[TraderPerformance_BetChoice_Detail](CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount)
 		SELECT		[CustId]			= t.TraderId
 				,	[MatchId]			= t.MatchId
 				,	[EventDate]			= t.EventDate
@@ -751,7 +751,7 @@ BEGIN
 				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON t.CustId = tc.custid AND tc.VendorID = 14
 		WHERE t.EventDate = @winlostdate 
 			AND t.BetChoice IS NOT NULL
-			AND t.IsFastMarket = 1
+			AND t.IsBetChoiceDetail = 1
 		GROUP BY t.TraderId, t.MatchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.hdp1, t.hdp2, t.oddsspread, t.Is8RM;
 				
 		SELECT	@RowCount	= @@ROWCOUNT
@@ -761,7 +761,7 @@ BEGIN
 		IF	@Debug = 1
 		BEGIN
 			-- Force the output to appear immediately --
-			RAISERROR('From - Insert TraderPerformance_FastMarketBetChoice - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
+			RAISERROR('From - Insert TraderPerformance_BetChoice_Detail - %d rows - %d ms', 0, 0, @RowCount, @Duration) WITH NOWAIT;
 		END;
 		
 		TRUNCATE TABLE #tmpRTStagingTraderPerformance;

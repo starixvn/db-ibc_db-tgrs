@@ -15,6 +15,7 @@ AS
 	 Revisions:
 		- 20200731@John.Ngo:	View down bet choice from League performance [Redmine ID: 137278]
 		- 20210915@Adam.Tran: 	Add Fast Market Bettype - [Redmine: #157999]
+		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -24,15 +25,14 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-	DECLARE @IsFMBetType 	BIT;
+	DECLARE @IsFMBetType BIT, @IsBetChoiceDetail BIT;
 	
-	SET @IsFMBetType = 
-		CASE 
-			WHEN EXISTS (SELECT (1)
-						 FROM dbo.BetChoice_FastMarketMapping AS b
-						 WHERE b.BetType = @BetType) THEN 1
-			ELSE 0
-		END;	
+	SET @IsFMBetType = CASE WHEN EXISTS (SELECT (1) FROM dbo.BetChoice_FastMarketMapping AS b
+										 WHERE b.BetType = @BetType) THEN 1 ELSE 0 END;
+										 
+	SET @IsBetChoiceDetail = (CASE WHEN EXISTS (SELECT (1) FROM [dbo].[BetType] AS b WITH (NOLOCK)
+											WHERE b.BetType = @BetType AND b.IsBetChoiceDetail = 1) 
+											THEN 1 ELSE 0 END);
 	
 	IF @IsFMBetType = 1
 		BEGIN
@@ -48,7 +48,7 @@ BEGIN
 				,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal		
 				,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
-			FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK) 
+			FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK) 
 				INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId				
 			WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
@@ -56,9 +56,9 @@ BEGIN
 				AND P.LeagueId = @LeagueId
 				AND (@Market = -1 OR P.IsLive = @Market)				
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-			GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;				
+			GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
 		END;
-	ELSE
+	ELSE -- @IsBetChoiceDetail = 0 or 1
 		BEGIN
 			SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice				
 				,	P.IsLive											AS IsLive
@@ -79,10 +79,11 @@ BEGIN
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;				
+			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 		END;
 
-	SELECT @IsFMBetType AS IsFMBetType;
+	SELECT @IsFMBetType AS IsFMBetType, @IsBetChoiceDetail AS IsBetChoiceDetail;
+	
 END;
 
 GO

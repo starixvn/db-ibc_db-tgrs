@@ -16,6 +16,7 @@ AS
  
 	 Revisions:
 		- 20210915@Adam.Tran:	Add Fast Market Bettype - [Redmine: #157999]
+		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		
 	 Param's Explanation:
 */ 
@@ -33,7 +34,7 @@ BEGIN
 		,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal		
 		,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 		,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
-	FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK)	
+	FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)	
 		INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam
 		INNER JOIN dbo.FastMarket_IntervalGroup AS IG WITH (NOLOCK) ON IG.IntervalGroupId = FM.IntervalGroupId AND IG.hdp1 = P.hdp1
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId

@@ -22,11 +22,12 @@ AS
 		- 20200909@John.Ngo:	Performance Detail - Bettype - Support filter by LeagueName [Redmine ID: 141294]
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20210915@Adam.Tran: 	Add Fast Market Bettype - [Redmine: #157999]
+		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 
 	 Exam: 
-		EXEC  TGRS_Rpt_PerformanceDetail_Bettype_BetChoice @FromDate = '2017-11-01', @ToDate= '2018-05-30', @Bettype = 15
+		EXEC  TGRS_Rpt_PerformanceDetail_Bettype_BetChoice @FromDate = '2021-11-01', @ToDate= '2021-12-30', @Bettype = 227, @Market = 1
 */  
  
 BEGIN 
@@ -51,15 +52,14 @@ BEGIN
 		END;
 	END;
 	
-	DECLARE @IsFMBetType 	BIT;
+	DECLARE @IsFMBetType BIT, @IsBetChoiceDetail BIT;
 	
-	SET @IsFMBetType = 
-		CASE 
-			WHEN EXISTS (SELECT (1)
-						 FROM dbo.BetChoice_FastMarketMapping AS b
-						 WHERE b.BetType = @BetType) THEN 1
-			ELSE 0
-		END;
+	SET @IsFMBetType = CASE WHEN EXISTS (SELECT (1) FROM dbo.BetChoice_FastMarketMapping AS b
+										 WHERE b.BetType = @BetType) THEN 1 ELSE 0 END;
+	
+	SET @IsBetChoiceDetail = (CASE WHEN EXISTS (SELECT (1) FROM [dbo].[BetType] AS b WITH (NOLOCK)
+												WHERE b.BetType = @BetType AND b.IsBetChoiceDetail = 1) 
+												THEN 1 ELSE 0 END);
 
 	IF (@LeagueName IS NULL OR @LeagueName = '')		
 		BEGIN
@@ -76,7 +76,7 @@ BEGIN
 						,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal				
 						,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 						,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
-					FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK)
+					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -129,7 +129,7 @@ BEGIN
 					,	ISNULL(SUM(P.WinLost_Real),0) 						AS WinLossReal
 					,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 					,	ISNULL(SUM(P.BetCount), 0)							AS BetCount				
-					FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK)
+					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
@@ -142,7 +142,7 @@ BEGIN
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
 				END;
-			ELSE
+			ELSE -- @IsBetChoiceDetail = 0 or 1
 				BEGIN
 					SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
 					,	P.IsLive											AS IsLive
@@ -170,7 +170,7 @@ BEGIN
 				END;
 		END;
 		
-		SELECT @IsFMBetType AS IsFMBetType;
+		SELECT @IsFMBetType AS IsFMBetType, @IsBetChoiceDetail AS IsBetChoiceDetail;
 END;
 
 GO
