@@ -69,7 +69,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.hdp1
-			ORDER BY Margin DESC, P.hdp1 ASC;
+			ORDER BY P.hdp1 ASC;
 		END;
 	ELSE
 		BEGIN
@@ -92,14 +92,12 @@ BEGIN
 				AND	P.BetType = @BetType
 				AND ISNULL(bcm.TGRSBetChoice,P.betteam) = @BetTeam
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
-				AND (CASE WHEN @BetType IN (228,229) THEN P.oddsspread
-						  WHEN @BetType IN (28,453)  THEN (P.hdp1-P.hdp2)
-						   ELSE P.hdp1 END) = @PointHDP
+				AND P.oddsspread = @PointHDP
 				AND (@Market = -1 OR P.IsLive = @Market)	
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.hdp1
-			ORDER BY Margin DESC, P.hdp1 ASC;
+			ORDER BY P.hdp1 ASC;
 		END;	
 	
 END;
