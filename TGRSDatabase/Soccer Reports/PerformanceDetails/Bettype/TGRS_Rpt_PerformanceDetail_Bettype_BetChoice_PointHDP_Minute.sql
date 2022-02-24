@@ -17,6 +17,7 @@ AS
  
 	 Revisions:
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
+		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		
 	 Param's Explanation:
 		- @BetType IN (228,229): SABA HDP Time Machine
@@ -25,24 +26,9 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-		DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
-	IF @LeagueGroupIds <> ''
-	BEGIN
-		INSERT INTO @LeagueGroups(LeagueGroupId)
-		SELECT val 
-		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
-
-		IF CHARINDEX('12', @LeagueGroupIds) > 0
-		BEGIN
-			DELETE FROM @LeagueGroups
-			WHERE LeagueGroupId = 12;
-
-			INSERT INTO @LeagueGroups(LeagueGroupId)
-			SELECT DISTINCT l.LeagueGroupID
-			FROM bodb02.dbo.league AS l WITH(NOLOCK)
-			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5,6,7,8,9,10,11);
-		END;
-	END;
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
+	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
+	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
 	
 	IF (@LeagueName IS NULL OR @LeagueName = '')
 		BEGIN

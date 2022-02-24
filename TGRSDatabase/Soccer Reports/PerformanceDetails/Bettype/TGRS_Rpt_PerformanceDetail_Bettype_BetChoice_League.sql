@@ -24,6 +24,8 @@ AS
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20210921@Adam.Tran:	Add Fast Market Bettype - [Redmine: #157999]
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
+		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
+		
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 
@@ -32,24 +34,9 @@ AS
 BEGIN 
 	SET NOCOUNT ON;	
  
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
-	IF @LeagueGroupIds <> ''
-	BEGIN
-		INSERT INTO @LeagueGroups(LeagueGroupId)
-		SELECT val 
-		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
-
-		IF CHARINDEX('12', @LeagueGroupIds) > 0
-		BEGIN
-			DELETE FROM @LeagueGroups
-			WHERE LeagueGroupId = 12;
-
-			INSERT INTO @LeagueGroups(LeagueGroupId)
-			SELECT DISTINCT l.LeagueGroupID
-			FROM bodb02.dbo.league AS l WITH(NOLOCK)
-			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5,6,7,8,9,10,11);
-		END;
-	END;
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
+	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
+	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
   
 	IF (@LeagueName IS NULL OR @LeagueName = '')
 		BEGIN
@@ -57,7 +44,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,	L.LeagueGroupID
+						,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -79,14 +66,16 @@ BEGIN
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-					GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive
+					GROUP BY P.LeagueId, L.LeagueName
+						,	CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
 			ELSE
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,	L.LeagueGroupID
+						,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -108,7 +97,9 @@ BEGIN
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-					GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive
+					GROUP BY P.LeagueId, L.LeagueName
+						,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
 		END;
@@ -118,7 +109,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,	L.LeagueGroupID
+						,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -129,7 +120,7 @@ BEGIN
 						,	ISNULL(SUM(P.Stake_Real),0) 			AS TurnoverReal				
 						,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 						,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
-					FROM dbo.TraderPerformance_FastMarketBetChoice AS P WITH (NOLOCK)    
+					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)    
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId						
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
@@ -141,14 +132,16 @@ BEGIN
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-					GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive    
+					GROUP BY P.LeagueId, L.LeagueName
+						,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
 			ELSE
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,	L.LeagueGroupID
+						,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -171,7 +164,9 @@ BEGIN
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
-					GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive    
+					GROUP BY P.LeagueId, L.LeagueName
+						,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;     
 				END;
 		END;

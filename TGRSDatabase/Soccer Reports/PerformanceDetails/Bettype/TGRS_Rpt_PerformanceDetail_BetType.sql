@@ -30,6 +30,7 @@ AS
 		- 20200710@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 		- 20200909@John.Ngo:	Performance Detail - Bettype - Support filter by LeagueName [Redmine ID: 141294]
 		- 20210805@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		
 	Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -65,24 +66,9 @@ BEGIN
 			BetType			ASC
 	);			
 	
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
-	IF @LeagueGroupIds <> ''
-	BEGIN
-		INSERT INTO @LeagueGroups(LeagueGroupId)
-		SELECT val 
-		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
-
-		IF CHARINDEX('12', @LeagueGroupIds) > 0
-		BEGIN
-			DELETE FROM @LeagueGroups
-			WHERE LeagueGroupId = 12;
-
-			INSERT INTO @LeagueGroups(LeagueGroupId)
-			SELECT DISTINCT l.LeagueGroupID
-			FROM bodb02.dbo.league AS l WITH(NOLOCK)
-			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5,6,7,8,9,10,11);
-		END;
-	END;
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
+	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
+	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
 
 	DECLARE @BettypeList AS TABLE (bettype SMALLINT)
 	IF @Bettypes <> '0'
@@ -209,4 +195,4 @@ END;
 
 GO
 
-
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/

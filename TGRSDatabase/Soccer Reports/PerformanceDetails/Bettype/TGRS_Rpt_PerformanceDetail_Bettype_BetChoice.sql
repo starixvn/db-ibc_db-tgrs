@@ -23,6 +23,8 @@ AS
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20210915@Adam.Tran: 	Add Fast Market Bettype - [Redmine: #157999]
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
+		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
+		
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 
@@ -33,24 +35,9 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED)
-	IF @LeagueGroupIds <> ''
-	BEGIN
-		INSERT INTO @LeagueGroups(LeagueGroupId)
-		SELECT val 
-		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
-
-		IF CHARINDEX('12', @LeagueGroupIds) > 0
-		BEGIN
-			DELETE FROM @LeagueGroups
-			WHERE LeagueGroupId = 12;
-
-			INSERT INTO @LeagueGroups(LeagueGroupId)
-			SELECT DISTINCT l.LeagueGroupID
-			FROM bodb02.dbo.league AS l WITH(NOLOCK)
-			WHERE l.LeagueGroupID NOT IN (1,2,3,4,5,6,7,8,9,10,11);
-		END;
-	END;
+	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
+	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
+	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
 	
 	DECLARE @IsFMBetType BIT, @IsBetChoiceDetail BIT;
 	

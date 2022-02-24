@@ -1,6 +1,6 @@
 /*
-	Creator:	20220124@John.Ngo
-	Task:		Support data drildown for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
+	Creator:	20220224@John.Ngo
+	Task:		[TGR Soccer] Add new bet type 461, 462, 463, 464 to support drilldown to HDP - [Redmine: #161859]
 	Server:		DB06.bodb_TGRS_UAT Or DB061.bodb_TGRS
 
 	Reviewer:   Brice
