@@ -40,6 +40,8 @@ AS
  
 BEGIN 
 	SET NOCOUNT ON;
+	
+	DECLARE @OtherGroupsId SMALLINT = 12;
 
 	IF	OBJECT_ID('tempdb..#tmpLeaguePerformance') IS NOT NULL
 	BEGIN
@@ -95,7 +97,7 @@ BEGIN
 				,	BetCount)
 			SELECT 	P.LeagueId
 				,	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount
@@ -117,7 +119,7 @@ BEGIN
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId 
 				, 	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
 				, 	P.IsLive;
 		
 		END;
@@ -139,7 +141,7 @@ BEGIN
 				,	BetCount)
 			SELECT 	P.LeagueId
 				,	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0) AS MatchCount
@@ -162,7 +164,7 @@ BEGIN
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId
 				, 	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
 				, 	P.IsLive;
 		END;
 		

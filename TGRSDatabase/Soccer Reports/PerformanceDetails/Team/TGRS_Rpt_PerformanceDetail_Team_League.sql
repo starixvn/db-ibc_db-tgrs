@@ -32,13 +32,15 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
+	DECLARE @OtherGroupsId SMALLINT = 12;
+
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
 	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
 	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
 
 	SELECT	P.LeagueId
 		, 	L.LeagueName
-		,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
+		,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
 		, 	P.IsLive
 		,	ISNULL(COUNT(DISTINCT P.CustId), 0)                AS TraderCount
 		,	ISNULL(COUNT(DISTINCT P.MatchId), 0)               AS MatchCount
@@ -61,7 +63,7 @@ BEGIN
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 	GROUP BY P.LeagueId, L.LeagueName
-		,	CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+		,	CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
 		,	P.IsLive
 	ORDER BY Margin DESC, LeagueName ASC;
 END;

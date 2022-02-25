@@ -20,6 +20,8 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
+	DECLARE @OtherGroupsId SMALLINT = 12;
+	
 	IF	OBJECT_ID('tempdb..#LeagueGroups') IS NOT NULL
 	BEGIN
 		DROP TABLE	#LeagueGroups;
@@ -66,7 +68,7 @@ BEGIN
 		FROM dbo.strSplit_Key(@LeagueGroupIds,',');
 
 		UPDATE gn WITH(ROWLOCK, UPDLOCK)
-		SET gn.LeagueGroupName = CASE WHEN gn.LeagueGroupID = 12 THEN 'Other Groups' 
+		SET gn.LeagueGroupName = CASE WHEN gn.LeagueGroupID = @OtherGroupsId THEN 'Other Groups' 
 									  ELSE lg.GroupName END 
 		FROM #LeagueGroups AS gn
 			INNER JOIN [bodb02].[dbo].[LeagueGroup] AS lg WITH(NOLOCK) ON gn.LeagueGroupID = lg.GroupID
@@ -76,8 +78,8 @@ BEGIN
 	SELECT	LeagueGroupId
 		,	LeagueGroupName
 		,	CASE 
-				WHEN LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11,42,113,12) THEN LeagueGroupId 
-				ELSE 12 
+				WHEN LeagueGroupId IN (1,2,3,4,5,6,7,8,9,10,11,42,113) THEN LeagueGroupId 
+				ELSE @OtherGroupsId
 			END TargetLeagueGroupId
 	FROM #LeagueGroups WITH(NOLOCK);
 

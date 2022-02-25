@@ -33,7 +33,9 @@ AS
  
 BEGIN 
     SET NOCOUNT ON;			   
-		
+	
+	DECLARE @OtherGroupsId SMALLINT = 12;
+	
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
 	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
 	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
@@ -42,7 +44,7 @@ BEGIN
 		BEGIN
 			SELECT 	P.MatchId
 				, 	P.LeagueId
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
 				, 	P.HomeId
 				, 	P.AwayId
 				, 	P.EventDate
@@ -65,7 +67,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.MatchId, P.LeagueId
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
 				,	P.HomeId, P.AwayId, P.EventDate, P.IsLive
 			ORDER BY Margin DESC, P.EventDate ASC;
 		END;
@@ -73,7 +75,7 @@ BEGIN
 		BEGIN			
 			SELECT 	P.MatchId
 				, 	P.LeagueId
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END AS LeagueGroupID
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
 				, 	P.HomeId
 				, 	P.AwayId
 				, 	P.EventDate
@@ -97,7 +99,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.MatchId, P.LeagueId
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE 12 END
+				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
 				,	P.HomeId, P.AwayId, P.EventDate, P.IsLive
 			ORDER BY Margin DESC, P.EventDate ASC;
 		END;
