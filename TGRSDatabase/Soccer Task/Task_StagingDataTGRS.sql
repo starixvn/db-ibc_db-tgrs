@@ -55,6 +55,7 @@ AS
    		- 20210726@Adam.Tran: TGR - Sports - Performance Real Figures [Redmine: #158981]
 		- 20210916@John.Ngo: Add Fast Market Bettype [Redmine: #157999]
 		- 20220117@John.Ngo: Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
+		- 20220222@John.Ngo: Ignore wrong xml data in bettrans_bk (Transid: 111674398151) [Redmine: #161859]
 		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -940,7 +941,8 @@ BEGIN
 				,	[Is8RM]				= CASE WHEN t8.CustId IS NULL THEN 0 ELSE 1 END				
 				,	[BetChoice]			= b.betteam
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
-				,	[OriOdds]			= CASE WHEN CAST(b.ExtraInfo AS XML).exist('/p1/@oo') = 1 THEN
+				,	[OriOdds]			= CASE WHEN b.transid = 111674398151 THEN NULL
+											   WHEN CAST(b.ExtraInfo AS XML).exist('/p1/@oo') = 1 THEN
 												CASE WHEN fdec.OddsType IS NOT NULL THEN
 													 ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@oo)[1]','SMALLMONEY'), 0) - 1
 												ELSE ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@oo)[1]','SMALLMONEY'), 0) END
