@@ -23,6 +23,7 @@ AS
 		- 20200909@John.Ngo:	Performance Detail - Bettype - Support filter by LeagueName [Redmine ID: 141294]
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
+		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
 		
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
@@ -44,7 +45,7 @@ BEGIN
 		BEGIN
 			SELECT P.LeagueId
 				,	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
+				,   lg.TargetLeagueGroupId AS LeagueGroupID
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -66,7 +67,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId, L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
+				,   lg.TargetLeagueGroupId
 				,	P.IsLive 	
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;
@@ -74,7 +75,7 @@ BEGIN
 		BEGIN			
 			SELECT  P.LeagueId
 				,	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
+				,   lg.TargetLeagueGroupId AS LeagueGroupID
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -97,7 +98,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId, L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
+				,   lg.TargetLeagueGroupId
 				,	P.IsLive 	
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;

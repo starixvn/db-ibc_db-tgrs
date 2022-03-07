@@ -18,6 +18,7 @@ AS
 	 Revisions:
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
+		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
 		
 	 Param's Explanation:
 */ 
@@ -35,7 +36,7 @@ BEGIN
 		BEGIN
 			SELECT 	P.LeagueId
 				,	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
+				,   lg.TargetLeagueGroupId AS LeagueGroupID
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
@@ -60,7 +61,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId, L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
+				,   lg.TargetLeagueGroupId
 				,	P.IsLive
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;
@@ -68,7 +69,7 @@ BEGIN
 		BEGIN
 			SELECT 	P.LeagueId
 				,	L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
+				,   lg.TargetLeagueGroupId AS LeagueGroupID
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
@@ -94,7 +95,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId, L.LeagueName
-				,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
+				,   lg.TargetLeagueGroupId
 				,	P.IsLive
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;	

@@ -21,6 +21,7 @@ AS
 		- 20200714@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 		- 20210824@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
+		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
 		
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -51,7 +52,7 @@ BEGIN
 		 	 		 		 	
 	SELECT 	P.MatchId
 		, 	P.LeagueId
-		,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
+		,   lg.TargetLeagueGroupId AS LeagueGroupID
 		, 	P.HomeId
 		, 	P.AwayId
 		, 	P.EventDate
@@ -75,7 +76,7 @@ BEGIN
 		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 	GROUP BY P.MatchId
 		, 	P.LeagueId
-		,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
+		,   lg.TargetLeagueGroupId
 		, 	P.HomeId
 		,	P.AwayId
 		, 	P.EventDate

@@ -1,7 +1,7 @@
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team_Trader_Match]
 		@FROMDate				DATE
 	,	@ToDate					DATE
-	,	@LeagueGroupIds		VARCHAR(2000) = ''
+	,	@LeagueGroupIds			VARCHAR(2000) = ''
 	,	@TeamId					SMALLINT
 	,	@CustId					INT
 	,	@Bettypes				VARCHAR(2000) = '0'
@@ -22,6 +22,7 @@ AS
 		- 20200713@John.Ngo:	Performance Detail - Support filter by league group [Redmine ID: 137276]
 		- 20210827@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
+		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
 
 	  Param's Explanation:
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -53,7 +54,7 @@ BEGIN
 
 	SELECT	P.MatchId
 		,	P.LeagueId
-		,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END AS LeagueGroupID
+		,   lg.TargetLeagueGroupId AS LeagueGroupID
 		,	P.HomeId
 		,	P.AwayId
 		,	P.EventDate
@@ -79,7 +80,7 @@ BEGIN
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 	GROUP BY P.MatchId, P.LeagueId, L.LeagueGroupID, P.HomeId, P.AwayId, P.EventDate 
-		,   CASE WHEN lg.TargetLeagueGroupId = L.LeagueGroupID THEN lg.TargetLeagueGroupId ELSE @OtherGroupsId END
+		,   lg.TargetLeagueGroupId
 		,	P.IsLive
 	ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC;
 END;
