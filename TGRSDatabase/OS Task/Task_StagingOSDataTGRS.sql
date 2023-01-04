@@ -441,9 +441,9 @@ BEGIN
 				,	[BetType]		= a.bettype
 				,	[UpdatedTime]	= a.UpdatedTime
 				,	[ID]			= a.ID
-				,	[Detail_X]		= a.Detail_X
-				,	[Detail_Y]		= a.Detail_Y
-				,	[Detail_Z]		= a.Detail_Z
+				,	[Detail_X]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_X ELSE -1 END
+				,	[Detail_Y]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_Y ELSE -1 END 
+				,	[Detail_Z]		= -1
 			FROM	bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
 				INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
 			WHERE m.EventDate BETWEEN @FromDateBK AND @ToDateBK
@@ -459,9 +459,10 @@ BEGIN
 				,	[SportType]	= a.Sporttype
 				,	[EventDate]	= a.EventDate
 				,	[BetType]	= a.Bettype
-				,	[betid]		= CASE WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
-										WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
-										ELSE 0 END -- convert to betid
+				,	[betid]		= CASE WHEN a.Detail_Z <> -1 THEN 0
+									WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
+									WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
+									ELSE 0 END -- convert to betid
 			FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
 			CROSS APPLY (
 							SELECT dt.ID , dt.TraderID, dt.MatchId, dt.Bettype, dt.Detail_X, dt.Detail_Y, dt.Detail_Z,
@@ -551,9 +552,9 @@ BEGIN
 				,	[BetType]		= a.bettype
 				,	[UpdatedTime]	= a.UpdatedTime
 				,	[ID]			= a.ID
-				,	[Detail_X]		= a.Detail_X
-				,	[Detail_Y]		= a.Detail_Y
-				,	[Detail_Z]		= a.Detail_Z
+				,	[Detail_X]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_X ELSE -1 END
+				,	[Detail_Y]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_Y ELSE -1 END 
+				,	[Detail_Z]		= -1
 			FROM	bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
 				INNER JOIN	bodb_Archive.dbo.Match_bk AS m WITH (NOLOCK) ON	a.matchid = m.matchid
 			WHERE m.EventDate BETWEEN @DotExtraPTDate AND @ToDateBK
@@ -569,9 +570,10 @@ BEGIN
 				,	[SportType]	= a.Sporttype
 				,	[EventDate]	= a.EventDate
 				,	[BetType]	= a.Bettype
-				,	[betid]		= CASE WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
-										WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
-										ELSE 0 END -- convert to betid
+				,	[betid]		= CASE WHEN a.Detail_Z <> -1 THEN 0
+									WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
+									WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
+									ELSE 0 END -- convert to betid
 			FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
 			CROSS APPLY (
 							SELECT dt.ID , dt.TraderID, dt.MatchId, dt.Bettype, dt.Detail_X, dt.Detail_Y, dt.Detail_Z,
@@ -820,7 +822,7 @@ BEGIN
 				LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-					AND b.betid	= t.betid
+					AND b.betid = (CASE WHEN t.betid <> 0 THEN t.betid ELSE b.betid END) -- Only mapping betid for 80X, 80X0Y
 				LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			OPTION (MAXDOP 2);
@@ -929,9 +931,9 @@ BEGIN
 				,	[BetType]		= a.bettype
 				,	[UpdatedTime]	= a.UpdatedTime
 				,	[ID]			= a.ID
-				,	[Detail_X]		= a.Detail_X
-				,	[Detail_Y]		= a.Detail_Y
-				,	[Detail_Z]		= a.Detail_Z
+				,	[Detail_X]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_X ELSE -1 END
+				,	[Detail_Y]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_Y ELSE -1 END 
+				,	[Detail_Z]		= -1
 			FROM	bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK)
 			INNER JOIN	bodb02.dbo.Match14 AS m WITH (NOLOCK) ON a.matchid = m.matchid
 			WHERE m.EventDate BETWEEN @FromDate14 AND @ToDate14
@@ -947,9 +949,10 @@ BEGIN
 				,	[SportType]	= a.Sporttype
 				,	[EventDate]	= a.EventDate
 				,	[BetType]	= a.Bettype
-				,	[betid]		= CASE WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
-										WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
-										ELSE 0 END -- convert to betid
+				,	[betid]		= CASE WHEN a.Detail_Z <> -1 THEN 0
+									WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
+									WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
+									ELSE 0 END -- convert to betid
 			FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
 			CROSS APPLY (
 							SELECT dt.ID , dt.TraderID, dt.MatchId, dt.Bettype, dt.Detail_X, dt.Detail_Y, dt.Detail_Z,
@@ -1143,7 +1146,7 @@ BEGIN
 				LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-					AND b.betid = t.betid
+					AND b.betid = (CASE WHEN t.betid <> 0 THEN t.betid ELSE b.betid END) -- Only mapping betid for 80X, 80X0Y
 				LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			OPTION (MAXDOP 2);
@@ -1252,9 +1255,9 @@ BEGIN
 			,	[BetType]		= a.bettype
 			,	[UpdatedTime]	= a.UpdatedTime
 			,	[ID]			= a.ID
-			,	[Detail_X]		= a.Detail_X
-			,	[Detail_Y]		= a.Detail_Y
-			,	[Detail_Z]		= a.Detail_Z
+			,	[Detail_X]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_X ELSE -1 END
+			,	[Detail_Y]		= CASE WHEN (m.Sporttype = 43 AND a.bettype BETWEEN 9001 AND 9142) THEN a.Detail_Y ELSE -1 END 
+			,	[Detail_Z]		= -1
 		FROM	bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK)
 		INNER JOIN	bodb02.dbo.match AS m WITH (NOLOCK) ON	a.matchid = m.matchid
 		WHERE m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
@@ -1270,9 +1273,10 @@ BEGIN
 			,	[SportType]	= a.Sporttype
 			,	[EventDate]	= a.EventDate
 			,	[BetType]	= a.Bettype
-			,	[betid]		= CASE WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
-										WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
-										ELSE 0 END -- convert to betid
+			,	[betid]		= CASE WHEN a.Detail_Z <> -1 THEN 0
+								WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X*100 + a.Detail_Y) -- 80X0Y = 80000 + X*100 + Y
+								WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X) -- 80X = 800 + X
+								ELSE 0 END -- convert to betid
 		FROM	#tmpStagingOSTrader AS a WITH (NOLOCK)
 		CROSS APPLY (
 						SELECT dt.ID , dt.TraderID, dt.MatchId, dt.Bettype, dt.Detail_X, dt.Detail_Y, dt.Detail_Z,
@@ -1466,7 +1470,7 @@ BEGIN
 				LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
 					AND	b.bettype = t.BetType
-					AND b.betid = t.betid
+					AND b.betid = (CASE WHEN t.betid <> 0 THEN t.betid ELSE b.betid END) -- Only mapping betid for 80X, 80X0Y
 				LEFT JOIN	#ExtraPTSportbook AS es WITH (NOLOCK) ON es.SuperId = b.srecommend
 					AND	b.winlostdate BETWEEN es.FromDate AND es.ToDate
 			OPTION (MAXDOP 2);
