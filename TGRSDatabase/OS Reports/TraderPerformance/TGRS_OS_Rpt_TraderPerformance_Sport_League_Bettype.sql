@@ -1,6 +1,5 @@
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_Sport_League_Bettype]
-		@ReportType			TINYINT  = 1
-	,	@SportId			INT
+		@SportId			INT
 	,	@LeagueId			INT
 	,	@TraderId			INT
 	,	@FromDate			DATE
@@ -15,6 +14,7 @@ AS
 	Revisions:  	
 		- 20181030@Long: Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
+		- 20230103@John.Ngo: [TGS OS] Allow view data details into Map/Game/Set [Redmine ID: 182351]
 		
 	Param's Explanation (filtered by):
 		- @ReportType = 1: Daily, 2: Monthly
@@ -38,64 +38,38 @@ BEGIN
 
 	CREATE TABLE #tmpOSBettypePerformance (
 			BettypeId		INT
+		,	BetId			BIGINT
 		,	Turnover		MONEY
 		,	VWinLoss		MONEY
-		,	Target			DECIMAL(18, 2)
 		,	BetCount		BIGINT
 	);
 
-	IF @ReportType = 1
-	BEGIN
-		INSERT INTO #tmpOSBettypePerformance (
-				BettypeId
-			,	Turnover
-			,	VWinLoss
-			,	Target
-			,	BetCount
-		)
-		SELECT	td.BettypeId
-			,	SUM(td.Turnover) AS Turnover
-			,	SUM(td.WinLoss - td.Comm) AS 'VWinLoss'
-			,	td.Target
-			,	SUM(td.BetCount)
-		FROM dbo.OSSummaryByTrader_Daily td WITH (NOLOCK)
-		WHERE td.TraderId = @TraderId
-			AND td.EventDate BETWEEN @FromDate AND @ToDate
-			AND td.SportId = @SportId
-			AND td.LeagueId = @LeagueId
-			AND (@LiveType = -1 OR td.IsLive = @LiveType)
-		GROUP BY td.BettypeId
-			,	td.Target;
-	END
-	ELSE IF @ReportType = 2
-	BEGIN
-		INSERT INTO #tmpOSBettypePerformance (
-				BettypeId
-			,	Turnover
-			,	VWinLoss
-			,	Target
-			,	BetCount
-		)
-		SELECT	td.BettypeId
-			,	SUM(td.Turnover) AS Turnover
-			,	SUM(td.WinLoss - td.Comm) AS 'VWinLoss'
-			,	td.Target
-			,	SUM(td.BetCount)
-		FROM dbo.OSSummaryByTrader_Monthly td WITH (NOLOCK)
-		WHERE td.TraderId = @TraderId
-			AND td.EventDate BETWEEN @FromDate AND @ToDate
-			AND td.SportId = @SportId
-			AND td.LeagueId = @LeagueId
-			AND (@LiveType = -1 OR td.IsLive = @LiveType)
-		GROUP BY td.BettypeId
-			,	td.Target;
-	END;
-	
+	INSERT INTO #tmpOSBettypePerformance (
+			BettypeId
+		,	BetId
+		,	Turnover
+		,	VWinLoss
+		,	BetCount
+	)
+	SELECT	P.BettypeId
+		,	CASE WHEN (P.SportId = 43 AND P.BettypeId BETWEEN 9001 AND 9142) THEN P.BetId ELSE 0 END
+		,	SUM(P.Turnover) AS Turnover
+		,	SUM(P.WinLoss - P.Comm) AS 'VWinLoss'
+		,	SUM(P.BetCount)
+	FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)
+	WHERE P.TraderId = @TraderId
+		AND P.EventDate BETWEEN @FromDate AND @ToDate
+		AND P.SportId = @SportId
+		AND P.LeagueId = @LeagueId
+		AND (@LiveType = -1 OR P.IsLive = @LiveType)
+	GROUP BY P.BettypeId
+		,	CASE WHEN (P.SportId = 43 AND P.BettypeId BETWEEN 9001 AND 9142) THEN P.BetId ELSE 0 END;
+
 	SELECT @TotalTurnover = SUM(Turnover)
 	FROM #tmpOSBettypePerformance WITH(NOLOCK);
 
 	SELECT	t.BettypeId
-		,	bt.typenamee AS BettypeName
+		,	t.BetId
 		,	SUM(Turnover) AS Turnover
 		,	SUM(VWinLoss) AS 'VWinLoss'
 		,	(SUM(VWinLoss) * 100 / SUM(Turnover)) AS 'VMargin'
@@ -103,9 +77,8 @@ BEGIN
 		,	(SUM(VWinLoss) * (@FMark) / SUM(Turnover)) AS 'PointMargin'
 		,	SUM(t.BetCount) AS BetCount
 	FROM #tmpOSBettypePerformance t WITH (NOLOCK)
-		INNER JOIN bodb02.dbo.bettype bt WITH (NOLOCK) ON t.BettypeId = bt.typeid
 	GROUP BY t.BettypeId
-		,	bt.typenamee;
+		,	t.BetId;
 
 	DROP TABLE #tmpOSBettypePerformance;
 END;

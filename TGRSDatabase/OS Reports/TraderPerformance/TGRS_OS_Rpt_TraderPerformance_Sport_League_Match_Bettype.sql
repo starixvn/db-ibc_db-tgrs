@@ -16,9 +16,9 @@ AS
 		- 20181030@Long: Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
 		- 20210226@John.Ngo: Integrate Cricket AIO [Redmine ID: #150856]
+		- 20230103@John.Ngo: [TGS OS] Allow view data details into Map/Game/Set [Redmine ID: 182351]
 
 	Param's Explanation (filtered by):
-		- @ReportType = 1: Daily, 2: Monthly
 		- @LiveType: -1 All; 0 Nonlive; 1 Live
 */
 BEGIN
@@ -43,13 +43,15 @@ BEGIN
 
 	CREATE TABLE #tmpOSBettypePerformance (
 			BettypeId		INT
+		,	BetId			BIGINT
 		,	Turnover		MONEY
 		,	VWinLoss		MONEY
 		,	BetCount		BIGINT
 	);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpOSBettypePerformance_BettypeId ON #tmpOSBettypePerformance (
-		BettypeId			ASC
+			BettypeId		ASC
+		,	BetId			ASC
 	);
 
 	INSERT INTO #tmpMatches(MatchId)
@@ -58,35 +60,37 @@ BEGIN
 
 	INSERT INTO #tmpOSBettypePerformance (
 			BettypeId
+		,	BetId
 		,	Turnover
 		,	VWinLoss
 		,	BetCount
 	)
-	SELECT	td.BettypeId
-		,	SUM(td.Turnover) AS Turnover
-		,	SUM(td.WinLoss - td.Comm) AS 'VWinLoss'
-		,	SUM(td.BetCount)
-	FROM dbo.OSDataTGRS td WITH (NOLOCK)
-		INNER JOIN #tmpMatches AS m WITH(NOLOCK) ON td.MatchId = m.MatchId
-	WHERE td.EventDate BETWEEN @FromDate AND @ToDate
-		AND td.TraderId = @TraderId
-		AND td.SportId = @SportId
-		AND td.LeagueId = @LeagueId
-		AND (@LiveType = -1 OR td.IsLive = @LiveType)
-	GROUP BY td.BettypeId;
+	SELECT	P.BettypeId
+		,	CASE WHEN (P.SportId = 43 AND P.BettypeId BETWEEN 9001 AND 9142) THEN P.BetId ELSE 0 END
+		,	SUM(P.Turnover) AS Turnover
+		,	SUM(P.WinLoss - P.Comm) AS 'VWinLoss'
+		,	SUM(P.BetCount)
+	FROM dbo.OSDataTGRS_BetChoice AS P WITH (NOLOCK)
+		INNER JOIN #tmpMatches AS m WITH(NOLOCK) ON P.MatchId = m.MatchId
+	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
+		AND P.TraderId = @TraderId
+		AND P.SportId = @SportId
+		AND P.LeagueId = @LeagueId
+		AND (@LiveType = -1 OR P.IsLive = @LiveType)
+	GROUP BY P.BettypeId
+		,	CASE WHEN (P.SportId = 43 AND P.BettypeId BETWEEN 9001 AND 9142) THEN P.BetId ELSE 0 END;
 	
 	SELECT @TotalTurnover = SUM(Turnover)
 	FROM #tmpOSBettypePerformance;
 
 	SELECT	t.BettypeId AS BettypeId
-		,	bt.typenamee AS BettypeName
+		,	t.BetId AS BetId
 		,	SUM(t.Turnover) AS Turnover
 		,	SUM(t.VWinLoss) AS VWinLoss
 		,	SUM(t.BetCount) AS BetCount
 	FROM #tmpOSBettypePerformance t WITH (NOLOCK)
-		INNER JOIN bodb02.dbo.bettype bt WITH (NOLOCK) ON t.BettypeId = bt.typeid
 	GROUP BY t.BettypeId
-		,	bt.typenamee;
+		,	t.BetId;
 
 	DROP TABLE #tmpOSBettypePerformance;
 END;
