@@ -21,7 +21,8 @@ AS
 		- 20200721@John.Ngo: New Negative Bettype No Of Corner HDP [Redmine ID: 138095]
 		- 20201017@John.Ngo: TGR - Integrate Adjustmnet Odds Spread of Licensee [Redmine ID: 142421]
 		- 20201112@John.Ngo: TGR - Enhance formula of calculating adjusted odds by Licensee [Redmine ID: 145246]
-   		
+   		- 20230103@John.Ngo: Fix Odds Spread Setting - ReCalculate Original Winlost [Redmine ID: 182351]
+		
 	Param's Explanation:
 
 	Exam:
@@ -584,6 +585,7 @@ BEGIN
 			SELECT @Date = CONVERT(NVARCHAR, @WinlostDate, 120);
 
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
+			-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
 			INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, VirtualRate, ActualRate, Tpositiontaking,
 					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, ExtraPT, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost,
 					MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
@@ -606,7 +608,7 @@ BEGIN
 				,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 				,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 				,	[actual_stake]		= b.actual_stake
-				,	[winlost]			= b.winlost
+				,	[winlost]			= (b.winlost - b.actual_stake)
 				,	[awinlost]			= b.awinlost
 				,	[mwinlost]			= b.mwinlost
 				,	[swinlost]			= b.swinlost
@@ -726,7 +728,7 @@ BEGIN
 				,	[Grade]				= t.Grade
 				,	[BetType]			= ca.BetType
 				,	[Stake]				= b.Stake --Turnover
-				,	[WinLost]			= b.winlost - b.actual_stake
+				,	[WinLost]			= b.winlost
 				,	[SMAWinLost]		= b.awinlost + b.mwinlost + b.swinlost
 				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
@@ -1049,6 +1051,7 @@ BEGIN
 			SELECT @Date = CONVERT(NVARCHAR, @WinlostDate, 120);
 			
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
+			-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
 			INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, VirtualRate, ActualRate, Tpositiontaking,
 					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, ExtraPT, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost,
 					MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
@@ -1071,7 +1074,7 @@ BEGIN
 				,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 				,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 				,	[actual_stake]		= b.actual_stake
-				,	[winlost]			= b.winlost
+				,	[winlost]			= (b.winlost - b.actual_stake)
 				,	[awinlost]			= b.awinlost
 				,	[mwinlost]			= b.mwinlost
 				,	[swinlost]			= b.swinlost
@@ -1188,7 +1191,7 @@ BEGIN
 				,	[Grade]				= t.Grade
 				,	[BetType]			= ca.BetType
 				,	[Stake]				= b.Stake --Turnover
-				,	[WinLost]			= b.winlost - b.actual_stake
+				,	[WinLost]			= b.winlost
 				,	[SMAWinLost]		= b.awinlost + b.mwinlost + b.swinlost
 				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
@@ -1517,6 +1520,7 @@ BEGIN
 			SELECT @Date = CONVERT(NVARCHAR, @WinlostDate, 120);
 
 			TRUNCATE TABLE	#tmpFilteredBettransByBatch;
+			-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
 			INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds, VirtualRate, ActualRate, Tpositiontaking,
 					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, ExtraPT, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost,
 					MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
@@ -1539,7 +1543,7 @@ BEGIN
 				,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
 				,	[Stake]				= CASE WHEN b.modds = 0.25 OR b.modds = - 0.25 THEN ABS(b.stake) / 2 ELSE ABS(b.stake) END
 				,	[actual_stake]		= b.actual_stake
-				,	[winlost]			= b.winlost
+				,	[winlost]			= (b.winlost - b.actual_stake)
 				,	[awinlost]			= b.awinlost
 				,	[mwinlost]			= b.mwinlost
 				,	[swinlost]			= b.swinlost
@@ -1656,7 +1660,7 @@ BEGIN
 				,	[Grade]				= t.Grade
 				,	[BetType]			= ca.BetType
 				,	[Stake]				= b.Stake --Turnover
-				,	[WinLost]			= b.winlost - b.actual_stake
+				,	[WinLost]			= b.winlost
 				,	[SMAWinLost]		= b.awinlost + b.mwinlost + b.swinlost
 				,	[Comm]				= b.scomm --Commission
 				,	[BetCount]			= 1 --Live BetCount
