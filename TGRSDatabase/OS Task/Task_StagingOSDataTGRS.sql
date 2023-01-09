@@ -743,7 +743,7 @@ BEGIN
 			-- "DISTINCT" Prevent Page Splits
 			DELETE b WITH(ROWLOCK)
 			FROM	(	
-						SELECT *, ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+						SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
 						FROM #tmpFilteredBettransByBatch
 					) AS b
 			WHERE b.rn > 1;
@@ -1068,7 +1068,7 @@ BEGIN
 			-- "DISTINCT" Prevent Page Splits
 			DELETE b WITH(ROWLOCK)
 			FROM	(	
-						SELECT *, ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+						SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
 						FROM #tmpFilteredBettransByBatch
 					) AS b
 			WHERE b.rn > 1;
@@ -1393,7 +1393,7 @@ BEGIN
 			-- "DISTINCT" Prevent Page Splits
 			DELETE b WITH(ROWLOCK)
 			FROM	(	
-						SELECT *, ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+						SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
 						FROM #tmpFilteredBettransByBatch
 					) AS b
 			WHERE b.rn > 1;

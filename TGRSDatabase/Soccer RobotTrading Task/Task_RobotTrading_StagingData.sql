@@ -239,11 +239,11 @@ BEGIN
 		,	isDecOddsOnly		BIT
 	);
 		
-	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatch_CustId ON #tmpFilteredBettransByBatch (
+	CREATE NONCLUSTERED INDEX	#CIX_tmpFilteredBettransByBatch_CustId ON #tmpFilteredBettransByBatch (
 			CustId				ASC
 	);	
 
-	CREATE NONCLUSTERED INDEX	#IX_tmpDLFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
+	CREATE CLUSTERED INDEX	#IX_tmpDLFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
 			WinlostDate			ASC
 		,	MatchId				ASC
 		,	BetType				ASC
@@ -654,7 +654,7 @@ BEGIN
 			-- "DISTINCT" Prevent Page Splits
 			DELETE b WITH(ROWLOCK)
 			FROM	(	
-						SELECT *, ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+						SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
 						FROM #tmpFilteredBettransByBatch
 					) AS b
 			WHERE b.rn > 1;
@@ -1117,7 +1117,7 @@ BEGIN
 			-- "DISTINCT" Prevent Page Splits
 			DELETE b WITH(ROWLOCK)
 			FROM	(	
-						SELECT *, ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+						SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
 						FROM #tmpFilteredBettransByBatch
 					) AS b
 			WHERE b.rn > 1;
@@ -1586,7 +1586,7 @@ BEGIN
 			-- "DISTINCT" Prevent Page Splits
 			DELETE b WITH(ROWLOCK)
 			FROM	(	
-						SELECT *, ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+						SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
 						FROM #tmpFilteredBettransByBatch
 					) AS b
 			WHERE b.rn > 1;

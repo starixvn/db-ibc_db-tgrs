@@ -60,14 +60,12 @@ TRUNCATE TABLE OSTraderTeamHistory
 TRUNCATE TABLE OSTraderGradeHistory
 
 SET IDENTITY_INSERT [OSTeam] ON
-INSERT INTO [OSTeam]
-SELECT * from DB061.bodb_TGRS.dbo.[OSTeam]
-SET IDENTITY_INSERT Team OFF
+INSERT INTO bodb_TGRS_UAT.dbo.[OSTeam](TeamId,TeamName,CreatedDate,CreatedBy,ModifiedDate,ModifiedBy)
+SELECT * FROM DB061.bodb_TGRS.dbo.[OSTeam] WITH(NOLOCK)
+SET IDENTITY_INSERT [OSTeam] OFF
 
-SET IDENTITY_INSERT [OSTrader] ON
-INSERT INTO [OSTrader]
-SELECT * from DB061.bodb_TGRS.dbo.[OSTrader]
-SET IDENTITY_INSERT Team OFF
+INSERT INTO bodb_TGRS_UAT.dbo.[OSTrader] (TraderId,TraderName,EmployeeId,TeamId,GradeId,FirstWorkingDate,CreatedDate,CreatedBy,ModifiedDate,ModifiedBy,Disabled)
+SELECT TraderId,TraderName,EmployeeId,TeamId,GradeId,FirstWorkingDate,CreatedDate,CreatedBy,ModifiedDate,ModifiedBy,Disabled FROM DB061.bodb_TGRS.dbo.[OSTrader] WITH(NOLOCK)
 
 INSERT INTO OSTraderTeamHistory
 SELECT * FROM DB061.bodb_TGRS.dbo.OSTraderTeamHistory
