@@ -71,8 +71,6 @@ BEGIN;
 		,	StakeMYBeforeComm		MONEY
 		,	StakeMY					MONEY
 		,	Stake					MONEY
-		,	MOdds					SMALLMONEY
-		,	StatusID				TINYINT
 		,	AVGOdds_AR				FLOAT
 		,	StakeMYBeforeComm_AR	MONEY
 		,	StakeMY_AR				MONEY
@@ -112,7 +110,6 @@ BEGIN;
 		,	MatchId					INT
 		,	Winlostdate				SMALLDATETIME
 		,	Bettype					SMALLINT
-		,	Modds					SMALLMONEY
 		,	Virtualrate				FLOAT
 		,	Actualrate				FLOAT
 		,	Tpositiontaking			SMALLMONEY
@@ -153,7 +150,6 @@ BEGIN;
 		,	VirtualRate				FLOAT
 		,	ActualRate				FLOAT
 		,	Scomm					MONEY
-		,	MOdds					SMALLMONEY
 		,	StatusID				TINYINT
 		,	Is8RM					BIT
 	);
@@ -737,13 +733,12 @@ BEGIN;
 			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
 
 			-- Insert data into batch by Date
-			INSERT INTO #tmpFilteredBettransBKByBatch2 (TransId, MatchId, Winlostdate, Bettype, Modds, Virtualrate, Actualrate, 
+			INSERT INTO #tmpFilteredBettransBKByBatch2 (TransId, MatchId, Winlostdate, Bettype, Virtualrate, Actualrate, 
 			Tpositiontaking, Scomm, Betteam, Odds, StatusID, ExtraPT, ScoreHDP, StakeMY, Stake, Is8RM)
 			SELECT	[TransId]			= b.transid
 				,	[MatchId]			= b.matchid
 				,	[Winlostdate]		= b.winlostdate
 				,	[Bettype]			= b.bettype
-				,	[Modds]				= b.modds
 				,	[Virtualrate]		= b.virtualrate
 				,	[Actualrate]		= b.actualrate
 				,	[Tpositiontaking]	= b.tpositiontaking
@@ -786,7 +781,7 @@ BEGIN;
 
 			-- Staging Performance 
 			INSERT INTO #tmpStagingTraderPerformance2 (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, Odds, StakeMY, Stake, 
-			ExtraPT, TPositionTaking, VirtualRate, ActualRate, Scomm, MOdds, StatusID, Is8RM)
+			ExtraPT, TPositionTaking, VirtualRate, ActualRate, Scomm, StatusID, Is8RM)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
 				,	[EventDate]			= b.winlostdate
 				,	[MatchId]			= b.matchid
@@ -801,7 +796,6 @@ BEGIN;
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
 				,	[Scomm]				= b.scomm
-				,	[MOdds]				= b.modds
 				,	[StatusID]			= b.statusID
 				,	[Is8RM]				= b.Is8RM
 			FROM		#tmpFilteredBettransBKByBatch2 AS b WITH(NOLOCK)
@@ -865,7 +859,7 @@ BEGIN;
 				RAISERROR('From BK - Insert #tmpStagingTraderPerformance2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
-			INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, StatusID, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
+			INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
 				AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR, Is8RM)
 			SELECT	[TraderId]			= t.TraderId
 				,	[EventDate]			= t.EventDate
@@ -873,8 +867,6 @@ BEGIN;
 				,	[BetType]			= t.BetType
 				,	[BetTeam]			= t.BetTeam
 				,	[ScoreHDP]			= t.ScoreHDP
-				,	[MOdds]				= t.MOdds
-				,	[StatusID]			= t.StatusID
 				,	[AVGOdds]			= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
 										/ SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (CASE WHEN (1 - t.TPositionTaking - t.ExtraPT = 0) THEN 1 ELSE (1 - t.TPositionTaking - t.ExtraPT) END) * t.VirtualRate)
 										--TotalWin/TotalLose
@@ -890,7 +882,7 @@ BEGIN;
 				,	[Stake_AR]			= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
 				,	[Is8RM]				= t.Is8RM	
 			FROM	#tmpStagingTraderPerformance2 AS t WITH(NOLOCK)
-			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.MOdds, t.StatusID, t.Is8RM;
+			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.Is8RM;
 		
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1018,13 +1010,12 @@ BEGIN;
 			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
 
 			-- Insert data into batch by Date
-			INSERT INTO #tmpFilteredBettransBKByBatch2 (TransId, MatchId, Winlostdate, Bettype, Modds, Virtualrate, Actualrate, 
+			INSERT INTO #tmpFilteredBettransBKByBatch2 (TransId, MatchId, Winlostdate, Bettype, Virtualrate, Actualrate, 
 			Tpositiontaking, Scomm, Betteam, Odds, StatusID, ExtraPT, ScoreHDP, StakeMY, Stake, Is8RM)
 			SELECT	[TransId]			= b.transid
 				,	[MatchId]			= b.matchid
 				,	[Winlostdate]		= b.winlostdate
 				,	[Bettype]			= b.bettype
-				,	[Modds]				= b.modds
 				,	[Virtualrate]		= b.virtualrate
 				,	[Actualrate]		= b.actualrate
 				,	[Tpositiontaking]	= b.tpositiontaking
@@ -1065,7 +1056,7 @@ BEGIN;
 
 			-- Staging Performance 
 			INSERT INTO #tmpStagingTraderPerformance2 (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, Odds, StakeMY, Stake, 
-			ExtraPT, TPositionTaking, VirtualRate, ActualRate, Scomm, MOdds, StatusID, Is8RM)
+			ExtraPT, TPositionTaking, VirtualRate, ActualRate, Scomm, StatusID, Is8RM)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
 				,	[EventDate]			= b.winlostdate
 				,	[MatchId]			= b.matchid
@@ -1080,7 +1071,6 @@ BEGIN;
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
 				,	[Scomm]				= b.scomm
-				,	[MOdds]				= b.modds
 				,	[StatusID]			= b.statusID
 				,	[Is8RM]				= b.Is8RM	
 			FROM		#tmpFilteredBettransBKByBatch2 AS b WITH(NOLOCK)
@@ -1144,7 +1134,7 @@ BEGIN;
 				RAISERROR('From 14 - Insert #tmpStagingTraderPerformance2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
-			INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, StatusID, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
+			INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
 				AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR, Is8RM)
 			SELECT	[TraderId]			= t.TraderId
 				,	[EventDate]			= t.EventDate
@@ -1152,8 +1142,6 @@ BEGIN;
 				,	[BetType]			= t.BetType
 				,	[BetTeam]			= t.BetTeam
 				,	[ScoreHDP]			= t.ScoreHDP
-				,	[MOdds]				= t.MOdds
-				,	[StatusID]			= t.StatusID
 				,	[AVGOdds]			= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
 										/ SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (CASE WHEN (1 - t.TPositionTaking - t.ExtraPT = 0) THEN 1 ELSE (1 - t.TPositionTaking - t.ExtraPT) END) * t.VirtualRate)
 										--TotalWin/TotalLose
@@ -1169,7 +1157,7 @@ BEGIN;
 				,	[Stake_AR]			= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
 				,	[Is8RM]				= t.Is8RM
 			FROM	#tmpStagingTraderPerformance2 AS t WITH(NOLOCK)
-			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.MOdds, t.StatusID, t.Is8RM;
+			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.Is8RM;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1298,13 +1286,12 @@ BEGIN;
 			SELECT @Date = CONVERT(NVARCHAR, @WinLostDate, 120);
 
 			-- Insert data into batch by Date
-			INSERT INTO #tmpFilteredBettransBKByBatch2 (TransId, MatchId, Winlostdate, Bettype, Modds, Virtualrate, Actualrate, 
+			INSERT INTO #tmpFilteredBettransBKByBatch2 (TransId, MatchId, Winlostdate, Bettype, Virtualrate, Actualrate, 
 			Tpositiontaking, Scomm, Betteam, Odds, StatusID, ExtraPT, ScoreHDP, StakeMY, Stake, Is8RM)
 			SELECT	[TransId]			= b.transid
 				,	[MatchId]			= b.matchid
 				,	[Winlostdate]		= b.winlostdate
 				,	[Bettype]			= b.bettype
-				,	[Modds]				= b.modds
 				,	[Virtualrate]		= b.virtualrate
 				,	[Actualrate]		= b.actualrate
 				,	[Tpositiontaking]	= b.tpositiontaking
@@ -1345,7 +1332,7 @@ BEGIN;
 
 			-- Staging Performance 
 			INSERT INTO #tmpStagingTraderPerformance2 (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, Odds, StakeMY, Stake, 
-			ExtraPT, TPositionTaking, VirtualRate, ActualRate, Scomm, MOdds, StatusID, Is8RM)
+			ExtraPT, TPositionTaking, VirtualRate, ActualRate, Scomm, StatusID, Is8RM)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
 				,	[EventDate]			= b.winlostdate
 				,	[MatchId]			= b.matchid
@@ -1360,7 +1347,6 @@ BEGIN;
 				,	[VirtualRate]		= b.virtualrate
 				,	[ActualRate]		= b.actualrate
 				,	[Scomm]				= b.scomm
-				,	[MOdds]				= b.modds
 				,	[StatusID]			= b.statusID
 				,	[Is8RM]				= b.Is8RM
 			FROM		#tmpFilteredBettransBKByBatch2 AS b WITH(NOLOCK)
@@ -1424,7 +1410,7 @@ BEGIN;
 				RAISERROR('From Origin - Insert #tmpStagingTraderPerformance2 - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
-			INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, MOdds, StatusID, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
+			INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
 				AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR, Is8RM)
 			SELECT	[TraderId]			= t.TraderId
 				,	[EventDate]			= t.EventDate
@@ -1432,8 +1418,6 @@ BEGIN;
 				,	[BetType]			= t.BetType
 				,	[BetTeam]			= t.BetTeam
 				,	[ScoreHDP]			= t.ScoreHDP
-				,	[MOdds]				= t.MOdds
-				,	[StatusID]			= t.StatusID
 				,	[AVGOdds]			= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
 										/ SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (CASE WHEN (1 - t.TPositionTaking - t.ExtraPT = 0) THEN 1 ELSE (1 - t.TPositionTaking - t.ExtraPT) END) * t.VirtualRate)
 										--TotalWin/TotalLose
@@ -1449,7 +1433,7 @@ BEGIN;
 				,	[Stake_AR]			= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
 				,	[Is8RM]				= t.Is8RM
 			FROM	#tmpStagingTraderPerformance2 AS t WITH(NOLOCK)
-			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.MOdds, t.StatusID, t.Is8RM;
+			GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.Is8RM;
 		
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1551,6 +1535,7 @@ BEGIN;
 			AND	temp1.BetType = temp2.BetType
 			AND	temp1.ScoreHDP = temp2.ScoreHDP
 			AND	temp1.BetTeam <> temp2.BetTeam
+			AND	temp1.Is8RM = temp2.Is8RM
 	GROUP BY temp1.EventDate, temp1.MatchId, temp1.BetType, temp1.ScoreHDP, temp1.Is8RM;
 
 	INSERT INTO	#tmpSumTotal (EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR, Is8RM)
