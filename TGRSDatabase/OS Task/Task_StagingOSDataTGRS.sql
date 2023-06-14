@@ -30,6 +30,7 @@ AS
 		- 20201112@John.Ngo: TGR - Enhance formula of calculating adjusted odds by Licensee [Redmine ID: 145246]
 		- 20211123@Adam.Tran: Basketball - View report to Set X Game Y [Redmine: #164165]
 		- 20230103@John.Ngo: [TGS OS] Allow view data details into Map/Game/Set [Redmine ID: 182351]
+		- 20201112@John.Ngo: Fix adjusted odds [Redmine ID: 187083]
 
 	Param's Explanation:
 		
@@ -99,11 +100,7 @@ BEGIN
 	FROM	bodb02.dbo.SportBettypeMatrix AS m WITH(NOLOCK)
 	WHERE	m.sporttype <> 1
 		AND m.ProductID = 1
-		AND	m.bettype IS NOT NULL
-	UNION
-	SELECT	DISTINCT b.BettypeId
-	FROM	dbo.OSBettype AS b WITH (NOLOCK)
-	WHERE	b.BettypeId < 0;
+		AND	m.bettype IS NOT NULL;
 
 	UPDATE abt
 	SET abt.AssignmentBetType = b.AssignmentBettype,
@@ -241,13 +238,13 @@ BEGIN
 					,	isDecOddsOnly		BIT
 					);
 
-	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettrans14ByBatchIdx ON #tmpFilteredBettransByBatch (
+	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
 						Winlostdate			ASC
 					,	MatchId				ASC
 					,	Bettype				ASC
 					);
 	
-	CREATE NONCLUSTERED INDEX	#NCIX_tmpFilteredBettrans14ByBatchIdx ON #tmpFilteredBettransByBatch (
+	CREATE NONCLUSTERED INDEX	#NCIX_tmpFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
 					    CustId				ASC
 					);
 
@@ -1368,7 +1365,7 @@ BEGIN
 			FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.match m WITH (NOLOCK) ON b.MatchId = m.MatchId
 				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON m.Sporttype = sbm.SportType AND b.bettype = sbm.BetType AND b.liveindicator = sbm.IsLive
-				LEFT JOIN bodb02.dbo.BettransInfo14 bi WITH (NOLOCK) ON b.transid = bi.transid
+				LEFT JOIN bodb02.dbo.BettransInfo bi WITH (NOLOCK) ON b.transid = bi.transid
 				LEFT JOIN bodb02.dbo.f_Set_OddsTypeBettypes() fdec  ON b.bettype = fdec.BetType
 			WHERE	b.winlostdate = @WinLostDate
 					AND m.eventdate = @WinLostDate
