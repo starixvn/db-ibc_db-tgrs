@@ -15,6 +15,7 @@ AS
 		- 20191018@John.Ngo: Update logic generate data [Redmine ID: 118959]
 		- 20200106@John.Ngo: Update generate data for RT3 [Redmine ID: 123714]
 		- 20200407@John.Ngo: Call xtest for SPs [Redmine ID: 120634]
+		- 20230606@John.Ngo: Update generate data for E-Sports/Basketball trader performance by class [Redmine ID: 187083]
 
 	Param's Explanation (filtered by):
 		@Flagged: 0 - All, 1 - For Soccer, 2 - For OS, 3 - For RT3
@@ -170,7 +171,6 @@ BEGIN
 		SET		isDone = 0
 		WHERE	EventDate BETWEEN @StartDate AND @EndDate;
 
-		-- Step 3: Job Task_StagingTraderPerformanceByDate after calc daily & juice
 		WHILE (1 = 1)
 		BEGIN
 			SELECT TOP(1) @EventDate = EventDate
@@ -179,7 +179,8 @@ BEGIN
 
 			IF	@@ROWCOUNT = 0
 				BREAK;
-
+			
+			-- Step 1: Daily
 			IF	@Debug = 1
 			BEGIN
 				SELECT	@Msg = 'Run Job Task_StagingOSDataTGRS @GenerateFromDate = ' + CONVERT(NVARCHAR, @EventDate, 120) + N', @GenerateToDate  = ' + CONVERT(NVARCHAR, @EventDate, 120);
@@ -196,7 +197,17 @@ BEGIN
 			END;
 
 			EXECUTE dbo.Task_StagingOSJuice @Debug = @Debug, @GenerateFromDate =@EventDate, @GenerateToDate = @EventDate;
+			
+			-- 'Task_StagingOSDataCustomerClass' Daily 
+			IF	@Debug = 1
+			BEGIN
+				SELECT	@Msg = 'Run Job Task_StagingOSDataCustomerClass @GenerateFromDate = ' + CONVERT(NVARCHAR, @EventDate, 120) + N', @GenerateToDate  = ' + CONVERT(NVARCHAR, @EventDate, 120);
+				RAISERROR(@Msg, 0, 0) WITH NOWAIT;
+			END;
 
+			EXECUTE dbo.Task_StagingOSDataCustomerClass @Debug = @Debug, @GenerateFromDate =@EventDate, @GenerateToDate = @EventDate;
+			
+			-- Step 3: Sum Daily
 			IF	@Debug = 1
 			BEGIN
 				SELECT	@Msg = 'Run Job Task_StagingOSTraderPerformanceByDate @EventDate = ' + CONVERT(NVARCHAR, @EventDate, 120);
