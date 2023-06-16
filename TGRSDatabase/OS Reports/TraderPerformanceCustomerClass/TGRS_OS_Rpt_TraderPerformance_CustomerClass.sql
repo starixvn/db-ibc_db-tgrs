@@ -1,10 +1,12 @@
-CREATE PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_CustomerClass]
+ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_CustomerClass]
 		@FromDate				DATE		 	= '2023-01-01'
 	,	@ToDate					DATE		 	= '2023-06-06'
 	,	@TraderName				NVARCHAR(50) 	= ''
-	,	@SportId				INT		 	 	= - 1
+	,	@SportId				INT		 	 	= -1
+	,	@LiveType				SMALLINT	 	= 1
 	,	@CustomerClassIds		NVARCHAR(2000)	= '-999'
 	,	@AllCustomerClassIds	NVARCHAR(2000)	= '200,201,202,203,204,205,2000,2001,2002,2003,2004,2005,2100,2101,2102,2103,2104,2105,2200,2201,2202,2203,2204,2205,2303,2304,2305,2403,2404,2405,300,301,302,303,304,3000,3001,3002,3003,3004,3100,3101,3200,3201,400,401,901,902,999,1001,1010,2500,2503,2504,2505,4000'
+
 AS
 /*
 	Created:	20230606@John.Ngo
@@ -16,6 +18,7 @@ AS
 
 	Params Explaination:
 		- @CustomerClass: -999 Unknown;
+		- @LiveType: -1 All; 0 Nonlive; 1 Live;
 
 	Exam: EXECUTE [TGRS_OS_Rpt_TraderPerformance_CustomerClass]  @FromDate = '2023-01-01', @ToDate= '2023-06-06', @SportId = -1, @CustomerClassIds = '-999'
 */
@@ -124,7 +127,8 @@ BEGIN
 	FROM dbo.OSDataTGRS_CustomerClass tp WITH (NOLOCK)
 		INNER JOIN #tmpCustomerClass AS cc ON cc.CustomerClass = tp.CustomerClass
 	WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
-		AND (tp.SportId = @SportId OR @SportId = - 1)
+		AND (@SportId = -1 OR tp.SportId = @SportId)
+		AND (@LiveType = -1 OR tp.IsLive = @LiveType)
 	GROUP BY tp.TraderId
 		,	tp.CustomerClass
 	    ,	tp.SportId
@@ -165,7 +169,8 @@ BEGIN
 			FROM dbo.OSDataTGRS_CustomerClass tp WITH (NOLOCK)
 				LEFT JOIN #tmpAllCustomerClass AS acc ON acc.CustomerClass = tp.CustomerClass
 			WHERE tp.EventDate BETWEEN @FromDate AND @ToDate
-				AND (tp.SportId = @SportId OR @SportId = - 1)
+				AND (@SportId = -1 OR tp.SportId = @SportId)
+				AND (@LiveType = -1 OR tp.IsLive = @LiveType)
 				AND acc.CustomerClass IS NULL
 			GROUP BY tp.TraderId
 				,	tp.CustomerClass
