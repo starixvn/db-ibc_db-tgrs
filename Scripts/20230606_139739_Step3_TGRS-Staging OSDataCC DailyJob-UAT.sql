@@ -70,7 +70,7 @@ IF	@@ROWCOUNT = 0 AND @JobId IS NULL
 BEGIN
 	EXECUTE	@ReturnCode	= msdb.dbo.sp_add_job
 							@job_name					= @JobName
-						,	@owner_login_name			= N'spuTeam'
+						,	@owner_login_name			= N'sa'
 						,	@job_id						= @JobId OUTPUT
 						;
 
