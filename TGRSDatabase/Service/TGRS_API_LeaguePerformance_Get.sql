@@ -76,8 +76,8 @@ BEGIN
 			)
 			SELECT	tp.SportType
 				,	tp.LeagueId
-				,	ISNULL(SUM(tp.Stake), 0)								AS Turnover
-				,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss					
+				,	ISNULL(SUM(tp.Stake_Real),0) AS TurnoverReal
+				,	ISNULL(SUM(CASE WHEN tp.Is8RM = 0 THEN tp.WinLost_Real ELSE 0 END),0) AS WinLossReal
 			FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 				INNER JOIN #tmpLeagueName AS l WITH(NOLOCK) ON tp.LeagueId = l.leagueid
 			WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
@@ -96,8 +96,8 @@ BEGIN
 			)
 			SELECT	tp.SportId
 				,	tp.LeagueId
-				,	ISNULL(SUM(tp.Turnover), 0)								AS Turnover
-				,	ISNULL(SUM(tp.WinLoss), 0) - ISNULL(SUM(tp.Comm), 0)	AS WinLoss					
+				,	ISNULL(SUM(tp.Turnover_AR),0) AS TurnoverReal
+				,	ISNULL(SUM(tp.WinLoss_AR),0) - ISNULL(SUM(tp.Comm_AR),0) AS WinLossReal
 			FROM	dbo.OSDataTGRS AS tp WITH (NOLOCK)
 				INNER JOIN #tmpSports AS s ON tp.SportId = s.SportId
 				INNER JOIN #tmpLeagueName AS l WITH(NOLOCK) ON tp.LeagueId = l.leagueid
