@@ -186,7 +186,8 @@ BEGIN
         m.LeagueName,
         m.MatchID,
         m.MatchName,
-        s.BetType,
+        --s.BetType,
+        bt.typenamee AS BetTypeName,
         s.BetCount,
         s.TurnoverIBC,
         s.WinlossIBC,
@@ -205,7 +206,7 @@ BEGIN
         m.HTHomeScore AS [1HHome],
         m.HTAwayScore AS [1HAway],
         s.Favorite,
-        CASE WHEN m.FTHomeScore = m.HTHomeScore THEN 'Draw'
+        CASE WHEN m.FTHomeScore = m.FTAwayScore THEN 'Draw'
             WHEN m.FTHomeScore > m.FTAwayScore AND s.Favorite = 'Home' THEN 'Fav'
             WHEN m.FTHomeScore < m.FTAwayScore AND s.Favorite = 'Home' THEN 'Underdog'
             WHEN m.FTHomeScore > m.FTAwayScore AND s.Favorite = 'Away' THEN 'Underdog'
@@ -220,4 +221,6 @@ BEGIN
     FROM [#source] s
     INNER JOIN [#match] m
         ON m.MatchID = s.MatchID
+    INNER JOIN bodb02.dbo.bettype bt
+        ON s.BetType = bt.typeid
 END
