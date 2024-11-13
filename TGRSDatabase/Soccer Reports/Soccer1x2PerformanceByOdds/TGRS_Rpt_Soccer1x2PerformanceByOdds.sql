@@ -127,7 +127,7 @@ BEGIN
             h.teamname + ' -vs- ' + a.teamname AS [MatchName],
             m.LeagueID,
             l.leaguename AS [LeagueName],
-            lg.GroupName AS [LeagueGroup],
+            ISNULL(lg.GroupName, 'Others') AS [LeagueGroup],
             m.finalhomescore,
             m.finalawayscore,
             m.hthomescore,
@@ -160,7 +160,7 @@ BEGIN
             h.teamname + ' -vs- ' + a.teamname AS [MatchName],
             m.LeagueID,
             l.leaguename AS [LeagueName],
-            lg.GroupName AS [LeagueGroup],
+            ISNULL(lg.GroupName, 'Others') AS [LeagueGroup],
             m.finalhomescore,
             m.finalawayscore,
             m.hthomescore,
@@ -182,43 +182,43 @@ BEGIN
     
     SELECT
         FORMAT(s.RptDate, 'MMM') AS [Month],
-        s.RptDate,
-        m.LeagueGroup,
-        m.LeagueName,
-        m.MatchID,
-        m.MatchName,
+        s.RptDate AS [Date],
+        m.LeagueGroup AS [League Group],
+        m.LeagueName AS [League],
+        -- m.MatchID,
+        m.MatchName AS [Match],
         --s.BetType,
-        bt.typenamee AS BetTypeName,
-        s.BetCount,
-        s.TurnoverIBC,
-        - s.WinlossIBC WinlossIBC,
+        bt.typenamee AS [Bettype],
+        s.BetCount AS [Bet Count],
+        s.TurnoverIBC AS [Turnover],
+        - s.WinlossIBC AS [Winloss],
         CASE WHEN s.TurnoverIBC = 0 THEN 0 ELSE s.WinlossIBC * 100 / s.TurnoverIBC END AS [Margin],
-        s.Odds1,
-        s.OddsX,
-        s.Odds2,
-        s.Turnover1,
-        s.TurnoverX,
-        s.Turnover2,
-        - s.Winloss1 Winloss1,
-        - s.WinlossX WinlossX,
-        - s.Winloss2 Winloss2,
+        s.Odds1 AS [Odds 1],
+        s.OddsX AS [Odds X],
+        s.Odds2 AS [Odds 2],
+        s.Turnover1 AS [Turnover 1],
+        s.TurnoverX AS [Turnover X],
+        s.Turnover2 AS [Turnover 2],
+        - s.Winloss1 AS [Winloss 1],
+        - s.WinlossX AS [Winloss X],
+        - s.Winloss2 AS [Winloss 2],
         m.FTHomeScore AS [Home],
         m.FTAwayScore AS [Away],
-        m.HTHomeScore AS [1HHome],
-        m.HTAwayScore AS [1HAway],
-        s.Favorite,
+        m.HTHomeScore AS [1H Home],
+        m.HTAwayScore AS [1H Away],
+        s.Favorite AS [Fav],
         CASE WHEN m.FTHomeScore = m.FTAwayScore THEN 'Draw'
             WHEN m.FTHomeScore > m.FTAwayScore AND s.Favorite = 'Home' THEN 'Fav'
             WHEN m.FTHomeScore < m.FTAwayScore AND s.Favorite = 'Home' THEN 'Underdog'
             WHEN m.FTHomeScore > m.FTAwayScore AND s.Favorite = 'Away' THEN 'Underdog'
             WHEN m.FTHomeScore < m.FTAwayScore AND s.Favorite = 'Away' THEN 'Fav'
-        END AS [FTResult],
+        END AS [FT Result],
         CASE WHEN m.HTHomeScore = m.HTAwayScore THEN 'Draw'
             WHEN m.HTHomeScore > m.HTAwayScore AND s.Favorite = 'Home' THEN 'Fav'
             WHEN m.HTHomeScore < m.HTAwayScore AND s.Favorite = 'Home' THEN 'Underdog'
             WHEN m.HTHomeScore > m.HTAwayScore AND s.Favorite = 'Away' THEN 'Underdog'
             WHEN m.HTHomeScore < m.HTAwayScore AND s.Favorite = 'Away' THEN 'Fav'
-        END AS [HTResult]
+        END AS [HT Result]
     FROM [#source] s
     INNER JOIN [#match] m
         ON m.MatchID = s.MatchID
