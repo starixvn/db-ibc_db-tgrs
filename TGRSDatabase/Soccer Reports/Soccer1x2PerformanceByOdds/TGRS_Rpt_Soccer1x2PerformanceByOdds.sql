@@ -56,17 +56,17 @@ BEGIN
         f.MatchID,
         f.BetType,
         COUNT(f.BetCount) AS BetCount,
-        SUM(f.TurnoverIBC * c.Rate) AS TurnoverIBC,
+        SUM(f.TurnoverIBC * c.Rate * IIF(f.TicketStatus IN (12, 13), 0.5, 1)) AS TurnoverIBC,
         SUM(f.WinlossIBC * c.Rate) AS WinlossIBC,
         MAX(soccer_odds.field_value_1) AS Odds1, --odds of Home (1)
         MAX(soccer_odds.field_value_2) AS OddsX, --odds of Draw (X)
         MAX(soccer_odds.field_value_3) AS Odds2, --odds of Away (2)
         SUM(CASE WHEN bc.BetChoiceName = 'Home' OR bc.BetChoiceName = 'FT Asian.1' THEN f.TurnoverIBC * c.Rate
-            ELSE 0 END) AS Turnover1,
+            ELSE 0 END * IIF(f.TicketStatus IN (12, 13), 0.5, 1)) AS Turnover1,
         SUM(CASE WHEN bc.BetChoiceName = 'Draw' OR bc.BetChoiceName = 'FT Asian.X' THEN f.TurnoverIBC * c.Rate
-            ELSE 0 END) AS TurnoverX,
+            ELSE 0 END * IIF(f.TicketStatus IN (12, 13), 0.5, 1)) AS TurnoverX,
         SUM(CASE WHEN bc.BetChoiceName = 'Away' OR bc.BetChoiceName = 'FT Asian.2' THEN f.TurnoverIBC * c.Rate
-            ELSE 0 END) AS Turnover2,
+            ELSE 0 END * IIF(f.TicketStatus IN (12, 13), 0.5, 1)) AS Turnover2,
         SUM(CASE WHEN bc.BetChoiceName = 'Home' OR bc.BetChoiceName = 'FT Asian.1' THEN f.WinlossIBC * c.Rate
             ELSE 0 END) AS Winloss1,
         SUM(CASE WHEN bc.BetChoiceName = 'Draw' OR bc.BetChoiceName = 'FT Asian.X' THEN f.WinlossIBC * c.Rate
@@ -75,12 +75,13 @@ BEGIN
             ELSE 0 END) AS Winloss2,
         CASE WHEN MAX(soccer_odds.field_value_1) < MAX(soccer_odds.field_value_3) THEN 'Home'
             WHEN MAX(soccer_odds.field_value_3) < MAX(soccer_odds.field_value_1) THEN 'Away'
-            ELSE 'N/A' END AS Fav
+            ELSE 'Home' END AS Fav
     FROM bodb_Account.dbo.FactBetChoiceDaily f WITH (NOLOCK)
     INNER JOIN bodb_Account.dbo.ibc_odds2 soccer_odds WITH (NOLOCK)
         ON f.MatchID = soccer_odds.match_id
             AND f.RptDate = soccer_odds.event_date
             AND f.bettype = soccer_odds.bet_type_id
+            AND soccer_odds.[type] = 'Last Odds'
     INNER JOIN bodb_Account.dbo.tbl_currency_daily c WITH (NOLOCK)
         ON f.CurrencyID = c.Currency
             AND f.RptDate = c.ExchangeDate
@@ -190,17 +191,17 @@ BEGIN
         bt.typenamee AS BetTypeName,
         s.BetCount,
         s.TurnoverIBC,
-        s.WinlossIBC,
-        s.WinlossIBC / s.TurnoverIBC AS [Margin],
+        - s.WinlossIBC WinlossIBC,
+        CASE WHEN s.TurnoverIBC = 0 THEN 0 ELSE s.WinlossIBC * 100 / s.TurnoverIBC END AS [Margin],
         s.Odds1,
         s.OddsX,
         s.Odds2,
         s.Turnover1,
         s.TurnoverX,
         s.Turnover2,
-        s.Winloss1,
-        s.WinlossX,
-        s.Winloss2,
+        - s.Winloss1 Winloss1,
+        - s.WinlossX WinlossX,
+        - s.Winloss2 Winloss2,
         m.FTHomeScore AS [Home],
         m.FTAwayScore AS [Away],
         m.HTHomeScore AS [1HHome],
