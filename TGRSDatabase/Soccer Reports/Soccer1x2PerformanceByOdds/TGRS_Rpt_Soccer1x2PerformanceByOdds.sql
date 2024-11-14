@@ -55,7 +55,7 @@ BEGIN
         f.RptDate AS RptDate,
         f.MatchID,
         f.BetType,
-        COUNT(f.BetCount) AS BetCount,
+        SUM(f.BetCount) AS BetCount,
         SUM(f.TurnoverIBC * c.Rate * IIF(f.TicketStatus IN (12, 13), 0.5, 1)) AS TurnoverIBC,
         SUM(f.WinlossIBC * c.Rate) AS WinlossIBC,
         MAX(soccer_odds.field_value_1) AS Odds1, --odds of Home (1)
@@ -73,14 +73,16 @@ BEGIN
             ELSE 0 END) AS WinlossX,
         SUM(CASE WHEN bc.BetChoiceName = 'Away' OR bc.BetChoiceName = 'FT Asian.2' THEN f.WinlossIBC * c.Rate
             ELSE 0 END) AS Winloss2,
-        CASE WHEN MAX(soccer_odds.field_value_1) < MAX(soccer_odds.field_value_3) THEN 'Home'
+        CASE WHEN MAX(soccer_odds.field_value_1) IS NULL OR MAX(soccer_odds.field_value_3) IS NULL THEN NULL
+            WHEN MAX(soccer_odds.field_value_1) < MAX(soccer_odds.field_value_3) THEN 'Home'
             WHEN MAX(soccer_odds.field_value_3) < MAX(soccer_odds.field_value_1) THEN 'Away'
             ELSE 'Home' END AS Fav
     FROM bodb_Account.dbo.FactBetChoiceDaily f WITH (NOLOCK)
-    INNER JOIN bodb_Account.dbo.ibc_odds2 soccer_odds WITH (NOLOCK)
+    LEFT JOIN bodb_Account.dbo.ibc_odds2 soccer_odds WITH (NOLOCK)
         ON f.MatchID = soccer_odds.match_id
             AND f.RptDate = soccer_odds.event_date
             AND f.bettype = soccer_odds.bet_type_id
+            AND soccer_odds.is_live = 0
             AND soccer_odds.[type] = 'Last Odds'
     INNER JOIN bodb_Account.dbo.tbl_currency_daily c WITH (NOLOCK)
         ON f.CurrencyID = c.Currency
@@ -139,6 +141,7 @@ BEGIN
             ON m.awayid = a.teamid
         INNER JOIN bodb02.dbo.[league] l WITH (NOLOCK)
             ON m.LeagueID = l.LeagueID
+            AND l.LeagueGroupID <> 113 -- exclude SABA Pingoal
         LEFT JOIN bodb02.dbo.LeagueGroup lg WITH (NOLOCK)
             ON l.LeagueGroupID = lg.GroupID
         WHERE m.MatchID IN (SELECT MatchID FROM [#source])
@@ -172,6 +175,7 @@ BEGIN
             ON m.awayid = a.teamid
         INNER JOIN bodb02.dbo.[league] l WITH (NOLOCK)
             ON m.LeagueID = l.LeagueID
+            AND l.LeagueGroupID <> 113 -- exclude SABA Pingoal
         LEFT JOIN bodb02.dbo.LeagueGroup lg WITH (NOLOCK)
             ON l.LeagueGroupID = lg.GroupID
         WHERE m.MatchID IN (SELECT MatchID FROM [#source])
