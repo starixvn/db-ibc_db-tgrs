@@ -11,6 +11,7 @@ AS
   
 	Revisions:
 		- 20201112@John.Ngo: Staging Data for E-Sports/Basketball trader performance by class [Redmine ID: 187083]
+		- 20240217@Jaden.Tang: Remove TradeCust table (#206895)
 
 	Param's Explanation:
 		
@@ -841,10 +842,9 @@ BEGIN
 				,	[Turnover_AR]	= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLoss_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(CASE WHEN tc.custid IS NULL THEN 1 ELSE 0 END)  -- Exclude Cashout Ticket
+				,	[BetCount]		= SUM(t.BetCount)  
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
-				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON b.CustId = tc.CustId AND tc.VendorID = 14
 			WHERE b.eventdate = @WinLostDate
 			GROUP BY b.TraderId, b.CustomerClass, b.SportType, b.LeagueId, b.MatchId, b.MatchCode, b.EventDate, b.BetType, b.LiveIndicator;
 			
@@ -1137,10 +1137,9 @@ BEGIN
 				,	[Turnover_AR]	= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLoss_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(CASE WHEN tc.custid IS NULL THEN 1 ELSE 0 END)  -- Exclude Cashout Ticket
+				,	[BetCount]		= SUM(t.BetCount)  
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
-				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON b.CustId = tc.CustId AND tc.VendorID = 14
 			WHERE b.eventdate = @WinLostDate
 			GROUP BY b.TraderId, b.CustomerClass, b.SportType, b.LeagueId, b.MatchId, b.MatchCode, b.EventDate, b.BetType, b.LiveIndicator;
 			
@@ -1433,10 +1432,9 @@ BEGIN
 				,	[Turnover_AR]	= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLoss_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(CASE WHEN tc.custid IS NULL THEN 1 ELSE 0 END)  -- Exclude Cashout Ticket
+				,	[BetCount]		= SUM(t.BetCount)  
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
-				LEFT JOIN bodb02.dbo.TradeCust tc WITH (NOLOCK) ON b.CustId = tc.CustId AND tc.VendorID = 14
 			WHERE b.eventdate = @WinLostDate
 			GROUP BY b.TraderId, b.CustomerClass, b.SportType, b.LeagueId, b.MatchId, b.MatchCode, b.EventDate, b.BetType, b.LiveIndicator;
 			
