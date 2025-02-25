@@ -852,7 +852,7 @@ BEGIN
 				,	[Turnover_AR]	= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLoss_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(t.BetCount)  -- Exclude Cashout Ticket				
+				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[Target]		= dbo.f_GetOSTargetBySportLeagueBettype(b.sporttype, b.leagueid, b.BetType, b.eventdate)
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
@@ -886,7 +886,7 @@ BEGIN
 				,	[Stake_AR]		= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLost_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(t.BetCount)  -- Exclude Cashout Ticket				
+				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
@@ -1175,7 +1175,7 @@ BEGIN
 				,	[Turnover_AR]	= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLoss_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(t.BetCount)  -- Exclude Cashout Ticket				
+				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[Target]		= dbo.f_GetOSTargetBySportLeagueBettype(b.sporttype, b.leagueid, b.BetType, b.eventdate)
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
@@ -1209,7 +1209,7 @@ BEGIN
 				,	[Stake_AR]		= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLost_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(t.BetCount)  -- Exclude Cashout Ticket				
+				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
@@ -1498,7 +1498,7 @@ BEGIN
 				,	[Turnover_AR]	= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLoss_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(t.BetCount)  -- Exclude Cashout Ticket				
+				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[Target]		= dbo.f_GetOSTargetBySportLeagueBettype(b.sporttype, b.leagueid, b.BetType, b.eventdate)
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
@@ -1532,7 +1532,7 @@ BEGIN
 				,	[Stake_AR]		= SUM(b.Stake * (1 - b.TPositionTaking - b.ExtraPT) * (CASE WHEN b.VirtualRate > b.ActualRate THEN b.VirtualRate ELSE b.ActualRate END))
 				,	[WinLost_AR]	= SUM(((-(b.WinLost + b.SMAWinLost)) + b.WinLost * b.ExtraPT) * b.ActualRate)
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
-				,	[BetCount]		= SUM(t.BetCount)  -- Exclude Cashout Ticket				
+				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
@@ -1560,4 +1560,4 @@ BEGIN
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
