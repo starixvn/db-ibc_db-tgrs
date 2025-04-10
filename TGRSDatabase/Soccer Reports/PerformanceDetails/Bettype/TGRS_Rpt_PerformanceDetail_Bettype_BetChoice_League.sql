@@ -1,6 +1,3 @@
-use bodb_TGRS
-GO
-
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice_League]  	
 		@FromDate			DATE
 	,	@ToDate				DATE
