@@ -46,6 +46,7 @@ BEGIN
 		BEGIN
 			SELECT P.LeagueId
 				,	L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
@@ -68,6 +69,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId, L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				,	P.IsLive 	
 			ORDER BY Margin DESC, LeagueName ASC;
@@ -76,6 +78,7 @@ BEGIN
 		BEGIN			
 			SELECT  P.LeagueId
 				,	L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
@@ -99,6 +102,7 @@ BEGIN
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId, L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				,	P.IsLive 	
 			ORDER BY Margin DESC, LeagueName ASC;

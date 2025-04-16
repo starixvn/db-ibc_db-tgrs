@@ -49,6 +49,7 @@ BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
 						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,	lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -72,6 +73,7 @@ BEGIN
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
 						,	lg.TargetLeagueGroupId
+						,	lg.LeagueGroupName
 						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
@@ -79,6 +81,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
+						,   lg.TargetLeagueGroupId AS LeagueGroupID
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
@@ -103,6 +106,7 @@ BEGIN
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
 						,   lg.LeagueGroupName
+						,   lg.TargetLeagueGroupId
 						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
@@ -113,6 +117,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
+						,   lg.TargetLeagueGroupId AS LeagueGroupID
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
@@ -138,6 +143,7 @@ BEGIN
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
 						,   lg.LeagueGroupName
+						,   lg.TargetLeagueGroupId
 						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
@@ -145,6 +151,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
+						,   lg.TargetLeagueGroupId AS LeagueGroupID
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
@@ -170,6 +177,7 @@ BEGIN
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
 						,   lg.LeagueGroupName
+						,   lg.TargetLeagueGroupId
 						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;     
 				END;

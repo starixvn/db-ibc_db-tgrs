@@ -53,6 +53,7 @@ BEGIN
 	CREATE TABLE #tmpLeaguePerformance (
 			LeagueId			INT
 		,	LeagueName			NVARCHAR(500)	
+		,	LeagueGroupID		SMALLINT
 		,	LeagueGroupName		NVARCHAR(500)
 		,	IsLive				BIT
 		,	TraderCount			INT
@@ -86,6 +87,7 @@ BEGIN
 			INSERT INTO #tmpLeaguePerformance (
 					LeagueId
 				,	LeagueName
+				,	LeagueGroupID
 				,	LeagueGroupName
 				,	IsLive
 				,	TraderCount
@@ -99,6 +101,7 @@ BEGIN
 				,	BetCount)
 			SELECT 	P.LeagueId
 				,	L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount
@@ -121,6 +124,7 @@ BEGIN
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId 
 				, 	L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				, 	P.IsLive;
 		
@@ -130,6 +134,7 @@ BEGIN
 			INSERT INTO #tmpLeaguePerformance (
 					LeagueId
 				,	LeagueName
+				,	LeagueGroupID
 				,	LeagueGroupName
 				,	IsLive
 				,	TraderCount
@@ -143,6 +148,7 @@ BEGIN
 				,	BetCount)
 			SELECT 	P.LeagueId
 				,	L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) AS TraderCount
@@ -166,12 +172,14 @@ BEGIN
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 			GROUP BY P.LeagueId
 				, 	L.LeagueName
+				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName
 				, 	P.IsLive;
 		END;
 		
 		SELECT	m.LeagueId
 		,	m.LeagueName
+		,	m.LeagueGroupID
 		,	m.LeagueGroupName
 		,	m.IsLive 
 		,	m.TraderCount		
