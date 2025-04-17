@@ -46,7 +46,7 @@ BEGIN
 		BEGIN
 			SELECT P.LeagueId
 				,	L.LeagueName
-				,   lg.TargetLeagueGroupId
+				,   lg.TargetLeagueGroupId AS LeagueGroupID
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
@@ -78,7 +78,7 @@ BEGIN
 		BEGIN			
 			SELECT  P.LeagueId
 				,	L.LeagueName
-				,   lg.TargetLeagueGroupId
+				,   lg.TargetLeagueGroupId AS LeagueGroupID
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
