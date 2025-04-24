@@ -32,6 +32,7 @@ AS
 		- 20230103@John.Ngo: [TGS OS] Allow view data details into Map/Game/Set [Redmine ID: 182351]
 		- 20201112@John.Ngo: Fix adjusted odds [Redmine ID: 187083]
 		- 20240217@Jaden.Tang: Remove TradeCust table (#206895)
+		- 20240416@Jaden.Tang: Add hdp column (#170019)
 
 	Param's Explanation:
 		
