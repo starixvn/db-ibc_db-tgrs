@@ -4,7 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderReport_Chart]
 	,	@FromDate 		DATETIME
 	,	@ToDate 		DATETIME
 	,	@ViewPermission		SMALLINT
-	,	@LiveType		SMALLINT = 1
+	,	@LiveType		SMALLINT = -1
 AS
 /*
 	Creator: Long
