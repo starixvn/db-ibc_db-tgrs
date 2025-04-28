@@ -22,3 +22,4 @@ BEGIN
     PRINT 'Column [hdp] already exists in table [dbo.OSDataTGRS_BetChoice].'
 END
 GO 
+
