@@ -863,7 +863,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1189,7 +1189,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1515,7 +1515,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
