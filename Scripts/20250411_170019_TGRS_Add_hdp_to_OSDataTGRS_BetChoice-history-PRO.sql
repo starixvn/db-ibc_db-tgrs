@@ -7,11 +7,8 @@
 
 -- https://nexdev.net/issues/170019
 
-use bodb_tgrs;
-GO
-
 -- Re-gen data for a month
-EXEC bodb_tgrs.dbo.Task_StagingOSDataTGRS 
+EXEC dbo.Task_StagingOSDataTGRS
     @Debug = 1, 
     @GenerateFromDate = '2025-04-01', 
-    @GenerateToDate = '2025-04-28';
+    @GenerateToDate = '2025-05-05';
