@@ -5,6 +5,7 @@ CREATE PROCEDURE [dbo].[TGRS_Basketball_Rpt_PerformanceDetail_Bettype_BetChoice_
 	,	@LeagueGroupIds		VARCHAR(2000) =  ''
 	,	@Bettype			SMALLINT
 	,	@BetChoice			NVARCHAR(50)
+	,   @hdp 				SMALLMONEY = NULL
 	,	@BetId				BIGINT	
 	,	@LiveType			SMALLINT = 1
 AS    
@@ -16,6 +17,7 @@ AS
   
 	Revisions: 	
    		- 20211123@Adam.Tran: Basketball - View report to Set X Game Y [Redmine: #164165]
+		- 20250411@Jaden.Tang: Added HDP for when drilling down from TGRS_Basketball_Rpt_PerformanceDetail_Bettype_BetChoice_HDP [Redmine: #170019]
 
 	Param's Explanation:  	
 		- @LiveType: -1 All; 0 Nonlive; 1 Live
@@ -62,6 +64,7 @@ BEGIN
 				AND P.betid = @BetId
 				AND (@LiveType = -1 OR P.IsLive = @LiveType)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@hdp IS NULL OR P.hdp = @hdp)
 			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive    
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;
@@ -87,10 +90,11 @@ BEGIN
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@LiveType = -1 OR P.IsLive = @LiveType)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@hdp IS NULL OR P.hdp = @hdp)
 			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupID, P.IsLive    
 			ORDER BY Margin DESC, LeagueName ASC;
 		END;
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/

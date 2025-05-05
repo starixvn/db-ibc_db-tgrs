@@ -4,7 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderReport_Chart]
 	,	@FromDate 		DATETIME
 	,	@ToDate 		DATETIME
 	,	@ViewPermission		SMALLINT
-	,	@LiveType		SMALLINT = 1
+	,	@LiveType		SMALLINT = -1
 AS
 /*
 	Creator: Long
@@ -111,4 +111,4 @@ BEGIN
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/

@@ -32,6 +32,7 @@ AS
 		- 20230103@John.Ngo: [TGS OS] Allow view data details into Map/Game/Set [Redmine ID: 182351]
 		- 20201112@John.Ngo: Fix adjusted odds [Redmine ID: 187083]
 		- 20240217@Jaden.Tang: Remove TradeCust table (#206895)
+		- 20240416@Jaden.Tang: Add hdp column (#170019)
 
 	Param's Explanation:
 		
@@ -237,17 +238,19 @@ BEGIN
 					,	statuswinlost		TINYINT
 					,	oddstype			TINYINT
 					,	isDecOddsOnly		BIT
+					,	hdp					SMALLMONEY -- Added hdp column
 					);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
-						Winlostdate			ASC
-					,	MatchId				ASC
-					,	Bettype				ASC
-					);
+							Winlostdate			ASC
+						,	MatchId				ASC
+						,	Bettype				ASC
+						,	hdp					ASC
+						);
 	
 	CREATE NONCLUSTERED INDEX	#NCIX_tmpFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
-					    CustId				ASC
-					);
+						    CustId				ASC
+						);
 
 	IF	OBJECT_ID('tempdb..#tmpStagingOSTraderPerformance') IS NOT NULL
 	BEGIN
@@ -274,14 +277,15 @@ BEGIN
 					,	LiveIndicator		BIT
 					,   BetChoice			NVARCHAR(10)
 					,	betid				BIGINT
+					,	hdp					SMALLMONEY -- Added hdp column
 					);
 	
 	CREATE CLUSTERED INDEX #CIX_tmpStagingOSTraderPerformanceIdx ON #tmpStagingOSTraderPerformance (
-						EventDate			ASC
+							EventDate			ASC
 	); 
 
 	CREATE NONCLUSTERED INDEX	#NCIX_tmpStagingOSTraderPerformanceIdx ON #tmpStagingOSTraderPerformance (
-						CustId				ASC
+							CustId				ASC
 	);
 
 	-- Initialize date range
@@ -702,7 +706,7 @@ BEGIN
 			-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
 			INSERT INTO #tmpFilteredBettransByBatch 
 					(TransId, CustId, MatchId, MatchCode, Winlostdate, SportType, LeagueId, Bettype, Modds, Stake, Actual_stake, Virtualrate, Actualrate, Winlost, Awinlost, Mwinlost, Swinlost, Tpositiontaking,
-					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
+					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly, hdp)
 			SELECT	b.transid, b.custid, b.matchid, m.matchcode, b.winlostdate, m.sporttype, m.leagueid, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.actualrate, (b.winlost - b.actual_stake), b.awinlost,
 					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam, b.betid
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
@@ -714,6 +718,7 @@ BEGIN
 				,	[statuswinlost]		= b.statuswinlost
 				,	[oddstype]			= b.oddstype
 				,	[isDecOddsOnly]		= CASE WHEN fdec.OddsType IS NOT NULL THEN 1 ELSE 0 END
+				,	b.hdp1 -- Added hdp1
 			FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
 				INNER JOIN bodb_Archive.dbo.match_bk m WITH (NOLOCK) ON b.MatchId = m.MatchId
 				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON m.Sporttype = sbm.SportType AND b.bettype = sbm.BetType AND b.liveindicator = sbm.IsLive
@@ -797,7 +802,7 @@ BEGIN
 				RAISERROR('From BK - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
-			INSERT INTO #tmpStagingOSTraderPerformance (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, betid)
+			INSERT INTO #tmpStagingOSTraderPerformance (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, betid, hdp)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
 				,	[MemberCustId]		= b.custid
 				,	[EventDate]			= b.winlostdate
@@ -817,6 +822,7 @@ BEGIN
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[BetChoice]			= b.BetChoice
 				,	[betid]				= b.betid
+				,	[hdp]				= b.hdp -- Added hdp
 			FROM	#tmpFilteredBettransByBatch AS b
 				LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
@@ -857,7 +863,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -871,7 +877,7 @@ BEGIN
 			
 			DELETE dbo.OSDataTGRS_BetChoice WHERE EventDate = @winlostdate;
 
-			INSERT INTO	dbo.OSDataTGRS_BetChoice (TraderId, SportId, LeagueId, MatchId, EventDate, BettypeId, BetChoice, betid, Turnover, WinLoss, Comm, Turnover_AR, WinLoss_AR, Comm_AR, BetCount, IsLive)
+			INSERT INTO	dbo.OSDataTGRS_BetChoice (TraderId, SportId, LeagueId, MatchId, EventDate, BettypeId, BetChoice, betid, Turnover, WinLoss, Comm, Turnover_AR, WinLoss_AR, Comm_AR, BetCount, IsLive, hdp)
 			SELECT	[TraderId]		= b.TraderId
 				,	[SportId]		= b.SportType
 				,	[LeagueId]		= b.LeagueId
@@ -888,9 +894,10 @@ BEGIN
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
 				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[IsLive]		= b.LiveIndicator
+				,	[hdp]			= b.hdp -- Added hdp
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.SportType, b.LeagueId, b.MatchId, b.EventDate, b.BetType, b.BetChoice, b.betid, b.LiveIndicator;
+			GROUP BY b.TraderId, b.SportType, b.LeagueId, b.MatchId, b.EventDate, b.BetType, b.BetChoice, b.betid, b.LiveIndicator, b.hdp;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1028,7 +1035,7 @@ BEGIN
 			-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
 			INSERT INTO #tmpFilteredBettransByBatch 
 					(TransId, CustId, MatchId, MatchCode, Winlostdate, SportType, LeagueId, Bettype, Modds, Stake, Actual_stake, Virtualrate, Actualrate, Winlost, Awinlost, Mwinlost, Swinlost, Tpositiontaking,
-					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
+					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly, hdp)
 			SELECT	b.transid, b.custid, b.matchid, m.matchcode, b.winlostdate, m.sporttype, m.leagueid, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.actualrate, (b.winlost - b.actual_stake), b.awinlost,
 					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam, b.betid
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
@@ -1036,6 +1043,7 @@ BEGIN
 				,	[statuswinlost]		= b.statuswinlost
 				,	[oddstype]			= b.oddstype
 				,	[isDecOddsOnly]		= CASE WHEN fdec.OddsType IS NOT NULL THEN 1 ELSE 0 END
+				,	b.hdp1 -- Added hdp1
 			FROM	bodb02.dbo.bettrans14 AS b WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.match14 m WITH (NOLOCK) ON b.MatchId = m.MatchId
 				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON m.Sporttype = sbm.SportType AND b.bettype = sbm.BetType AND b.liveindicator = sbm.IsLive
@@ -1120,7 +1128,7 @@ BEGIN
 				RAISERROR('From 14 - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
-			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, betid)
+			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, betid, hdp)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
 				,	[MemberCustId]		= b.custid
 				,	[EventDate]			= b.winlostdate
@@ -1140,6 +1148,7 @@ BEGIN
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[BetChoice]			= b.BetChoice
 				,	[betid]				= b.betid
+				,	[hdp]				= b.hdp -- Added hdp
 			FROM	#tmpFilteredBettransByBatch AS b
 				LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
@@ -1180,7 +1189,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1194,7 +1203,7 @@ BEGIN
 			
 			DELETE dbo.OSDataTGRS_BetChoice WHERE EventDate = @winlostdate;
 
-			INSERT INTO	dbo.OSDataTGRS_BetChoice (TraderId, SportId, LeagueId, MatchId, EventDate, BettypeId, BetChoice, betid, Turnover, WinLoss, Comm, Turnover_AR, WinLoss_AR, Comm_AR, BetCount, IsLive)
+			INSERT INTO	dbo.OSDataTGRS_BetChoice (TraderId, SportId, LeagueId, MatchId, EventDate, BettypeId, BetChoice, betid, Turnover, WinLoss, Comm, Turnover_AR, WinLoss_AR, Comm_AR, BetCount, IsLive, hdp)
 			SELECT	[TraderId]		= b.TraderId
 				,	[SportId]		= b.SportType
 				,	[LeagueId]		= b.LeagueId
@@ -1211,9 +1220,10 @@ BEGIN
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
 				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[IsLive]		= b.LiveIndicator
+				,	[hdp]			= b.hdp -- Added hdp
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.SportType, b.LeagueId, b.MatchId, b.EventDate, b.BetType, b.BetChoice, b.betid, b.LiveIndicator;
+			GROUP BY b.TraderId, b.SportType, b.LeagueId, b.MatchId, b.EventDate, b.BetType, b.BetChoice, b.betid, b.LiveIndicator, b.hdp;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1224,7 +1234,7 @@ BEGIN
 				-- Force the output to appear immediately
 				RAISERROR('From 14 - Insert OSDataTGRS_BetChoice - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
-			
+
 			-- Remove batched-data (date) from source
 			DELETE
 			FROM	#tmpWinlostdate
@@ -1351,7 +1361,7 @@ BEGIN
 			-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
 			INSERT INTO #tmpFilteredBettransByBatch 
 					(TransId, CustId, MatchId, MatchCode, Winlostdate, SportType, LeagueId, Bettype, Modds, Stake, Actual_stake, Virtualrate, Actualrate, Winlost, Awinlost, Mwinlost, Swinlost, Tpositiontaking,
-					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
+					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly, hdp)
 			SELECT	b.transid, b.custid, b.matchid, m.matchcode, b.winlostdate, m.sporttype, m.leagueid, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.actualrate, (b.winlost - b.actual_stake), b.awinlost,
 					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam, b.betid
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
@@ -1359,19 +1369,20 @@ BEGIN
 				,	[statuswinlost]		= b.statuswinlost
 				,	[oddstype]			= b.oddstype
 				,	[isDecOddsOnly]		= CASE WHEN fdec.OddsType IS NOT NULL THEN 1 ELSE 0 END
+				,	b.hdp1 -- Added hdp1
 			FROM	bodb02.dbo.bettrans AS b WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.match m WITH (NOLOCK) ON b.MatchId = m.MatchId
 				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON m.Sporttype = sbm.SportType AND b.bettype = sbm.BetType AND b.liveindicator = sbm.IsLive
 				LEFT JOIN bodb02.dbo.BettransInfo bi WITH (NOLOCK) ON b.transid = bi.transid
 				LEFT JOIN bodb02.dbo.f_Set_OddsTypeBettypes() fdec  ON b.bettype = fdec.BetType
 			WHERE	b.winlostdate = @WinLostDate
-					AND m.eventdate = @WinLostDate
-					AND	b.statusID IN (111,112, 113)
-					AND	b.Currency NOT IN (20, 27, 28)
-					AND sbm.ProductID = 1
-					AND sbm.Sporttype <> 1
-					AND m.EventStatus = 'completed'
-					AND	m.MatchCode NOT LIKE '%hedge%'
+				AND m.eventdate = @WinLostDate
+				AND	b.statusID IN (111,112, 113)
+				AND	b.Currency NOT IN (20, 27, 28)
+				AND sbm.ProductID = 1
+				AND sbm.Sporttype <> 1
+				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
 			OPTION (RECOMPILE);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1443,7 +1454,7 @@ BEGIN
 				RAISERROR('From Origin - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
-			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, betid)
+			INSERT INTO #tmpStagingOSTraderPerformance  (TraderId, CustId, EventDate, SportType, LeagueId, MatchId, MatchCode, BetType, Stake, WinLost, SMAWinLost, Comm, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, BetChoice, betid, hdp)
 			SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
 				,	[MemberCustId]		= b.custid
 				,	[EventDate]			= b.winlostdate
@@ -1463,6 +1474,7 @@ BEGIN
 				,	[LiveIndicator]		= b.LiveIndicator
 				,	[BetChoice]			= b.BetChoice
 				,	[betid]				= b.betid
+				,	[hdp]				= b.hdp -- Added hdp
 			FROM	#tmpFilteredBettransByBatch AS b
 				LEFT JOIN	#tmpOSTrader AS t WITH (NOLOCK) ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
@@ -1503,7 +1515,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1517,7 +1529,7 @@ BEGIN
 			
 			DELETE dbo.OSDataTGRS_BetChoice WHERE EventDate = @winlostdate;
 
-			INSERT INTO	dbo.OSDataTGRS_BetChoice (TraderId, SportId, LeagueId, MatchId, EventDate, BettypeId, BetChoice, betid, Turnover, WinLoss, Comm, Turnover_AR, WinLoss_AR, Comm_AR, BetCount, IsLive)
+			INSERT INTO	dbo.OSDataTGRS_BetChoice (TraderId, SportId, LeagueId, MatchId, EventDate, BettypeId, BetChoice, betid, Turnover, WinLoss, Comm, Turnover_AR, WinLoss_AR, Comm_AR, BetCount, IsLive, hdp)
 			SELECT	[TraderId]		= b.TraderId
 				,	[SportId]		= b.SportType
 				,	[LeagueId]		= b.LeagueId
@@ -1534,9 +1546,10 @@ BEGIN
 				,	[Comm_AR]		= SUM((b.Comm - (CASE WHEN b.TPositionTaking = 1 THEN 0 ELSE (b.Comm * b.ExtraPT/(1 - b.TPositionTaking)) END)) * b.ActualRate)
 				,	[BetCount]		= SUM(1)  -- Exclude Cashout Ticket				
 				,	[IsLive]		= b.LiveIndicator
+				,	[hdp]			= b.hdp -- Added hdp
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.SportType, b.LeagueId, b.MatchId, b.EventDate, b.BetType, b.BetChoice, b.betid, b.LiveIndicator;
+			GROUP BY b.TraderId, b.SportType, b.LeagueId, b.MatchId, b.EventDate, b.BetType, b.BetChoice, b.betid, b.LiveIndicator, b.hdp;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
