@@ -184,8 +184,7 @@ BEGIN
 		P.Margin,
 		P.Turnover_AR,
 		P.WinLoss_AR,
-		P.Margin_AR,
-		P.IsLive 
+		P.Margin_AR
 	FROM #tmpOSDataTGRS AS P WITH (NOLOCK)
 	ORDER BY P.Margin DESC, P.LeagueName ASC;
 
