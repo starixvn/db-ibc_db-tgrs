@@ -239,6 +239,7 @@ BEGIN
 					,	oddstype			TINYINT
 					,	isDecOddsOnly		BIT
 					,	hdp					SMALLMONEY -- Added hdp column
+					,   ExtraInfo           VARCHAR(2000) -- Avoid XML in GROUP BY 
 					);
 
 	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
@@ -706,33 +707,38 @@ BEGIN
 			-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
 			INSERT INTO #tmpFilteredBettransByBatch 
 					(TransId, CustId, MatchId, MatchCode, Winlostdate, SportType, LeagueId, Bettype, Modds, Stake, Actual_stake, Virtualrate, Actualrate, Winlost, Awinlost, Mwinlost, Swinlost, Tpositiontaking,
-					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly, hdp)
+					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, Epositiontaking, LiveIndicator, BetChoice, betid, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly, hdp, ExtraInfo)
 			SELECT	b.transid, b.custid, b.matchid, m.matchcode, b.winlostdate, m.sporttype, m.leagueid, b.bettype, b.modds, b.stake, b.actual_stake, b.virtualrate, b.actualrate, (b.winlost - b.actual_stake), b.awinlost,
 					b.mwinlost, b.swinlost,	b.tpositiontaking, b.spositiontaking, b.mpositiontaking, b.apositiontaking, b.srecommend, b.Scomm, b.epositiontaking, b.liveindicator, b.betteam, b.betid
 				,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
-				,	[OriOdds]			= CASE WHEN CAST(b.ExtraInfo AS XML).exist('/p1/@oo') = 1 THEN
-												CASE WHEN fdec.OddsType IS NOT NULL THEN
-													 ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@oo)[1]','SMALLMONEY'), 0) - 1
-												ELSE ISNULL(CAST(('<xml>' + b.ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@oo)[1]','SMALLMONEY'), 0) END
-										  ELSE NULL END
+				,	[OriOdds]			= NULL
 				,	[statuswinlost]		= b.statuswinlost
 				,	[oddstype]			= b.oddstype
 				,	[isDecOddsOnly]		= CASE WHEN fdec.OddsType IS NOT NULL THEN 1 ELSE 0 END
-				,	b.hdp1 -- Added hdp1
+				,	[hdp] 			    = b.hdp1 -- Added hdp1
+				,   [ExtraInfo] 		= b.ExtraInfo --Calculate OriOdds later for performance
 			FROM	bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
 				INNER JOIN bodb_Archive.dbo.match_bk m WITH (NOLOCK) ON b.MatchId = m.MatchId
-				INNER JOIN bodb02.dbo.SportBettypeMatrix sbm ON m.Sporttype = sbm.SportType AND b.bettype = sbm.BetType AND b.liveindicator = sbm.IsLive
 				LEFT JOIN bodb02.dbo.f_Set_OddsTypeBettypes() fdec  ON b.bettype = fdec.BetType
 			WHERE	b.winlostdate = @WinLostDate
 					AND m.eventdate = @WinLostDate
 					AND	b.statusID IN (111,112, 113)
 					AND	b.Currency NOT IN (20, 27, 28)
-					AND sbm.ProductID = 1
-					AND sbm.Sporttype <> 1
+					AND m.Sporttype <> 1 
+					AND EXISTS (
+						SELECT 1
+						FROM bodb02.dbo.SportBettypeMatrix sbm WITH (NOLOCK)
+						WHERE sbm.ProductID = 1
+                          AND sbm.Sporttype = m.Sporttype
+                          AND sbm.Bettype = b.Bettype
+					)
 					AND m.EventStatus = 'completed'
 					AND	m.MatchCode NOT LIKE '%hedge%'
 			OPTION (RECOMPILE);
 			
+			UPDATE #tmpFilteredBettransByBatch
+			SET OriOdds = CAST(('<xml>' + ExtraInfo + '</xml>') AS XML).value('data(/xml/p1/@oo)[1]','SMALLMONEY') - isDecOddsOnly
+
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
 				;
@@ -863,7 +869,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1189,7 +1195,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
@@ -1515,7 +1521,7 @@ BEGIN
 				,	[IsLive]		= b.LiveIndicator
 			FROM	#tmpStagingOSTraderPerformance AS b WITH (NOLOCK)
 			WHERE b.eventdate = @WinLostDate
-			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator, b.hdp;
+			GROUP BY b.TraderId, b.MatchId, b.MatchCode, b.EventDate, b.SportType, b.LeagueId, b.BetType, b.LiveIndicator;
 			
 			SELECT	@RowCount	= @@ROWCOUNT
 				,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
