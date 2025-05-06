@@ -74,6 +74,7 @@ BEGIN
 		,	Turnover_AR			MONEY
 		,	WinLoss_AR			MONEY
 		,	Margin_AR			MONEY
+		,	IsLive				BIT
 	);
 	
 	CREATE CLUSTERED INDEX #CIX_tmpOSDataTGRSIdx ON #tmpOSDataTGRS (
@@ -96,7 +97,8 @@ BEGIN
 				,	Margin
 				,	Turnover_AR
 				,	WinLoss_AR
-				,	Margin_AR	)
+				,	Margin_AR
+				,	IsLive	)
 			SELECT 
 				P.LeagueId, 
 				L.LeagueName,
@@ -111,7 +113,8 @@ BEGIN
 				CASE WHEN ISNULL(SUM(P.Turnover), 0) <> 0 THEN (ISNULL(SUM(P.Winloss), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Turnover) ELSE NULL END AS Margin,
 				ISNULL(SUM(P.Turnover_AR), 0) AS Turnover_AR,
 				ISNULL(SUM(P.Winloss_AR), 0) - ISNULL(SUM(P.Comm_AR), 0) AS WinLoss_AR, 
-				CASE WHEN ISNULL(SUM(P.Turnover_AR), 0) <> 0 THEN (ISNULL(SUM(P.Winloss_AR), 0) - ISNULL(SUM(P.Comm_AR), 0)) * 100/SUM(P.Turnover_AR) ELSE NULL END AS Margin_AR
+				CASE WHEN ISNULL(SUM(P.Turnover_AR), 0) <> 0 THEN (ISNULL(SUM(P.Winloss_AR), 0) - ISNULL(SUM(P.Comm_AR), 0)) * 100/SUM(P.Turnover_AR) ELSE NULL END AS Margin_AR,
+				P.IsLive
 			FROM dbo.OSDataTGRS AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				INNER JOIN bodb02.dbo.LeagueGroup AS LG WITH (NOLOCK) ON L.LeagueGroupId = LG.GroupID
@@ -122,7 +125,7 @@ BEGIN
 				AND (@Bettypes = '0' OR bl.BettypeId IS NOT NULL)
 				AND (@LiveType = -1 OR P.IsLive = @LiveType)
 				AND (@LeagueGroupIds = '' OR lg_filter.LeagueGroupId IS NOT NULL)
-			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupId, LG.GroupName;
+			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupId, LG.GroupName, P.IsLive;
 		END;
 	ELSE
 		BEGIN
@@ -140,7 +143,8 @@ BEGIN
 				,	Margin
 				,	Turnover_AR
 				,	WinLoss_AR
-				,	Margin_AR	)
+				,	Margin_AR
+				,	IsLive	)
 			SELECT 
 				P.LeagueId, 
 				L.LeagueName,
@@ -155,7 +159,8 @@ BEGIN
 				CASE WHEN ISNULL(SUM(P.Turnover), 0) <> 0 THEN (ISNULL(SUM(P.Winloss), 0) - ISNULL(SUM(P.Comm), 0)) * 100/SUM(P.Turnover) ELSE NULL END AS Margin,
 				ISNULL(SUM(P.Turnover_AR), 0) AS Turnover_AR,
 				ISNULL(SUM(P.Winloss_AR), 0) - ISNULL(SUM(P.Comm_AR), 0) AS WinLoss_AR, 
-				CASE WHEN ISNULL(SUM(P.Turnover_AR), 0) <> 0 THEN (ISNULL(SUM(P.Winloss_AR), 0) - ISNULL(SUM(P.Comm_AR), 0)) * 100/SUM(P.Turnover_AR) ELSE NULL END AS Margin_AR
+				CASE WHEN ISNULL(SUM(P.Turnover_AR), 0) <> 0 THEN (ISNULL(SUM(P.Winloss_AR), 0) - ISNULL(SUM(P.Comm_AR), 0)) * 100/SUM(P.Turnover_AR) ELSE NULL END AS Margin_AR,
+				P.IsLive
 			FROM dbo.OSDataTGRS AS P WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				INNER JOIN bodb02.dbo.LeagueGroup AS LG WITH (NOLOCK) ON L.LeagueGroupId = LG.GroupID
@@ -167,7 +172,7 @@ BEGIN
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@LiveType = -1 OR P.IsLive = @LiveType)
 				AND (@LeagueGroupIds = '' OR lg_filter.LeagueGroupId IS NOT NULL)
-			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupId, LG.GroupName;
+			GROUP BY P.LeagueId, L.LeagueName, L.LeagueGroupId, LG.GroupName, P.IsLive;
 		END;
 				 	
 	SELECT
@@ -184,7 +189,8 @@ BEGIN
 		P.Margin,
 		P.Turnover_AR,
 		P.WinLoss_AR,
-		P.Margin_AR
+		P.Margin_AR,
+		P.IsLive 
 	FROM #tmpOSDataTGRS AS P WITH (NOLOCK)
 	ORDER BY P.Margin DESC, P.LeagueName ASC;
 
