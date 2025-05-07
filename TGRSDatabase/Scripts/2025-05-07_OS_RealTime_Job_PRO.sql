@@ -155,3 +155,5 @@ QuitWithRollback:
     -- RAISERROR (N'Failed to create Job.', 16, 1) -- Optional: uncomment to make script fail in SSMS messages
 EndSave:
 GO
+
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
