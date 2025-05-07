@@ -4,7 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_Basketball_Rpt_PerformanceDetail_League_BetType]
 	,	@LeagueId			INT
 	,	@MatchId			INT = NULL
 	,	@LiveType			SMALLINT = -1
-	,   @Bettypes   VARCHAR(2000) = NULL
+	,   @Bettypes   VARCHAR(2000) = '0'
 AS    
 /*  
 	Task :		Basketball Performance Detail - League - BetType
@@ -25,10 +25,25 @@ AS
  
 BEGIN 
 	SET NOCOUNT ON;
+
+	DECLARE @BettypeList AS TABLE (BettypeId SMALLINT)  
+	IF @Bettypes <> '0'  
+	 BEGIN  
+	  INSERT INTO @BettypeList(BettypeId)  
+      SELECT value
+      FROM STRING_SPLIT(@Bettypes, ',');  
+     END;  
+    ELSE  
+     BEGIN  
+      INSERT INTO @BettypeList  
+      SELECT b.typeid 
+      FROM bodb02.dbo.bettype b WITH(NOLOCK)  
+      WHERE b.typeid IN (SELECT bettype FROM bodb02.dbo.SportBettypeMatrix WITH (NOLOCK) WHERE SportType = 2);  
+    END; 
 	
 	SELECT 
 		P.BettypeId,
-		BT.typenamee AS BettypeName,
+		BT.typenamee AS BettypeName, 
 		ISNULL(SUM(P.BetCount), 0) AS BetCount,
 		ISNULL(SUM(P.Turnover), 0) AS Turnover,
 		ISNULL(SUM(P.Winloss), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss,
@@ -43,11 +58,12 @@ BEGIN
 			ELSE NULL
 		END AS Margin_AR
 	FROM dbo.OSDataTGRS AS P WITH (NOLOCK)
-		INNER JOIN bodb02.dbo.bettype AS BT WITH (NOLOCK) ON P.BettypeId = BT.typeid
+	INNER JOIN bodb02.dbo.bettype AS BT WITH (NOLOCK) ON P.BettypeId = BT.typeid  
+	LEFT JOIN @BettypeList bl ON p.BettypeId = bl.BettypeId
 	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.SportId = 2
 		AND P.LeagueId = @LeagueId
-		AND P.bettypeid = @Bettypes 
+		AND (@Bettypes = '0' OR bl.BettypeId IS NOT NULL) 
 		AND (@MatchId IS NULL OR P.MatchId = @MatchId)
 		AND (@LiveType = -1 OR P.IsLive = @LiveType)
 	GROUP BY P.BettypeId, BT.typenamee
