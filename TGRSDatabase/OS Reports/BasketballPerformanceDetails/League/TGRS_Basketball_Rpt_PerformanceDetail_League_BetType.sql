@@ -13,6 +13,7 @@ AS
   
 	Revisions: 	
    		- 20250414@Jaden: Basketball Performance Detail - League - BetType dimension
+		- 20250507@Della: Add new param @Bettypes
 
 	Param's Explanation:  	
 		- @LiveType: -1 All; 0 Nonlive; 1 Live
