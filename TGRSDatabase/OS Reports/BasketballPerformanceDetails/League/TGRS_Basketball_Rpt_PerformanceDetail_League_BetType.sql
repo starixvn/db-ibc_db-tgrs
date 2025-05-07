@@ -4,6 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_Basketball_Rpt_PerformanceDetail_League_BetType]
 	,	@LeagueId			INT
 	,	@MatchId			INT = NULL
 	,	@LiveType			SMALLINT = -1
+	,   @Bettypes   VARCHAR(2000) = NULL
 AS    
 /*  
 	Task :		Basketball Performance Detail - League - BetType
@@ -46,6 +47,7 @@ BEGIN
 	WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 		AND P.SportId = 2
 		AND P.LeagueId = @LeagueId
+		AND P.bettypeid = @Bettypes 
 		AND (@MatchId IS NULL OR P.MatchId = @MatchId)
 		AND (@LiveType = -1 OR P.IsLive = @LiveType)
 	GROUP BY P.BettypeId, BT.typenamee
