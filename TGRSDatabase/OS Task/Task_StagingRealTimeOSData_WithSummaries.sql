@@ -189,6 +189,19 @@ BEGIN
             WHERE a.TraderId <> 0
               AND a.matchid IN (SELECT MatchId FROM #tmpOSMatchesToProcess)
         )
+        -- For certain special bet types (e.g., "Map X Kill markets"), Detail_X, Detail_Y, Detail_Z identify specific instances 
+        -- or parts of the bet (like the map number 'X'), a "sub-bet".
+        -- Different traders can be assigned to manage these distinct instances (e.g., Trader A on Map 1, Trader B on Map 2)
+        -- for the same core MatchId and Bettype.
+        -- On bettrans table, this "sub-bet" is displayed as `betid` column. For example, betid 80101 is a bet on Map 1, 
+        -- 80102 is a bet on Map 2, etc.
+        -- We can calculate betid number from bettype and Detail_X/Y/Z values, each Sport might have different formula.
+        -- For example, for E-Sports: https://nexdev.net/projects/esport/wiki/E-Sports_phase41
+
+        -- The whole ROW_NUMBER() logic above is making sure we assign each match's bettype and "sub-bet" to a single trader.
+        
+        -- See Redmine https://nexdev.net/projects/tgrs-trader-grading-reward-system/wiki/Trader_Performance_change_record_of_data
+        -- and commit `65caa8cf80bac8909c1c4ffdd17784028d4c18a3` for for details.
         INSERT INTO #tmpRealTimeOSTrader (TraderId, MatchId, SportType, EventDate, BetType, betid)
         SELECT DISTINCT
             ra.TraderID,
