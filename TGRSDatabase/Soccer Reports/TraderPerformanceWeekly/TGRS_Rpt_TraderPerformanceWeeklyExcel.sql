@@ -1,4 +1,4 @@
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" viewers="" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" viewers="" isFunction="0" isNested="0"></info>*/
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderPerformanceWeeklyExcel]
     @Year               INT,
@@ -74,16 +74,20 @@ BEGIN
         t.Grade,
         tm.TeamName,
         CASE
-            WHEN tm.TeamName IN ('Support Team', 'Support 1X2 Team') THEN
-                CASE
-                    WHEN vc.Username LIKE 'CPH%' THEN 'CPH team'
-                    WHEN vc.Username LIKE 'SPH%' THEN 'SPH team'
-                    ELSE 'LG'
-                END
-            WHEN tm.TeamName LIKE 'CPH%' THEN 'CPH team'
-            WHEN tm.TeamName LIKE 'SPH%' THEN 'SPH team'
-            WHEN tm.TeamName IN ('UnassignedTeam', 'CLAAye') THEN 'LG'
-            ELSE 'LG' -- Default for other teams
+            -- CPH Department Rules (in order of precedence as per image)
+            WHEN tm.TeamName = 'CPH'                                                       THEN 'CPH' -- Rule: CPH.1
+            WHEN tm.TeamName = 'Support 1X2 Team' AND LEFT(ISNULL(vc.Username, ''), 3) = 'CPH' THEN 'CPH' -- Rule: CPH.2
+            WHEN tm.TeamName = 'Support Team'     AND LEFT(ISNULL(vc.Username, ''), 3) = 'CPH' THEN 'CPH' -- Rule: CPH.3
+            WHEN tm.TeamName = 'UnassignedTeam'                                            THEN 'CPH' -- Rule: CPH.4
+            WHEN ISNULL(vc.Username, '') = 'CLAAye'                                        THEN 'CPH' -- Rule: CPH.5
+
+            -- SPH Department Rules (in order of precedence)
+            WHEN tm.TeamName = 'SPH'                                                       THEN 'SPH' -- Rule: SPH.1
+            WHEN tm.TeamName = 'Support 1X2 Team' AND LEFT(ISNULL(vc.Username, ''), 3) = 'SPH' THEN 'SPH' -- Rule: SPH.2
+            WHEN tm.TeamName = 'Support Team'     AND LEFT(ISNULL(vc.Username, ''), 3) = 'SPH' THEN 'SPH' -- Rule: SPH.3
+
+            -- LG Department (Default for all others)
+            ELSE 'LG'
         END AS Department
     FROM dbo.Trader t WITH(NOLOCK)
     LEFT JOIN dbo.Team tm WITH(NOLOCK) ON t.TeamId = tm.TeamId

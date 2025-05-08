@@ -1,4 +1,4 @@
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" viewers="bodbTGRSNet" isFunction="1" isNested="1"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" viewers="wsv_tgrs" isFunction="1" isNested="1"></info>*/
 
 CREATE FUNCTION [dbo].[TGRS_FN_GetWeekDates]
 (
