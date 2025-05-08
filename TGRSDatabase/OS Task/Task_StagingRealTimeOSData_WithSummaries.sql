@@ -55,8 +55,6 @@ BEGIN
     CREATE TABLE #tmpRealTimeOSTrader (
         TraderId INT,
         MatchId INT,
-        SportType INT,
-        EventDate DATETIME,
         BetType SMALLINT,
         betid BIGINT,
         PRIMARY KEY (MatchId, BetType, betid)
@@ -169,56 +167,54 @@ BEGIN
         -- Similar logic as in Task_StagingOSDataTGRS but filtered by #tmpOSMatchesToProcess
         -- This uses Dot_Admin_Assignment_Trader for OS
 
-        ;WITH RankedAssignments AS (
+        ;WITH CalculatedBetId AS (
             SELECT
                 a.TraderID,
                 a.MatchId,
-                m.Sporttype,
-                m.EventDate,
                 a.Bettype,
-                a.Detail_X,
-                a.Detail_Y,
-                a.Detail_Z,
-                a.ID,
-                ROW_NUMBER() OVER (
-                    PARTITION BY a.MatchId, a.Bettype, a.Detail_X, a.Detail_Y, a.Detail_Z
-                    ORDER BY a.UpdatedTime DESC, a.ID DESC
-                ) AS rn
+                CASE
+                    WHEN a.Detail_Z <> -1 THEN 0
+                    WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X * 100 + a.Detail_Y)
+                    WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X)
+                    ELSE 0
+                END AS betid_calculated
             FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK, INDEX(IX_MatchID))
-            INNER JOIN bodb02.dbo.Match AS m WITH (NOLOCK) ON a.matchid = m.matchid
             WHERE a.TraderId <> 0
               AND a.matchid IN (SELECT MatchId FROM #tmpOSMatchesToProcess)
+        ),
+        RankedAssignments AS (
+            SELECT
+                TraderId,
+                MatchId,
+                Bettype,
+                betid_calculated,
+                ROW_NUMBER() OVER (
+                    PARTITION BY MatchId, Bettype, betid_calculated
+                    ORDER BY UpdatedTime DESC, ID DESC
+                ) AS rn
+            FROM CalculatedBetId
         )
-        -- For certain special bet types (e.g., "Map X Kill markets"), Detail_X, Detail_Y, Detail_Z identify specific instances 
-        -- or parts of the bet (like the map number 'X'), a "sub-bet".
-        -- Different traders can be assigned to manage these distinct instances (e.g., Trader A on Map 1, Trader B on Map 2)
-        -- for the same core MatchId and Bettype.
-        -- On bettrans table, this "sub-bet" is displayed as `betid` column. For example, betid 80101 is a bet on Map 1, 
-        -- 80102 is a bet on Map 2, etc.
-        -- We can calculate betid number from bettype and Detail_X/Y/Z values, each Sport might have different formula.
-        -- For example, for E-Sports: https://nexdev.net/projects/esport/wiki/E-Sports_phase41
+        -- For special bet types like "Map X Kill markets", the Detail_X, Detail_Y, and Detail_Z fields identify specific sub-bets.
+        -- These sub-bets are represented in the bettrans table's betid column. For instance:
+        -- - betid 80101 represents a bet on Map 1
+        -- - betid 80102 represents a bet on Map 2
+        -- The betid is calculated using a formula that combines the bettype with Detail_X/Y/Z values.
+        -- Each sport may use a different formula for this calculation.
+        -- For more details, see: https://nexdev.net/projects/sportsbook/wiki/Bet_Types_n_Bet_Options#bBAIO2
 
-        -- The whole ROW_NUMBER() logic above is making sure we assign each match's bettype and "sub-bet" to a single trader.
+        -- Our system has a limitation: multiple traders can be assigned to the same matchid/bettype/betid combination,
+        -- but we have no way to track which trader is actually responsible for each individual bet ticket. As a workaround,
+        -- we simply use the most recently assigned trader when joining with bettrans. This means live data views will
+        -- show different traders on each refresh - not ideal, but it's the best we can do with our current architecture.
         
         -- See Redmine https://nexdev.net/projects/tgrs-trader-grading-reward-system/wiki/Trader_Performance_change_record_of_data
-        -- and commit `65caa8cf80bac8909c1c4ffdd17784028d4c18a3` for for details.
-        INSERT INTO #tmpRealTimeOSTrader (TraderId, MatchId, SportType, EventDate, BetType, betid)
-        SELECT DISTINCT
+        -- and commit `65caa8cf80bac8909c1c4ffdd17784028d4c18a3` for more details.
+        INSERT INTO #tmpRealTimeOSTrader (TraderId, MatchId, BetType, betid)
+        SELECT
             ra.TraderID,
             ra.MatchId,
-            ra.Sporttype,
-            ra.EventDate,
             ra.Bettype,
-            CASE
-                WHEN (ra.Sporttype = 43 AND ra.bettype BETWEEN 9001 AND 9142) THEN
-                    CASE
-                        WHEN ra.Detail_Z <> -1 THEN 0
-                        WHEN ra.Detail_Y <> -1 THEN (80000 + ra.Detail_X * 100 + ra.Detail_Y)
-                        WHEN ra.Detail_X <> -1 THEN (800 + ra.Detail_X)
-                        ELSE 0
-                    END
-                ELSE 0
-            END AS betid_calculated -- Referencing columns from RankedAssignments (ra)
+            ra.betid_calculated
         FROM RankedAssignments ra
         WHERE ra.rn = 1
         OPTION (RECOMPILE);
