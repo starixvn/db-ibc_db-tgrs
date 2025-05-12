@@ -12,7 +12,7 @@ AS
     Original:   TGRS_Rpt_TraderPerformanceMonthly
 
     Revisions:
-                - 20250507@Jaden.Tang: Create New
+        - 20250507@Jaden.Tang: Create New (#225623)
 
     Param's Explanation:
         @Year:                 Report Year (e.g., 2025)
@@ -21,13 +21,17 @@ AS
 
     Example:
         EXEC dbo.TGRS_Rpt_TraderPerformanceWeeklyExcel @Year = 2025, @SelectedYearWeeks = NULL;
+
+    Remarks:
+        Return a single dataset for all three sheets. Web will not pass in the @SelectedYearWeeks parameter, 
+        we returns all data at Date level for the whole @Year, web will do the filtering and grouping accordingly.
 */
 BEGIN
     SET NOCOUNT ON;
-    SET DATEFIRST 1; -- Ensure Monday is the first day of the week for DATENAME functions if used, though TVF is agnostic.
+    --SET DATEFIRST 1; -- Ensure Monday is the first day of the week for DATENAME functions if used, though TVF is agnostic.
 
     -- #region Temporary Tables for Parameters
-    IF OBJECT_ID('''tempdb..#tmpSelectedYearWeeks''') IS NOT NULL DROP TABLE #tmpSelectedYearWeeks;
+    IF OBJECT_ID('tempdb..#tmpSelectedYearWeeks') IS NOT NULL DROP TABLE #tmpSelectedYearWeeks;
     CREATE TABLE #tmpSelectedYearWeeks (YearWeekNumber INT PRIMARY KEY);
 
     IF @SelectedYearWeeks IS NULL
@@ -95,20 +99,16 @@ BEGIN
     -- #endregion
 
     -- #region Determine Date Ranges for Reportable Weeks
-    IF OBJECT_ID('''tempdb..#tmpReportWeeks''') IS NOT NULL DROP TABLE #tmpReportWeeks;
+    IF OBJECT_ID('tempdb..#tmpReportWeeks') IS NOT NULL DROP TABLE #tmpReportWeeks;
     CREATE TABLE #tmpReportWeeks (
-        YearWeekNumber  INT PRIMARY KEY,
         WeekStartDate   DATE,
-        WeekEndDate     DATE,
-        MonthOfMonday   INT
+        WeekEndDate     DATE
     );
 
-    INSERT INTO #tmpReportWeeks (YearWeekNumber, WeekStartDate, WeekEndDate, MonthOfMonday)
+    INSERT INTO #tmpReportWeeks (WeekStartDate, WeekEndDate)
     SELECT
-        w.YearWeekNumber,
         fnw.WeekStartDate,
-        fnw.WeekEndDate,
-        MONTH(fnw.WeekStartDate) AS MonthOfMonday
+        fnw.WeekEndDate
     FROM #tmpSelectedYearWeeks w
     CROSS APPLY dbo.TGRS_FN_GetWeekDates(@Year, w.YearWeekNumber) fnw;
     -- #endregion
@@ -117,20 +117,20 @@ BEGIN
     IF OBJECT_ID('''tempdb..#tmpAggregatedData''') IS NOT NULL DROP TABLE #tmpAggregatedData;
     CREATE TABLE #tmpAggregatedData (
         TraderID        INT,
+        EventDate       DATE,
         LeagueName      NVARCHAR(100),
-        YearWeekNumber  INT,
         Turnover        MONEY,
         NetWinLoss      MONEY,
         BetCount        INT,
         MatchCount      INT,
-        PRIMARY KEY (TraderID, LeagueName, YearWeekNumber)
+        PRIMARY KEY (TraderID, EventDate, LeagueName)
     );
 
-    INSERT INTO #tmpAggregatedData (TraderID, LeagueName, YearWeekNumber, Turnover, NetWinLoss, BetCount, MatchCount)
+    INSERT INTO #tmpAggregatedData (TraderID, EventDate, LeagueName, Turnover, NetWinLoss, BetCount, MatchCount)
     SELECT
         tp.CustId AS TraderID,
+        tp.EventDate,
         l.LeagueName,
-        rw.YearWeekNumber,
         SUM(ISNULL(tp.Stake_Real, 0)) AS Turnover,
         SUM(ISNULL(tp.WinLost_Real, 0) - ISNULL(tp.Comm, 0)) AS NetWinLoss,
         SUM(ISNULL(tp.BetCount, 0)) AS BetCount,
@@ -141,20 +141,18 @@ BEGIN
     WHERE EXISTS (SELECT 1 FROM #tmpTraderInfo ti WHERE ti.TraderID = tp.CustId) -- Ensure trader is in the selected trader pool
     GROUP BY
         tp.CustId,
-        l.LeagueName,
-        rw.YearWeekNumber;
+        tp.EventDate,
+        l.LeagueName;
     -- #endregion
 
     -- #region Final Output
     SELECT
         ti.TraderName,
+        agg.EventDate,
         agg.LeagueName,
         ti.Grade,
         ti.TeamName,
         ti.Department,
-        @Year AS ReportYear,
-        DATENAME(month, DATEFROMPARTS(@Year, rw.MonthOfMonday, 1)) + '-' + CAST(@Year AS VARCHAR(4)) AS MonthDisplayName,
-        'Week ' + CAST(rw.YearWeekNumber AS VARCHAR(2)) AS WeekLabel,
         ISNULL(agg.Turnover, 0) AS Turnover,
         ISNULL(agg.NetWinLoss, 0) AS NetWinLoss,
         CASE
@@ -165,11 +163,9 @@ BEGIN
         ISNULL(agg.MatchCount, 0) AS MatchCount
     FROM #tmpAggregatedData agg
     INNER JOIN #tmpTraderInfo ti ON ti.TraderID = agg.TraderID
-    INNER JOIN #tmpReportWeeks rw ON rw.YearWeekNumber = agg.YearWeekNumber
     ORDER BY
         ti.TraderName,
-        rw.MonthOfMonday,
-        rw.YearWeekNumber;
+        agg.EventDate;
     -- #endregion
 
     -- #region Cleanup Temp Tables
