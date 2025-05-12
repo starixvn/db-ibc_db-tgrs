@@ -1,8 +1,7 @@
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" viewers="" isFunction="0" isNested="0"></info>*/
 
 ALTER PROCEDURE [dbo].[TGRS_Rpt_TraderPerformanceWeeklyExcel]
-    @Year               INT,
-    @SelectedYearWeeks  VARCHAR(MAX) = NULL  -- Default to NULL for entire year, comma-separated ISO week numbers e.g., "1,2,3,52"
+    @Year               INT
 AS
 /*
     Created:    20250507@Jaden.Tang
@@ -16,50 +15,32 @@ AS
 
     Param's Explanation:
         @Year:                 Report Year (e.g., 2025)
-        @SelectedYearWeeks:    Comma-separated string of ISO 8601 week numbers for the given @Year (e.g., "1,2,3,52").
-                               If NULL, all weeks for the @Year will be processed.
 
     Example:
         EXEC dbo.TGRS_Rpt_TraderPerformanceWeeklyExcel @Year = 2025, @SelectedYearWeeks = NULL;
 
     Remarks:
-        Return a single dataset for all three sheets. Web will not pass in the @SelectedYearWeeks parameter, 
+        Return a single dataset for all three sheets. Web will not pass in the month and week parameters, 
         we returns all data at Date level for the whole @Year, web will do the filtering and grouping accordingly.
 */
 BEGIN
     SET NOCOUNT ON;
-    --SET DATEFIRST 1; -- Ensure Monday is the first day of the week for DATENAME functions if used, though TVF is agnostic.
+    SET DATEFIRST 1; --Monday as the first day of the week
 
-    -- #region Temporary Tables for Parameters
-    IF OBJECT_ID('tempdb..#tmpSelectedYearWeeks') IS NOT NULL DROP TABLE #tmpSelectedYearWeeks;
-    CREATE TABLE #tmpSelectedYearWeeks (YearWeekNumber INT PRIMARY KEY);
+    DECLARE @FilterStartDate DATE;
+    DECLARE @FilterEndDate DATE;
+    DECLARE @StartDateOfYear DATE = DATEFROMPARTS(@Year, 1, 1);
+    DECLARE @EndDateOfYear DATE = DATEFROMPARTS(@Year, 12, 31);
 
-    IF @SelectedYearWeeks IS NULL
-    BEGIN
-        DECLARE @NumWeeksInYear INT;
-        -- The 28th of December is always in the last ISO week of its year.
-        -- This correctly gives 52 or 53.
-        SET @NumWeeksInYear = DATEPART(isowk, DATEFROMPARTS(@Year, 12, 28));
+    -- Calculate the first day (Monday) of the ISO week for @StartDateOfYear.
+    -- This is done by finding the number of full weeks from a reference Monday (1900-01-01)
+    -- and adding that duration back to the reference Monday.
+    SET @FilterStartDate = DATEADD(DAY, (DATEDIFF(DAY, '19000101', @StartDateOfYear) / 7) * 7, '19000101');
+    -- Calculate the last day (Sunday) of the ISO week for @EndDateOfYear.
+    -- This uses the same logic as above, then adds 6 days to get to Sunday.
+    SET @FilterEndDate = DATEADD(DAY, (DATEDIFF(DAY, '19000101', @EndDateOfYear) / 7) * 7 + 6, '19000101');
 
-        ;WITH AllYearWeeks AS (
-            SELECT 1 AS WeekNum
-            UNION ALL
-            SELECT WeekNum + 1
-            FROM AllYearWeeks
-            WHERE WeekNum < @NumWeeksInYear
-        )
-        INSERT INTO #tmpSelectedYearWeeks (YearWeekNumber)
-        SELECT WeekNum FROM AllYearWeeks
-        OPTION (MAXRECURSION 53); -- Max 53 weeks in a year
-    END
-    ELSE
-    BEGIN
-        INSERT INTO #tmpSelectedYearWeeks (YearWeekNumber)
-        SELECT DISTINCT LTRIM(RTRIM(value)) 
-        FROM STRING_SPLIT(@SelectedYearWeeks, ',') 
-        WHERE ISNUMERIC(LTRIM(RTRIM(value))) = 1 AND LTRIM(RTRIM(value)) <> '';
-    END
-    -- #endregion
+    PRINT 'Filter range: ' + CAST(@FilterStartDate AS VARCHAR(10)) + ' to ' + CAST(@FilterEndDate AS VARCHAR(10));
 
     -- #region Trader Information
     IF OBJECT_ID('''tempdb..#tmpTraderInfo''') IS NOT NULL DROP TABLE #tmpTraderInfo;
@@ -98,58 +79,44 @@ BEGIN
     LEFT JOIN bodb02.dbo.vw_customer vc WITH(NOLOCK) ON t.CustId = vc.custid;
     -- #endregion
 
-    -- #region Determine Date Ranges for Reportable Weeks
-    IF OBJECT_ID('tempdb..#tmpReportWeeks') IS NOT NULL DROP TABLE #tmpReportWeeks;
-    CREATE TABLE #tmpReportWeeks (
-        WeekStartDate   DATE,
-        WeekEndDate     DATE
-    );
-
-    INSERT INTO #tmpReportWeeks (WeekStartDate, WeekEndDate)
-    SELECT
-        fnw.WeekStartDate,
-        fnw.WeekEndDate
-    FROM #tmpSelectedYearWeeks w
-    CROSS APPLY dbo.TGRS_FN_GetWeekDates(@Year, w.YearWeekNumber) fnw;
-    -- #endregion
-
     -- #region Aggregate Daily Performance Data
     IF OBJECT_ID('''tempdb..#tmpAggregatedData''') IS NOT NULL DROP TABLE #tmpAggregatedData;
     CREATE TABLE #tmpAggregatedData (
         TraderID        INT,
         EventDate       DATE,
-        LeagueName      NVARCHAR(100),
+        LeagueID        INT,
         Turnover        MONEY,
         NetWinLoss      MONEY,
         BetCount        INT,
         MatchCount      INT,
-        PRIMARY KEY (TraderID, EventDate, LeagueName)
+        PRIMARY KEY (TraderID, EventDate, LeagueID)
     );
 
-    INSERT INTO #tmpAggregatedData (TraderID, EventDate, LeagueName, Turnover, NetWinLoss, BetCount, MatchCount)
+    --SET STATISTICS XML ON
+    INSERT INTO #tmpAggregatedData (TraderID, EventDate, LeagueID, Turnover, NetWinLoss, BetCount, MatchCount)
     SELECT
         tp.CustId AS TraderID,
         tp.EventDate,
-        l.LeagueName,
+        tp.LeagueId,
         SUM(ISNULL(tp.Stake_Real, 0)) AS Turnover,
         SUM(ISNULL(tp.WinLost_Real, 0) - ISNULL(tp.Comm, 0)) AS NetWinLoss,
         SUM(ISNULL(tp.BetCount, 0)) AS BetCount,
         COUNT(DISTINCT tp.MatchId) AS MatchCount
     FROM dbo.TraderPerformance tp WITH(NOLOCK)
-    INNER JOIN bodb02.dbo.League l WITH(NOLOCK) ON tp.LeagueId = l.LeagueId
-    INNER JOIN #tmpReportWeeks rw ON tp.EventDate BETWEEN rw.WeekStartDate AND rw.WeekEndDate
-    WHERE EXISTS (SELECT 1 FROM #tmpTraderInfo ti WHERE ti.TraderID = tp.CustId) -- Ensure trader is in the selected trader pool
+    WHERE tp.EventDate >= @FilterStartDate AND tp.EventDate <= @FilterEndDate
     GROUP BY
         tp.CustId,
         tp.EventDate,
-        l.LeagueName;
+        tp.LeagueId
+    OPTION (RECOMPILE);
+    --SET STATISTICS XML OFF
     -- #endregion
 
     -- #region Final Output
     SELECT
         ti.TraderName,
         agg.EventDate,
-        agg.LeagueName,
+        l.LeagueName,
         ti.Grade,
         ti.TeamName,
         ti.Department,
@@ -163,15 +130,14 @@ BEGIN
         ISNULL(agg.MatchCount, 0) AS MatchCount
     FROM #tmpAggregatedData agg
     INNER JOIN #tmpTraderInfo ti ON ti.TraderID = agg.TraderID
+    INNER JOIN bodb02.dbo.league l ON agg.LeagueId = l.leagueid
     ORDER BY
         ti.TraderName,
         agg.EventDate;
     -- #endregion
 
     -- #region Cleanup Temp Tables
-    IF OBJECT_ID('''tempdb..#tmpSelectedYearWeeks''') IS NOT NULL DROP TABLE #tmpSelectedYearWeeks;
     IF OBJECT_ID('''tempdb..#tmpTraderInfo''') IS NOT NULL DROP TABLE #tmpTraderInfo;
-    IF OBJECT_ID('''tempdb..#tmpReportWeeks''') IS NOT NULL DROP TABLE #tmpReportWeeks;
     IF OBJECT_ID('''tempdb..#tmpAggregatedData''') IS NOT NULL DROP TABLE #tmpAggregatedData;
     -- #endregion
 
