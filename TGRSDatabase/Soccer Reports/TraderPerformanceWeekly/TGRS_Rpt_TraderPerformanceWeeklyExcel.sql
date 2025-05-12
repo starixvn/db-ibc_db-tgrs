@@ -117,33 +117,38 @@ BEGIN
     IF OBJECT_ID('''tempdb..#tmpAggregatedData''') IS NOT NULL DROP TABLE #tmpAggregatedData;
     CREATE TABLE #tmpAggregatedData (
         TraderID        INT,
+        LeagueName      NVARCHAR(100),
         YearWeekNumber  INT,
         Turnover        MONEY,
         NetWinLoss      MONEY,
         BetCount        INT,
         MatchCount      INT,
-        PRIMARY KEY (TraderID, YearWeekNumber)
+        PRIMARY KEY (TraderID, LeagueName, YearWeekNumber)
     );
 
-    INSERT INTO #tmpAggregatedData (TraderID, YearWeekNumber, Turnover, NetWinLoss, BetCount, MatchCount)
+    INSERT INTO #tmpAggregatedData (TraderID, LeagueName, YearWeekNumber, Turnover, NetWinLoss, BetCount, MatchCount)
     SELECT
         tp.CustId AS TraderID,
+        l.LeagueName,
         rw.YearWeekNumber,
         SUM(ISNULL(tp.Stake_Real, 0)) AS Turnover,
         SUM(ISNULL(tp.WinLost_Real, 0) - ISNULL(tp.Comm, 0)) AS NetWinLoss,
         SUM(ISNULL(tp.BetCount, 0)) AS BetCount,
         COUNT(DISTINCT tp.MatchId) AS MatchCount
     FROM dbo.TraderPerformance tp WITH(NOLOCK)
+    INNER JOIN bodb02.dbo.League l WITH(NOLOCK) ON tp.LeagueId = l.LeagueId
     INNER JOIN #tmpReportWeeks rw ON tp.EventDate BETWEEN rw.WeekStartDate AND rw.WeekEndDate
     WHERE EXISTS (SELECT 1 FROM #tmpTraderInfo ti WHERE ti.TraderID = tp.CustId) -- Ensure trader is in the selected trader pool
     GROUP BY
         tp.CustId,
+        l.LeagueName,
         rw.YearWeekNumber;
     -- #endregion
 
     -- #region Final Output
     SELECT
         ti.TraderName,
+        agg.LeagueName,
         ti.Grade,
         ti.TeamName,
         ti.Department,
