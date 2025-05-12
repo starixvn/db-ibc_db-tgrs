@@ -1,6 +1,6 @@
 /*<info serverAlias="DBTGRS-bodb_TGRS" viewers="wsv_tgrs" isFunction="1" isNested="1"></info>*/
 
-CREATE FUNCTION [dbo].[TGRS_FN_GetWeekDates]
+ALTER FUNCTION [dbo].[TGRS_FN_GetWeekDates]
 (
     @IsoYear INT,
     @IsoWeek INT
@@ -20,31 +20,37 @@ AS
 */
 RETURN
 (
-    WITH InitialDates AS (
-        -- Jan 4th of the given ISO year is always in ISO Week 1
-        SELECT
-            DATEFROMPARTS(@IsoYear, 1, 4) AS Jan4th
+    WITH Anchor AS (
+        -- January 4th is always in the first ISO week
+        SELECT DATEFROMPARTS(@IsoYear, 1, 4) AS Jan4
     ),
-    WeekCalculations AS (
-        SELECT
-            id.Jan4th,
-            -- Calculate Day of Week for Jan4th (1=Monday, 2=Tuesday, ..., 7=Sunday)
-            -- This formula is DATEFIRST-agnostic. DATEPART(weekday, date) returns 1 for Sunday, 2 for Monday, etc.
-            (DATEPART(weekday, id.Jan4th) + 5) % 7 + 1 AS DayOfWeekJan4th_MonIs1
-        FROM InitialDates id
+    DayOfWeekCalc AS (
+        SELECT 
+            Jan4,
+            -- Get the day of week for Jan 4th (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+            -- This formula is DATEFIRST-independent
+            (DATEDIFF(DAY, CAST('17530101' AS DATE), Jan4) + 1) % 7 AS DOW
+        FROM Anchor
     ),
-    StartOfFirstIsoWeek AS (
-        SELECT
-            -- Calculate the Monday of the week that Jan4th falls into. This is the start of ISO Week 1.
-            DATEADD(day, 1 - wc.DayOfWeekJan4th_MonIs1, wc.Jan4th) AS MondayOfFirstIsoWeek
-        FROM WeekCalculations wc
+    FirstWeekStart AS (
+        SELECT 
+            -- Calculate Monday of the week containing Jan 4th
+            -- If DOW=1 (Monday), then Jan4 is already the Monday of week 1
+            -- If DOW=0 (Sunday), then go back 6 days to find Monday
+            -- If DOW=2 (Tuesday), then go back 1 day, etc.
+            DATEADD(DAY, 
+                CASE
+                    WHEN DOW = 0 THEN -6  -- Sunday, go back 6 days
+                    WHEN DOW = 1 THEN 0   -- Monday, stay here
+                    ELSE -(DOW - 1)       -- Other days, go back to Monday
+                END,
+            Jan4) AS WeekOneStart
+        FROM DayOfWeekCalc
     )
-    SELECT
-        -- Add (@IsoWeek - 1) weeks to the start of ISO Week 1 to get the start of the target ISO week.
-        DATEADD(week, @IsoWeek - 1, sfiw.MondayOfFirstIsoWeek) AS WeekStartDate,
-        -- The end of the week is 6 days after the start of the week.
-        DATEADD(day, 6, DATEADD(week, @IsoWeek - 1, sfiw.MondayOfFirstIsoWeek)) AS WeekEndDate
-    FROM StartOfFirstIsoWeek sfiw
+    SELECT 
+        DATEADD(WEEK, @IsoWeek - 1, WeekOneStart) AS WeekStartDate,
+        DATEADD(DAY, 6, DATEADD(WEEK, @IsoWeek - 1, WeekOneStart)) AS WeekEndDate
+    FROM FirstWeekStart
 )
 GO
 
