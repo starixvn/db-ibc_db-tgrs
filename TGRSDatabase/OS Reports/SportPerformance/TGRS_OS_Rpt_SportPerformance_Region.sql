@@ -4,7 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_SportPerformance_Region]
 	,	@TraderId			INT
 	,	@FromDate			DATE
 	,	@ToDate				DATE
-	,	@LiveType			SMALLINT = 1
+	,	@LiveType			SMALLINT = -1
 AS	
 /*
 	Created: 20180720@Long
