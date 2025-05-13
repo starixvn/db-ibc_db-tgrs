@@ -4,7 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_SportPerformance]
 	,	@SportId		INT		 = -1
 	,	@FromDate		DATE
 	,	@ToDate			DATE
-	,	@LiveType		SMALLINT = 1
+	,	@LiveType		SMALLINT = -1
 AS
 /*
 	Created: 20160810@John.Ngo
