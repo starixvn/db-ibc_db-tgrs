@@ -15,6 +15,7 @@ AS
 	Revisions:
 		- 20181030@Long: Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
+		- 20250513@Della: Fix default param @LiveType (#225204)
 
 	Param's Explanation (filtered by):
 	Ex: SportId = -1: Show all
