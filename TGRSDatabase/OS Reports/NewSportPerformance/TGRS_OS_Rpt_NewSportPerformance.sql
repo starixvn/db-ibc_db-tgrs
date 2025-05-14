@@ -1,9 +1,10 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_NewSportPerformance]
 		@ReportType		TINYINT = 1
 	,	@SportId		INT		= -1
 	,	@FromDate		DATE
 	,	@ToDate			DATE
-	,	@LiveType		SMALLINT = 1
+	,	@LiveType		SMALLINT = -1
 
 AS
 /*
@@ -15,6 +16,7 @@ AS
 	Revisions:
 		- 20181030@Long: Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
+		- 20250514@Della: Fix default param @LiveType (#225204)
 
 	Param's Explanation (filtered by):
 		Ex: - SportId = -1: Show all
