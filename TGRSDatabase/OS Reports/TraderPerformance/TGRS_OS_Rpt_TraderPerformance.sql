@@ -1,3 +1,4 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance]
 		@ReportType			TINYINT		 = 1
 	,	@TraderName			NVARCHAR(50) 	 = NULL
