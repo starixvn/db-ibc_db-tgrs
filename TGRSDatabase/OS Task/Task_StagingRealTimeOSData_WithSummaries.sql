@@ -167,6 +167,21 @@ BEGIN
         -- Similar logic as in Task_StagingOSDataTGRS but filtered by #tmpOSMatchesToProcess
         -- This uses Dot_Admin_Assignment_Trader for OS
 
+        -- For special bet types like "Map X Kill markets", the Detail_X, Detail_Y, and Detail_Z fields identify specific sub-bets.
+        -- These sub-bets are represented in the bettrans table's betid column.
+        -- The betid is calculated using a formula that combines the bettype with Detail_X/Y/Z values. For instance:
+        -- - betid 801 represents a bet on Map 1
+        -- - betid 802 represents a bet on Map 2 (formula `800 + Detail_X` are common, don't know why the number 800, maybe for good luck?)
+        -- But note, not all sports use the same formula (see: https://nexdev.net/projects/sportsbook/wiki/Bet_Types_n_Bet_Options#bBAIO2)
+
+        -- Our system has a limitation: multiple traders can be assigned to the same matchid/bettype/betid combination,
+        -- but we have no way to track which trader is actually responsible for each individual bet ticket. As a workaround,
+        -- we simply use the most recently assigned trader when joining with bettrans. This means live data views will
+        -- show different traders on each refresh - not ideal, but it's the best we can do with our current architecture.
+        
+        -- See Redmine https://nexdev.net/projects/tgrs-trader-grading-reward-system/wiki/Trader_Performance_change_record_of_data
+        -- and commit `65caa8cf80bac8909c1c4ffdd17784028d4c18a3` for more details.
+
         ;WITH CalculatedBetId AS (
             SELECT
                 a.TraderID,
@@ -174,13 +189,22 @@ BEGIN
                 a.Bettype,
                 CASE
                     WHEN a.Detail_Z <> -1 THEN 0
-                    WHEN a.Detail_Y <> -1 THEN (80000 + a.Detail_X * 100 + a.Detail_Y)
-                    WHEN a.Detail_X <> -1 THEN (800 + a.Detail_X)
+                    WHEN a.Detail_Y <> -1 THEN 
+                        CASE
+                            WHEN m.SportType = 2 THEN (8000 + a.Detail_X * 10 + a.Detail_Y) -- basketball decides to be different (8XXY)
+                            WHEN m.SportType IN (27, 50) THEN (800000 + a.Detail_X * 1000 + a.Detail_Y) -- cricket too (8XXXYY)
+                            ELSE (80000 + a.Detail_X * 100 + a.Detail_Y)
+                        END
+                    WHEN a.Detail_X <> -1 THEN
+                        CASE
+                            WHEN m.SportType IN (27, 50) THEN (8000 + a.Detail_X) -- cricket (8XXX)
+                            ELSE (800 + a.Detail_X)
+                        END
                     ELSE 0
                 END AS betid_calculated
             FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK, INDEX(IX_MatchID))
+            INNER JOIN #tmpOSMatchesToProcess m WITH (NOLOCK) ON a.MatchId = m.MatchId
             WHERE a.TraderId <> 0
-              AND a.matchid IN (SELECT MatchId FROM #tmpOSMatchesToProcess)
         ),
         RankedAssignments AS (
             SELECT
@@ -194,21 +218,6 @@ BEGIN
                 ) AS rn
             FROM CalculatedBetId
         )
-        -- For special bet types like "Map X Kill markets", the Detail_X, Detail_Y, and Detail_Z fields identify specific sub-bets.
-        -- These sub-bets are represented in the bettrans table's betid column. For instance:
-        -- - betid 80101 represents a bet on Map 1
-        -- - betid 80102 represents a bet on Map 2
-        -- The betid is calculated using a formula that combines the bettype with Detail_X/Y/Z values.
-        -- Each sport may use a different formula for this calculation.
-        -- For more details, see: https://nexdev.net/projects/sportsbook/wiki/Bet_Types_n_Bet_Options#bBAIO2
-
-        -- Our system has a limitation: multiple traders can be assigned to the same matchid/bettype/betid combination,
-        -- but we have no way to track which trader is actually responsible for each individual bet ticket. As a workaround,
-        -- we simply use the most recently assigned trader when joining with bettrans. This means live data views will
-        -- show different traders on each refresh - not ideal, but it's the best we can do with our current architecture.
-        
-        -- See Redmine https://nexdev.net/projects/tgrs-trader-grading-reward-system/wiki/Trader_Performance_change_record_of_data
-        -- and commit `65caa8cf80bac8909c1c4ffdd17784028d4c18a3` for more details.
         INSERT INTO #tmpRealTimeOSTrader (TraderId, MatchId, BetType, betid)
         SELECT
             ra.TraderID,
