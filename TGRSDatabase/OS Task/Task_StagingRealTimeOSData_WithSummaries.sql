@@ -201,7 +201,9 @@ BEGIN
                             ELSE (800 + a.Detail_X)
                         END
                     ELSE 0
-                END AS betid_calculated
+                END AS betid_calculated,
+                UpdatedTime,
+                ID
             FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK, INDEX(IX_MatchID))
             INNER JOIN #tmpOSMatchesToProcess m WITH (NOLOCK) ON a.MatchId = m.MatchId
             WHERE a.TraderId <> 0
