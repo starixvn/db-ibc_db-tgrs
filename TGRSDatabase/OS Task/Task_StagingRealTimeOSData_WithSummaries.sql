@@ -191,7 +191,6 @@ BEGIN
                     WHEN a.Detail_Z <> -1 THEN 0
                     WHEN a.Detail_Y <> -1 THEN 
                         CASE
-                            WHEN m.SportType = 2 THEN (8000 + a.Detail_X * 10 + a.Detail_Y) -- basketball decides to be different (8XXY)
                             WHEN m.SportType IN (27, 50) THEN (800000 + a.Detail_X * 1000 + a.Detail_Y) -- cricket too (8XXXYY)
                             ELSE (80000 + a.Detail_X * 100 + a.Detail_Y)
                         END
