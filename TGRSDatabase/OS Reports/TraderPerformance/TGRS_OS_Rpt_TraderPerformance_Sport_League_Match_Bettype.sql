@@ -1,3 +1,4 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_Sport_League_Match_Bettype]
 		@SportId			INT
 	,	@LeagueId			INT
@@ -5,7 +6,7 @@ ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_Sport_League_Match_Bettype]
 	,	@TraderId			INT
 	,	@FromDate			DATE
 	,	@ToDate				DATE
-	,	@LiveType			SMALLINT = 1
+	,	@LiveType			SMALLINT = -1
 AS	
 /*  
 	Created: 20180716@Long
@@ -17,6 +18,7 @@ AS
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
 		- 20210226@John.Ngo: Integrate Cricket AIO [Redmine ID: #150856]
 		- 20230103@John.Ngo: [TGS OS] Allow view data details into Map/Game/Set [Redmine ID: 182351]
+		- 20250514@Della: Fix default param @LiveType (#225204)
 
 	Param's Explanation (filtered by):
 		- @LiveType: -1 All; 0 Nonlive; 1 Live

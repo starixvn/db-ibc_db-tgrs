@@ -1,10 +1,11 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance]
 		@ReportType			TINYINT		 = 1
 	,	@TraderName			NVARCHAR(50) 	 = NULL
 	,	@FromDate			DATE		 = '2016-01-01'
 	,	@ToDate				DATE		 = '2017-12-31'
 	,	@SportId			INT		 = - 1
-	,	@LiveType			SMALLINT	 = 1
+	,	@LiveType			SMALLINT	 = -1
 AS
 /*
 	Created: 20160810@Aaron
@@ -18,6 +19,7 @@ AS
 		- 20180713@Long:	Support Match Details info [Redmine ID: 94315] & rearrange sql
 		- 20181030@Long:	Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: 	Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
+		- 20250514@Della: Fix default param @LiveType (#225204)
 
 	Params Explaination:
 		- @ReportType: 1 report by Day, 2 report by Month

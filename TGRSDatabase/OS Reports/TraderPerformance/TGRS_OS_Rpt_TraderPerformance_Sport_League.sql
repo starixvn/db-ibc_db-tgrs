@@ -1,10 +1,11 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[TGRS_OS_Rpt_TraderPerformance_Sport_League]
 		@ReportType			TINYINT  = 1
 	,	@SportId			INT
 	,	@TraderId			INT
 	,	@FromDate			DATE
 	,	@ToDate				DATE
-	,	@LiveType			SMALLINT = 1
+	,	@LiveType			SMALLINT = -1
 AS	
 /*  
 	Created: 20170418@John.Ngo  
@@ -15,6 +16,7 @@ AS
 		- 20180716@Long: return MatchCount value [Redmine: #94315]
 		- 20181030@Long: Adding Betcount column to OS's reports [Redmine ID: #101741]
 		- 20200914@John.Ngo: Support Live/Nonlive for OSDataTGRS [Redmine ID: #140875]
+		- 20250514@Della: Fix default param @LiveType (#225204)
 
 	Ex: @ReportType = 1: Daily, 2: Monthly
 		- @LiveType: -1 All; 0 Nonlive; 1 Live
