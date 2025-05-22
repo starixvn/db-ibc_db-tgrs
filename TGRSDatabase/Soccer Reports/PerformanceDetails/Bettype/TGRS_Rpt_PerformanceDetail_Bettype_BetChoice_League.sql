@@ -26,6 +26,7 @@ AS
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
+		- 20250312@Jaden.Tang:  Return League Group name instead of League Group ID [Redmine: #213765]
 		
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -48,6 +49,7 @@ BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
 						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,	lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -71,6 +73,7 @@ BEGIN
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
 						,	lg.TargetLeagueGroupId
+						,	lg.LeagueGroupName
 						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
@@ -79,6 +82,7 @@ BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
 						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -101,6 +105,7 @@ BEGIN
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
+						,   lg.LeagueGroupName
 						,   lg.TargetLeagueGroupId
 						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;
@@ -113,6 +118,7 @@ BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
 						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -136,6 +142,7 @@ BEGIN
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
+						,   lg.LeagueGroupName
 						,   lg.TargetLeagueGroupId
 						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;
@@ -145,6 +152,7 @@ BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
 						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
 						,	ISNULL(COUNT(DISTINCT P.MatchId), 0) 	AS MatchCount
@@ -168,6 +176,7 @@ BEGIN
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
 						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
 					GROUP BY P.LeagueId, L.LeagueName
+						,   lg.LeagueGroupName
 						,   lg.TargetLeagueGroupId
 						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;     
@@ -177,4 +186,4 @@ END;
 
 GO
 
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
