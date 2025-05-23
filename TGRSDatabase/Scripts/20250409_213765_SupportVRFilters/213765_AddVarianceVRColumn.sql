@@ -7,8 +7,7 @@
 	             TraderPerformance, TraderPerformance_BetChoice, and TraderPerformance_BetChoice_Detail tables.
 */
 
-USE [bodb_TGRS]
-GO
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
 
 PRINT 'Adding VarianceVR column to TraderPerformance tables'
 
