@@ -186,7 +186,6 @@ BEGIN
 						,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
 						,	P.IsLive											AS IsLive
 						,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
-						,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
 						,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0)			AS MatchCount
 						,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
 						,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
