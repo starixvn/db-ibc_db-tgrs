@@ -112,10 +112,10 @@ BEGIN
         SUM(ISNULL(tp.BetCount, 0)) AS BetCount,
         COUNT(DISTINCT tp.MatchId) AS MatchCount
     FROM dbo.TraderPerformance tp WITH(NOLOCK)
-	INNER JOIN bodb02.dbo.League l WITH(NOLOCK) on tp.LeagueId=l.leagueid
 	LEFT JOIN #tmpLeagueSABA ls WITH(NOLOCK) on tp.LeagueId=ls.LeagueID
     WHERE tp.EventDate >= @FilterStartDate AND tp.EventDate <= @FilterEndDate
 	AND tp.BetType in (1,3,7,8)
+	AND (tp.LeagueId IN ( SELECT leagueid FROM bodb02.dbo.League(nolock) WHERE LeagueGroupID not in (42,74)) OR tp.LeagueID IN (SELECT LeagueId FROM #tmpLeagueSABA))
     GROUP BY
         tp.CustId,
         tp.EventDate,
