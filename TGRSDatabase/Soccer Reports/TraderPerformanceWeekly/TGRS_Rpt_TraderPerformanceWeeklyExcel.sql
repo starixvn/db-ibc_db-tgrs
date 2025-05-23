@@ -115,7 +115,7 @@ BEGIN
 	LEFT JOIN #tmpLeagueSABA ls WITH(NOLOCK) on tp.LeagueId=ls.LeagueID
     WHERE tp.EventDate >= @FilterStartDate AND tp.EventDate <= @FilterEndDate
 	AND tp.BetType in (1,3,7,8)
-	AND (tp.LeagueId IN ( SELECT leagueid FROM bodb02.dbo.League(nolock) WHERE LeagueGroupID not in (42,74)) OR tp.LeagueID IN (SELECT LeagueId FROM #tmpLeagueSABA))
+	AND (tp.LeagueId IN ( SELECT leagueid FROM bodb02.dbo.League(nolock) WHERE SportType=1 and LeagueGroupID not in (42,74)) OR tp.LeagueID IN (SELECT LeagueId FROM #tmpLeagueSABA))
     GROUP BY
         tp.CustId,
         tp.EventDate,
