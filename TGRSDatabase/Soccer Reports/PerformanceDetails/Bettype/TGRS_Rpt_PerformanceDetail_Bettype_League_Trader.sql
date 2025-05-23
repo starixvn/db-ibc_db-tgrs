@@ -4,7 +4,9 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_Trader]
 	@LeagueId			INT,
 	@Bettype			SMALLINT,
 	@IsExcludeLeagues	BIT = 1,
-	@Market				SMALLINT = 1
+	@Market				SMALLINT = -1
+	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
+	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "ALL"
 AS    
 /*  
 	 Created:	20160315@Thai.Tran
@@ -18,6 +20,7 @@ AS
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
+		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
 
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
@@ -29,6 +32,127 @@ AS
  
 BEGIN 
 	SET NOCOUNT ON;	
+
+	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
+	BEGIN
+		SET @VRSettings = NULL
+	END
+
+    CREATE TABLE #TempVRSettings (Setting VARCHAR(20) PRIMARY KEY);
+    IF @VRSettings IS NOT NULL
+    BEGIN
+        INSERT INTO #TempVRSettings (Setting)
+        SELECT DISTINCT UPPER(value) FROM STRING_SPLIT(@VRSettings, ',');
+    END
+
+	IF @MatchGroup IS NULL OR @MatchGroup = 'ALL'
+	BEGIN
+		SET @MatchGroup = NULL
+	END
+    
+    CREATE TABLE #TempMatchGroup (Setting VARCHAR(20) PRIMARY KEY);
+    IF @MatchGroup IS NOT NULL AND @MatchGroup <> ''
+    BEGIN
+        INSERT INTO #TempMatchGroup (Setting)
+        SELECT DISTINCT UPPER(value) FROM STRING_SPLIT(@MatchGroup, ',');
+    END
+    
+    DECLARE @ApplyVRFilter BIT = 1;
+    IF NOT EXISTS (SELECT 1 FROM #TempVRSettings) SET @ApplyVRFilter = 0;
+    
+    DECLARE @ApplyMatchGroupFilter BIT = 1;
+    IF NOT EXISTS (SELECT 1 FROM #TempMatchGroup) SET @ApplyMatchGroupFilter = 0;
+
+    CREATE TABLE #AllMatches (
+        matchid INT,
+        parentid INT NULL,
+        IsPenaltyMatch BIT,
+        IsExtraTimeMatch BIT,
+        PRIMARY KEY (matchid)
+    );
+
+    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
+    SELECT 
+        M.matchid, M.parentid,
+        CASE 
+            WHEN HT.teamname LIKE N'%(PEN)%' THEN 1
+            ELSE 0 
+        END AS IsPenaltyMatch,
+        CASE 
+            WHEN HT.teamname LIKE N'%(ET)%' THEN 1
+            ELSE 0 
+        END AS IsExtraTimeMatch
+    FROM bodb02.dbo.Match M WITH (NOLOCK)
+    LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
+    WHERE EXISTS (SELECT 1 FROM dbo.TraderPerformance TP WHERE TP.MatchId = M.matchid AND TP.EventDate BETWEEN @FromDate AND @ToDate AND TP.LeagueId = @LeagueId)
+      AND M.sporttype = 1
+    OPTION (RECOMPILE);
+
+    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
+    SELECT 
+        M14.matchid, M14.parentid,
+        CASE 
+            WHEN HT.teamname LIKE N'%(PEN)%' THEN 1
+            ELSE 0 
+        END AS IsPenaltyMatch,
+        CASE 
+            WHEN HT.teamname LIKE N'%(ET)%' THEN 1
+            ELSE 0 
+        END AS IsExtraTimeMatch
+    FROM bodb02.dbo.Match14 M14 WITH (NOLOCK)
+    LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
+    WHERE EXISTS (SELECT 1 FROM dbo.TraderPerformance TP WHERE TP.MatchId = M14.matchid AND TP.EventDate BETWEEN @FromDate AND @ToDate AND TP.LeagueId = @LeagueId)
+      AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
+      AND M14.sporttype = 1
+    OPTION (RECOMPILE);
+
+    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
+    SELECT 
+        MBK.matchid, MBK.parentid,
+        CASE 
+            WHEN HT.teamname LIKE N'%(PEN)%' THEN 1
+            ELSE 0 
+        END AS IsPenaltyMatch,
+        CASE 
+            WHEN HT.teamname LIKE N'%(ET)%' THEN 1
+            ELSE 0 
+        END AS IsExtraTimeMatch
+    FROM bodb_archive.dbo.Match_bk MBK WITH (NOLOCK)
+    LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
+    WHERE EXISTS (SELECT 1 FROM dbo.TraderPerformance TP WHERE TP.MatchId = MBK.matchid AND TP.EventDate BETWEEN @FromDate AND @ToDate AND TP.LeagueId = @LeagueId)
+      AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
+      AND MBK.sporttype = 1
+    OPTION (RECOMPILE);
+
+    CREATE TABLE #RootMatches (
+        ChildMatchID INT PRIMARY KEY,
+        RootMatchID INT
+    );
+
+    WITH MatchHierarchy_CTE AS (
+        SELECT 
+            am.matchid AS ChildMatchID,
+            am.matchid AS RootMatchID,
+            am.parentid,
+            0 AS Level
+        FROM #AllMatches am
+        WHERE am.parentid IS NULL OR NOT EXISTS (SELECT 1 FROM #AllMatches p_am WHERE p_am.matchid = am.parentid)
+
+        UNION ALL
+
+        SELECT 
+            am_child.matchid AS ChildMatchID,
+            mh.RootMatchID,
+            am_child.parentid,
+            mh.Level + 1
+        FROM #AllMatches am_child
+        INNER JOIN MatchHierarchy_CTE mh ON am_child.parentid = mh.ChildMatchID
+        WHERE am_child.matchid <> mh.RootMatchID
+    )
+    INSERT INTO #RootMatches (ChildMatchID, RootMatchID)
+    SELECT ChildMatchID, RootMatchID 
+    FROM MatchHierarchy_CTE
+    OPTION (RECOMPILE);
 
    CREATE TABLE	#tmpTraderDetail (
 			CustID				INT
@@ -59,10 +183,10 @@ BEGIN
 		,	WinLossReal
 		,	MarginReal
 		,	SumCategory)
-	SELECT	tp.CustId																			AS CustId
-		,	tp.IsLive																			AS IsLive
-		,	COUNT(DISTINCT tp.MatchId)															AS MatchCount
-		,	ISNULL(SUM(tp.Stake), 0)															AS Turnover
+	SELECT	tp.CustId															AS CustId
+		,	tp.IsLive															AS IsLive
+		,	COUNT(DISTINCT rm.RootMatchID)													AS MatchCount
+		,	ISNULL(SUM(tp.Stake), 0)													AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)							    AS WinLoss		
 		,	SUM( (tp.WinLost - tp.Comm) * CASE WHEN tp.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END) 	AS WinLossScore	
 		,	ISNULL(SUM(tp.BetCount), 0)															AS BetCount
@@ -78,11 +202,31 @@ BEGIN
 		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread
 			AND	s.Rate = tm.Rate
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
+		INNER JOIN #AllMatches am WITH (NOLOCK) ON tp.MatchId = am.matchid
+		LEFT JOIN #RootMatches rm WITH (NOLOCK) ON tp.MatchId = rm.ChildMatchID
 	WHERE	tp.LeagueId = @LeagueId
 			AND	tp.BetType = @Bettype
 			AND	 tp.EventDate BETWEEN @FromDate AND @ToDate			
 			AND (@Market = -1 OR tp.IsLive = @Market)
 			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+			AND (
+					@ApplyVRFilter = 0 OR
+					EXISTS (
+						SELECT 1 FROM #TempVRSettings vrs
+						WHERE (vrs.Setting = 'VR_PLUS' AND tp.VarianceVR > 0)
+						   OR (vrs.Setting = 'NO_VR' AND (tp.VarianceVR IS NULL OR tp.VarianceVR = 0))
+						   OR (vrs.Setting = 'VR_MINUS' AND tp.VarianceVR < 0)
+					)
+				)
+			AND (
+					@ApplyMatchGroupFilter = 0 OR
+					EXISTS (
+						SELECT 1 FROM #TempMatchGroup mgf
+						WHERE (mgf.Setting = 'NORMAL' AND am.IsPenaltyMatch = 0 AND am.IsExtraTimeMatch = 0)
+						   OR (mgf.Setting = 'PENALTY' AND am.IsPenaltyMatch = 1)
+						   OR (mgf.Setting = 'EXTRA_TIME' AND am.IsExtraTimeMatch = 1)
+					)
+				)
 	GROUP BY	tp.CustId, tp.IsLive;	
 	
 	SELECT	td.CustID
@@ -105,7 +249,12 @@ BEGIN
 		INNER JOIN	dbo.Team AS tm WITH (NOLOCK) ON	t.TeamId = tm.TeamId
 	ORDER BY td.Margin DESC, t.Username ASC;
 	
-	DROP TABLE #tmpTraderDetail;	
+	DROP TABLE #tmpTraderDetail;
+
+    DROP TABLE IF EXISTS #AllMatches;
+    DROP TABLE IF EXISTS #RootMatches;
+    DROP TABLE IF EXISTS #TempVRSettings;
+    DROP TABLE IF EXISTS #TempMatchGroup;
 END;
 
 GO
