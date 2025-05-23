@@ -85,8 +85,8 @@ BEGIN
 	INSERT INTO #tmpLeagueSABA (LeagueID, LeagueGroupID)  
 	SELECT LeagueID, LeagueGroupID  
 	FROM bodb02.dbo.League WITH(NOLOCK)  
-	WHERE Sporttype = 1 AND LeagueGroupID IN (42,74) AND leaguename LIKE '%5 Mins Play%' OR leaguename LIKE '%6 Mins Play%' OR 
-	leaguename LIKE '%15 Mins Play%' OR leaguename LIKE '%16 Mins Play%' OR leaguename LIKE '%20 Mins Play%'
+	WHERE Sporttype = 1 AND LeagueGroupID IN (42,74) AND (leaguename LIKE '%5 Mins Play%' OR leaguename LIKE '%6 Mins Play%' OR 
+	leaguename LIKE '%15 Mins Play%' OR leaguename LIKE '%16 Mins Play%' OR leaguename LIKE '%20 Mins Play%')
 
     -- #region Aggregate Daily Performance Data
     IF OBJECT_ID('''tempdb..#tmpAggregatedData''') IS NOT NULL DROP TABLE #tmpAggregatedData;
@@ -97,13 +97,12 @@ BEGIN
         Turnover        MONEY,
         NetWinLoss      MONEY,
         BetCount        INT,
-        MatchCount      INT,
-		Bettype			VARCHAR(2000)
-        PRIMARY KEY (TraderID, EventDate, LeagueID, Bettype)
+        MatchCount      INT
+        PRIMARY KEY (TraderID, EventDate, LeagueID)
     );
 
     --SET STATISTICS XML ON
-    INSERT INTO #tmpAggregatedData (TraderID, EventDate, LeagueID, Turnover, NetWinLoss, BetCount, MatchCount, Bettype)
+    INSERT INTO #tmpAggregatedData (TraderID, EventDate, LeagueID, Turnover, NetWinLoss, BetCount, MatchCount)
     SELECT
         tp.CustId AS TraderID,
         tp.EventDate,
@@ -111,16 +110,16 @@ BEGIN
         SUM(ISNULL(tp.Stake_Real, 0)) AS Turnover,
         SUM(ISNULL(tp.WinLost_Real, 0) - ISNULL(tp.Comm, 0)) AS NetWinLoss,
         SUM(ISNULL(tp.BetCount, 0)) AS BetCount,
-        COUNT(DISTINCT tp.MatchId) AS MatchCount,
-		tp.BetType as Bettype
+        COUNT(DISTINCT tp.MatchId) AS MatchCount
     FROM dbo.TraderPerformance tp WITH(NOLOCK)
+	INNER JOIN bodb02.dbo.League l WITH(NOLOCK) on tp.LeagueId=l.leagueid
+	LEFT JOIN #tmpLeagueSABA ls WITH(NOLOCK) on tp.LeagueId=ls.LeagueID
     WHERE tp.EventDate >= @FilterStartDate AND tp.EventDate <= @FilterEndDate
 	AND tp.BetType in (1,3,7,8)
     GROUP BY
         tp.CustId,
         tp.EventDate,
-        tp.LeagueId,
-		tp.BetType
+        tp.LeagueId
     OPTION (RECOMPILE);
     --SET STATISTICS XML OFF
     -- #endregion
