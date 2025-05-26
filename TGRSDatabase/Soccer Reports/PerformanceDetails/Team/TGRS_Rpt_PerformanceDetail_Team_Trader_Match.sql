@@ -91,7 +91,6 @@ BEGIN
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
     WHERE M.eventdate BETWEEN @FROMDate AND @ToDate
       AND M.sporttype = 1
-      AND EXISTS (SELECT 1 FROM dbo.TraderPerformance TP INNER JOIN dbo.Trader TR ON TP.CustId = TR.CustId WHERE TP.MatchId = M.matchid AND TR.TeamId = @TeamId AND TP.CustId = @CustId)
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
@@ -110,7 +109,6 @@ BEGIN
     WHERE M14.eventdate BETWEEN @FROMDate AND @ToDate
       AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
       AND M14.sporttype = 1
-      AND EXISTS (SELECT 1 FROM dbo.TraderPerformance TP INNER JOIN dbo.Trader TR ON TP.CustId = TR.CustId WHERE TP.MatchId = M14.matchid AND TR.TeamId = @TeamId AND TP.CustId = @CustId)
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
@@ -129,7 +127,6 @@ BEGIN
     WHERE MBK.eventdate BETWEEN @FROMDate AND @ToDate
       AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
       AND MBK.sporttype = 1
-      AND EXISTS (SELECT 1 FROM dbo.TraderPerformance TP INNER JOIN dbo.Trader TR ON TP.CustId = TR.CustId WHERE TP.MatchId = MBK.matchid AND TR.TeamId = @TeamId AND TP.CustId = @CustId)
     OPTION (RECOMPILE);
 
 	DECLARE @OtherGroupsId SMALLINT = 12;
