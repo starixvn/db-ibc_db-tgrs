@@ -139,7 +139,7 @@ BEGIN
         END AS Margin,
         ISNULL(agg.BetCount, 0) AS BetCount,
         ISNULL(agg.MatchCount, 0) AS MatchCount
-    FROM #tmpAggregatedData agg
+    FROM #tmpAggregatedData agg WITH(NOLOCK)
     INNER JOIN #tmpTraderInfo ti ON ti.TraderID = agg.TraderID
     INNER JOIN bodb02.dbo.league l ON agg.LeagueId = l.leagueid
     ORDER BY
