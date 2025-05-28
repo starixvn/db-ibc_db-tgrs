@@ -77,7 +77,7 @@ BEGIN
         END AS Department
     FROM dbo.Trader t WITH(NOLOCK)
     LEFT JOIN dbo.Team tm WITH(NOLOCK) ON t.TeamId = tm.TeamId
-    LEFT JOIN bodb02.dbo.vw_customer vc WITH(NOLOCK) ON t.CustId = vc.custid;
+    LEFT JOIN bodb02.dbo.customer vc WITH(NOLOCK) ON t.CustId = vc.custid;
     -- #endregion
 
 	-- #temp table
