@@ -1,4 +1,5 @@
-﻿CREATE PROCEDURE [dbo].[TGRS_Basketball_BettypeSetting_GetBettypes]
+﻿/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
+CREATE PROCEDURE [dbo].[TGRS_Basketball_BettypeSetting_GetBettypes]
 
 /*
 	Creator: 20200909@John.Ngo
