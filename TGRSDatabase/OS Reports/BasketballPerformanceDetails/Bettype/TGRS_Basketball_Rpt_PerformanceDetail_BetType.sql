@@ -1,3 +1,4 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 CREATE PROCEDURE [dbo].[TGRS_Basketball_Rpt_PerformanceDetail_BetType]
 		@FromDate			DATE
 	,	@ToDate				DATE
