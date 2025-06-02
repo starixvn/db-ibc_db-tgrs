@@ -4,7 +4,7 @@ CREATE PROCEDURE [dbo].[TGRS_Basketball_Rpt_PerformanceDetail_BetType]
 	,	@LeagueName			NVARCHAR(500)= ''
 	,	@LeagueGroupIds		VARCHAR(2000) = ''
 	,	@Bettypes			VARCHAR(2000) = '0'
-	,	@LiveType			SMALLINT = 1
+	,	@LiveType			SMALLINT = -1
 AS    
 /*  
 	Created:	20200918@John.Ngo
@@ -14,6 +14,7 @@ AS
   
 	Revisions: 	
    		- 20200918@John.Ngo:	Basketball Performance Detail - Bettype [Redmine ID: 140875]
+		- 20250530@Della: [TGR OS] Automatically add the new bet types to Basketball Performance report (#197594)
 
 	Param's Explanation:  	
 		- @LiveType: -1 All; 0 Nonlive; 1 Live
@@ -141,7 +142,7 @@ BEGIN
 		END;
 				 	
 	 SELECT	P.BetType, 
-		TN.BettypeName,
+		ISNULL(TN.bettypename,BT.typenamee) AS BettypeName ,
 		P.TraderCount, 
 		P.LeagueCount,
 		P.MatchCount,
@@ -151,7 +152,8 @@ BEGIN
 		P.Margin,
 		P.IsLive 
 	 FROM	#tmpOSDataTGRS AS P WITH (NOLOCK)
-		LEFT JOIN dbo.OSBetType AS TN WITH (NOLOCK) ON TN.BettypeId = P.BetType	
+		LEFT JOIN dbo.OSBetType AS TN WITH (NOLOCK) ON TN.BettypeId = P.BetType
+		LEFT JOIN bodb02.dbo.bettype AS BT WITH (NOLOCK) ON BT.typeid = P.BetType
 	ORDER BY P.Margin DESC, P.Bettype ASC;
 
 END;

@@ -18,8 +18,7 @@ AS
 BEGIN
 	
 	SELECT b.typeid  AS BettypeId
-	, CASE WHEN ob.GroupBettypeId=1 then ob.BettypeName
-		 ELSE b.typenamee END AS BettypeName
+	, ISNULL(ob.bettypename,b.typenamee) AS BettypeName
 	, CASE WHEN ob.GroupBettypeId = 1 THEN 1 
 	     ELSE 2 END AS GroupBettypeId  
 	, CASE WHEN ob.GroupBettypeId = 1 THEN 'Main'  
