@@ -13,6 +13,7 @@ AS
     Revisions:
         - 20250507@Jaden.Tang: Create New (#225623)
 		- 20250523@Della: fix bug #228280
+		- 20250603@Della: HotFix #229480 - Lack of league %PENALTY SHOOTOUTS%
 
     Param's Explanation:
         @Year:                 Report Year (e.g., 2025)
@@ -86,7 +87,7 @@ BEGIN
 	SELECT LeagueID, LeagueGroupID  
 	FROM bodb02.dbo.League WITH(NOLOCK)  
 	WHERE Sporttype = 1 AND LeagueGroupID IN (42,74) AND (leaguename LIKE '%5 Mins Play%' OR leaguename LIKE '%6 Mins Play%' OR 
-	leaguename LIKE '%15 Mins Play%' OR leaguename LIKE '%16 Mins Play%' OR leaguename LIKE '%20 Mins Play%')
+	leaguename LIKE '%15 Mins Play%' OR leaguename LIKE '%16 Mins Play%' OR leaguename LIKE '%20 Mins Play%' OR leaguename LIKE '%PENALTY SHOOTOUTS%')
 
     -- #region Aggregate Daily Performance Data
     IF OBJECT_ID('''tempdb..#tmpAggregatedData''') IS NOT NULL DROP TABLE #tmpAggregatedData;
