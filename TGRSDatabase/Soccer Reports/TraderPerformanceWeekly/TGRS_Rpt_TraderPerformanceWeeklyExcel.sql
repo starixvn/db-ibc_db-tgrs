@@ -80,7 +80,7 @@ BEGIN
     FROM dbo.Trader t WITH(NOLOCK)
     LEFT JOIN dbo.Team tm WITH(NOLOCK) ON t.TeamId = tm.TeamId
     LEFT JOIN bodb02.dbo.customer vc WITH(NOLOCK) ON t.CustId = vc.custid
-	WHERE tm.TeamId NOT IN (255) ;
+	WHERE tm.TeamId NOT IN (255) ; --Exclude data of NonLiveTeam #229522
     -- #endregion
 
 	-- #temp table
