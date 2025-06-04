@@ -14,6 +14,7 @@ AS
         - 20250507@Jaden.Tang: Create New (#225623)
 		- 20250523@Della: fix bug #228280
 		- 20250603@Della: HotFix #229480 - Lack of league %PENALTY SHOOTOUTS%
+		- 20250604@Della: Exclude data of NonLiveTeam #229522
 
     Param's Explanation:
         @Year:                 Report Year (e.g., 2025)
@@ -78,7 +79,8 @@ BEGIN
         END AS Department
     FROM dbo.Trader t WITH(NOLOCK)
     LEFT JOIN dbo.Team tm WITH(NOLOCK) ON t.TeamId = tm.TeamId
-    LEFT JOIN bodb02.dbo.customer vc WITH(NOLOCK) ON t.CustId = vc.custid;
+    LEFT JOIN bodb02.dbo.customer vc WITH(NOLOCK) ON t.CustId = vc.custid
+	WHERE tm.TeamId NOT IN (255) ;
     -- #endregion
 
 	-- #temp table
