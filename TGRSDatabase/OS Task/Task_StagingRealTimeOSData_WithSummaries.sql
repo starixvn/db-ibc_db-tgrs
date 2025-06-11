@@ -11,6 +11,7 @@ AS
 
     Revisions:
         - 20250507@Jaden: Initial creation. Execution frequency: every 5 minutes.
+		- 20250611@Jaden.Tang: Re-allow hedge match (#227903)
 
     Parameters:
         @Debug: 0 = No debug messages, 1 = Show debug messages
@@ -139,7 +140,6 @@ BEGIN
         SELECT m.MatchId, m.EventDate, m.matchcode, m.leagueid, m.sporttype
           FROM bodb02.dbo.Match AS m WITH (NOLOCK) 
          WHERE eventstatus = 'completed' 
-           AND matchcode NOT LIKE '%hedge%' 
            AND SportType <> 1 -- Other Sports
            AND m.matchid IN (
                SELECT matchid 
