@@ -28,7 +28,7 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '0' OR @LeagueGroupIds = 'ALL'
+	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
 	BEGIN
 		SET @LeagueGroupIds = '' -- Keep consistent with original logic
 	END

@@ -51,7 +51,7 @@ BEGIN
         WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
     END
 
-	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '0' OR @LeagueGroupIds = 'ALL'
+	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
 	BEGIN
 		SET @LeagueGroupIds = NULL
 	END
