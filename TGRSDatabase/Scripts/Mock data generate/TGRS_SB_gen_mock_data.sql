@@ -89,6 +89,24 @@ END
 
 IF @TargetTableChoice = 1
 BEGIN
+    IF @MatchIdToUse IS NOT NULL
+    BEGIN
+        -- Check if match exists in _bk
+        IF NOT EXISTS (
+            SELECT 1
+            FROM bodb_Archive.dbo.match_bk WITH (NOLOCK)
+            WHERE matchid = @MatchIdToUse
+                AND eventdate = @TargetDate
+                AND sporttype = 1
+                AND eventstatus = 'completed'
+                AND matchcode NOT LIKE '%hedge%'
+        )
+        BEGIN
+            RAISERROR('Match not found in _bk.', 16, 1);
+        END
+    END
+    ELSE 
+    BEGIN
     SELECT TOP 1
         @MatchIdToUse = matchid
     FROM bodb_Archive.dbo.match_bk WITH (NOLOCK)
@@ -98,9 +116,28 @@ BEGIN
         AND matchcode NOT LIKE '%hedge%'
         AND leagueid = @LeagueIdToUse
     ORDER BY NEWID();
+    END
 END
 ELSE IF @TargetTableChoice = 2
 BEGIN
+    IF @MatchIdToUse IS NOT NULL
+    BEGIN
+        -- Check if match exists in _14
+        IF NOT EXISTS (
+            SELECT 1
+            FROM bodb02.dbo.match14 WITH (NOLOCK)
+            WHERE matchid = @MatchIdToUse
+                AND eventdate = @TargetDate
+                AND sporttype = 1
+                AND eventstatus = 'completed'
+                AND matchcode NOT LIKE '%hedge%'
+        )
+        BEGIN
+            RAISERROR('Match not found in _14.', 16, 1);
+        END
+    END
+    ELSE
+    BEGIN
     SELECT TOP 1
         @MatchIdToUse = matchid
     FROM bodb02.dbo.match14 WITH (NOLOCK)
@@ -110,9 +147,28 @@ BEGIN
         AND matchcode NOT LIKE '%hedge%'
         AND leagueid = @LeagueIdToUse
     ORDER BY NEWID();
+    END
 END
 ELSE -- @TargetTableChoice = 3
 BEGIN
+    IF @MatchIdToUse IS NOT NULL
+    BEGIN
+        -- Check if match exists in live
+        IF NOT EXISTS (
+            SELECT 1
+            FROM bodb02.dbo.match WITH (NOLOCK)
+            WHERE matchid = @MatchIdToUse
+                AND eventdate = @TargetDate
+                AND sporttype = 1
+                AND eventstatus = 'completed'
+                AND matchcode NOT LIKE '%hedge%'
+        )
+        BEGIN
+            RAISERROR('Match not found in live.', 16, 1);   
+        END
+    END
+    ELSE
+    BEGIN
     SELECT TOP 1
         @MatchIdToUse = matchid
     FROM bodb02.dbo.match WITH (NOLOCK)
@@ -122,6 +178,7 @@ BEGIN
         AND matchcode NOT LIKE '%hedge%'
         AND leagueid = @LeagueIdToUse
     ORDER BY NEWID();
+    END
 END
 
 -- Handle Match Creation or Use Existing
