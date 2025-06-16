@@ -79,8 +79,7 @@ BEGIN
         END AS IsExtraTimeMatch
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
-    WHERE EXISTS (SELECT 1 FROM dbo.TraderPerformance_BetChoice_Detail TPBCD WHERE TPBCD.MatchId = M.matchid AND TPBCD.EventDate BETWEEN @FromDate AND @ToDate AND TPBCD.LeagueId = @LeagueId)
-      AND M.sporttype = 1
+    WHERE M.sporttype = 1
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
@@ -96,8 +95,7 @@ BEGIN
         END AS IsExtraTimeMatch
     FROM bodb02.dbo.Match14 M14 WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
-    WHERE EXISTS (SELECT 1 FROM dbo.TraderPerformance_BetChoice_Detail TPBCD WHERE TPBCD.MatchId = M14.matchid AND TPBCD.EventDate BETWEEN @FromDate AND @ToDate AND TPBCD.LeagueId = @LeagueId)
-      AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
+    WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
       AND M14.sporttype = 1
     OPTION (RECOMPILE);
 
@@ -114,8 +112,7 @@ BEGIN
         END AS IsExtraTimeMatch
     FROM bodb_archive.dbo.Match_bk MBK WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
-    WHERE EXISTS (SELECT 1 FROM dbo.TraderPerformance_BetChoice_Detail TPBCD WHERE TPBCD.MatchId = MBK.matchid AND TPBCD.EventDate BETWEEN @FromDate AND @ToDate AND TPBCD.LeagueId = @LeagueId)
-      AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
+    WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
       AND MBK.sporttype = 1
     OPTION (RECOMPILE);
 
