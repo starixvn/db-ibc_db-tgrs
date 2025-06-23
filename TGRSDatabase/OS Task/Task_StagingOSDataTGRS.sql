@@ -33,7 +33,6 @@ AS
 		- 20201112@John.Ngo: Fix adjusted odds [Redmine ID: 187083]
 		- 20240217@Jaden.Tang: Remove TradeCust table (#206895)
 		- 20240416@Jaden.Tang: Add hdp column (#170019)
-		- 20250611@Jaden.Tang: Re-allow hedge match (#227903)
 
 	Param's Explanation:
 		
@@ -453,6 +452,7 @@ BEGIN
 			WHERE m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 				AND	m.Sporttype <> 1
 				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
 				AND a.TraderId <> 0;
 
 			INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType, betid)
@@ -515,6 +515,7 @@ BEGIN
 			WHERE	m.EventDate BETWEEN @FromDateBK AND (@DotExtraPTDate - 1)
 				AND	m.Sporttype <> 1
 				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
 				AND	a.OperatorType < 3
 				OPTION (RECOMPILE);
 		
@@ -562,6 +563,7 @@ BEGIN
 			WHERE m.EventDate BETWEEN @DotExtraPTDate AND @ToDateBK
 				AND	m.Sporttype <> 1
 				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
 				AND a.TraderId <> 0;
 
 			INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType, betid)
@@ -624,6 +626,7 @@ BEGIN
 			WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 				AND	m.Sporttype <> 1
 				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
 				AND	a.OperatorType < 3
 				OPTION (RECOMPILE);
 
@@ -730,6 +733,7 @@ BEGIN
                           AND sbm.Bettype = b.Bettype
 					)
 					AND m.EventStatus = 'completed'
+					AND	m.MatchCode NOT LIKE '%hedge%'
 			OPTION (RECOMPILE);
 			
 			UPDATE #tmpFilteredBettransByBatch
@@ -945,6 +949,7 @@ BEGIN
 			WHERE m.EventDate BETWEEN @FromDate14 AND @ToDate14
 				AND	m.Sporttype <> 1
 				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
 				AND a.TraderId <> 0;
 
 			INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType, betid)
@@ -1057,6 +1062,7 @@ BEGIN
 					AND sbm.ProductID = 1
 					AND sbm.Sporttype <> 1
 					AND m.EventStatus = 'completed'
+					AND	m.MatchCode NOT LIKE '%hedge%'
 			OPTION (RECOMPILE);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
@@ -1269,6 +1275,7 @@ BEGIN
 		WHERE m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 			AND	m.Sporttype <> 1
 			AND m.EventStatus = 'completed'
+			AND	m.MatchCode NOT LIKE '%hedge%'
 			AND a.TraderId <> 0;
 
 		INSERT INTO	#tmpOSTrader (TraderId, MatchId, SportType, EventDate, BetType, betid)
@@ -1381,6 +1388,7 @@ BEGIN
 				AND sbm.ProductID = 1
 				AND sbm.Sporttype <> 1
 				AND m.EventStatus = 'completed'
+				AND	m.MatchCode NOT LIKE '%hedge%'
 			OPTION (RECOMPILE);
 			
 			SELECT	@RowCount	= @@ROWCOUNT
