@@ -7,7 +7,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Team]
 	,	@IsExcludeLeagues	BIT = 1
 	,	@Market				SMALLINT = 1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
-	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "ALL"
+	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
 AS    
 /*  
 	Created:	20160218@Billy
@@ -74,6 +74,7 @@ BEGIN
         parentid INT NULL,
         IsPenaltyMatch BIT,
         IsExtraTimeMatch BIT,
+        IsHedgeMatch BIT,
         PRIMARY KEY (matchid)
     );
     
@@ -83,7 +84,7 @@ BEGIN
 	ELSE 
 		 INSERT INTO @TeamListForMatchFilter (TeamId) SELECT t.TeamId FROM dbo.Team AS t WITH (NOLOCK);
 
-    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
+    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
     SELECT 
         M.matchid, M.parentid,
         CASE 
@@ -93,14 +94,18 @@ BEGIN
         CASE 
             WHEN HT.teamname LIKE N'%(ET)%' THEN 1
             ELSE 0 
-        END AS IsExtraTimeMatch
+        END AS IsExtraTimeMatch,
+        CASE 
+            WHEN M.MatchCode LIKE N'%hedge%' THEN 1
+            ELSE 0 
+        END AS IsHedgeMatch
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
     WHERE M.eventdate BETWEEN @FromDate AND @ToDate
       AND M.sporttype = 1
     OPTION (RECOMPILE);
 
-    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
+    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
     SELECT 
         M14.matchid, M14.parentid,
         CASE 
@@ -110,7 +115,11 @@ BEGIN
         CASE 
             WHEN HT.teamname LIKE N'%(ET)%' THEN 1
             ELSE 0 
-        END AS IsExtraTimeMatch
+        END AS IsExtraTimeMatch,
+        CASE 
+            WHEN M14.MatchCode LIKE N'%hedge%' THEN 1
+            ELSE 0 
+        END AS IsHedgeMatch
     FROM bodb02.dbo.Match14 M14 WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
     WHERE M14.eventdate BETWEEN @FromDate AND @ToDate
@@ -118,7 +127,7 @@ BEGIN
       AND M14.sporttype = 1
     OPTION (RECOMPILE);
 
-    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch)
+    INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
     SELECT 
         MBK.matchid, MBK.parentid,
         CASE 
@@ -128,7 +137,11 @@ BEGIN
         CASE 
             WHEN HT.teamname LIKE N'%(ET)%' THEN 1
             ELSE 0 
-        END AS IsExtraTimeMatch
+        END AS IsExtraTimeMatch,
+        CASE 
+            WHEN MBK.MatchCode LIKE N'%hedge%' THEN 1
+            ELSE 0 
+        END AS IsHedgeMatch
     FROM bodb_archive.dbo.Match_bk MBK WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
     WHERE MBK.eventdate BETWEEN @FromDate AND @ToDate
@@ -266,7 +279,7 @@ BEGIN
 			INNER JOIN #AllMatches AM ON tp.MatchId = AM.matchid
 			LEFT JOIN #RootMatches RM ON tp.MatchId = RM.ChildMatchID
 		WHERE	tp.EventDate BETWEEN @FromDate AND @ToDate
-			AND	tp.BetType IN (SELECT bl.BetType FROM @BettypeList AS bl)
+			AND	tp.BetType IN (SELECT bl.bettype FROM @BettypeList AS bl)
 			AND	t.TeamId IN (SELECT tl.TeamId FROM @TeamList AS tl)
 			AND (@Market = -1 OR tp.IsLive = @Market)
 			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
@@ -287,6 +300,7 @@ BEGIN
 					WHERE (mgf.Setting = 'NORMAL' AND AM.IsPenaltyMatch = 0 AND AM.IsExtraTimeMatch = 0)
 					   OR (mgf.Setting = 'PENALTY' AND AM.IsPenaltyMatch = 1)
 					   OR (mgf.Setting = 'EXTRA_TIME' AND AM.IsExtraTimeMatch = 1)
+					   OR (mgf.Setting = 'HEDGE' AND AM.IsHedgeMatch = 1)
 				)
 			)
 		GROUP BY t.TeamId, tp.IsLive
