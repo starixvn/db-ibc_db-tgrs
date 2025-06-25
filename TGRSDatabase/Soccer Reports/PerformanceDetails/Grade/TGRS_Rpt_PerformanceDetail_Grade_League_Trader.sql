@@ -214,7 +214,7 @@ BEGIN
 	)
 	SELECT	tp.CustId															AS CustId
 		,	tp.IsLive															AS IsLive
-		,	COUNT(DISTINCT RM.RootMatchID)											AS MatchCount	
+		,	COUNT(DISTINCT tp.MatchID)											AS MatchCount	
 		,	ISNULL(SUM(tp.Stake), 0)											AS Turnover
 		,	ISNULL(SUM(tp.WinLost), 0) - ISNULL(SUM(tp.Comm), 0)					    AS WinLoss
 		,	SUM( (tp.WinLost - tp.Comm) * CASE WHEN tp.Spread * tm.Rate IS NULL THEN 0 ELSE 1 END) 	AS WinLossScore

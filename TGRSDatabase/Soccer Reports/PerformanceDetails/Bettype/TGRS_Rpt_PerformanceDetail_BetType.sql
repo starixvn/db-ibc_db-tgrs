@@ -268,7 +268,7 @@ BEGIN
         IsLive,
         COUNT(DISTINCT CustId) AS [TraderCount],
         COUNT(DISTINCT LeagueId) AS [LeagueCount],
-        COUNT(DISTINCT RootMatchID) AS [MatchCount],
+        COUNT(DISTINCT MatchID) AS [MatchCount],
         
         ISNULL(SUM(Stake), 0) AS [Turnover],
         ISNULL(SUM(WinLost), 0) AS [WinLoss],

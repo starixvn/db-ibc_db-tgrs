@@ -194,7 +194,7 @@ BEGIN
 						,	lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
-						,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0) 	AS MatchCount
+						,	ISNULL(COUNT(DISTINCT P.MatchID), 0) 	AS MatchCount
 						,	ISNULL(SUM(P.Stake), 0) 				AS Turnover 
 						,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss  
 						,	ISNULL(SUM(P.BetCount), 0) 			AS BetCount  
@@ -248,7 +248,7 @@ BEGIN
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
-						,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0) 	AS MatchCount
+						,	ISNULL(COUNT(DISTINCT P.MatchID), 0) 	AS MatchCount
 						,	ISNULL(SUM(P.Stake), 0) 				AS Turnover 
 						,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss  
 						,	ISNULL(SUM(P.BetCount), 0) 				AS BetCount  
@@ -305,7 +305,7 @@ BEGIN
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
-						,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0) 	AS MatchCount
+						,	ISNULL(COUNT(DISTINCT P.MatchID), 0) 	AS MatchCount
 						,	ISNULL(SUM(P.Stake), 0) 				AS Turnover  
 						,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss  
 						,	ISNULL(SUM(P.BetCount), 0) 				AS BetCount  
@@ -360,7 +360,7 @@ BEGIN
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
-						,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0) 	AS MatchCount
+						,	ISNULL(COUNT(DISTINCT P.MatchID), 0) 	AS MatchCount
 						,	ISNULL(SUM(P.Stake), 0) 				AS Turnover  
 						,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0) AS WinLoss  
 						,	ISNULL(SUM(P.BetCount), 0) 				AS BetCount  

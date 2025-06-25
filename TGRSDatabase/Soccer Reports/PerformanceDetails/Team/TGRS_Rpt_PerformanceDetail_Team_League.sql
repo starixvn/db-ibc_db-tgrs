@@ -183,7 +183,7 @@ BEGIN
 		,   lg.LeagueGroupName
 		, 	P.IsLive
 		,	ISNULL(COUNT(DISTINCT P.CustId), 0)                AS TraderCount
-		,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0)          AS MatchCount
+		,	ISNULL(COUNT(DISTINCT P.MatchID), 0)          AS MatchCount
 		,	ISNULL(SUM(P.Stake), 0)                            AS Turnover
 		,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss
 		,	CASE WHEN ISNULL(SUM(P.Stake), 0) <> 0 THEN (ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0)) * 100 / SUM(P.Stake) ELSE NULL END AS Margin

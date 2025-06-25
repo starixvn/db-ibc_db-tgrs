@@ -177,7 +177,7 @@ BEGIN
 						  WHEN @BetType IN (28,453)  THEN (P.hdp1-P.hdp2)
 						  ELSE P.hdp1 END)								AS PointHDP
 				,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
-				,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0)			AS MatchCount
+				,	ISNULL(COUNT(DISTINCT P.MatchID), 0)			AS MatchCount
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 				,	ISNULL(SUM(P.Stake), 0)								AS Turnover
 				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
@@ -230,7 +230,7 @@ BEGIN
 						  WHEN @BetType IN (28,453)  THEN (P.hdp1-P.hdp2)
 						  ELSE P.hdp1 END)								AS PointHDP
 				,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
-				,	ISNULL(COUNT(DISTINCT RM.RootMatchID), 0)			AS MatchCount
+				,	ISNULL(COUNT(DISTINCT P.MatchID), 0)			AS MatchCount
 				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 				,	ISNULL(SUM(P.Stake), 0)								AS Turnover
 				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
