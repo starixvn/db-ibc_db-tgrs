@@ -133,7 +133,7 @@ BEGIN
 			AND (@Market = -1 OR P.IsLive = @Market)
 			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 			AND (@ApplyVRFilter = 0 OR EXISTS (SELECT 1 FROM #TempVRSettings vrs WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0) OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0)) OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)))
-			AND (@ApplyMatchGroupFilter = 0 OR EXISTS (SELECT 1 FROM #TempMatchGroup mgf WHERE (mgf.Setting = 'NORMAL' AND AM.IsPenaltyMatch = 0 AND AM.IsExtraTimeMatch = 0) OR (mgf.Setting = 'PENALTY' AND AM.IsPenaltyMatch = 1) OR (mgf.Setting = 'EXTRA_TIME' AND AM.IsExtraTimeMatch = 1) OR (mgf.Setting = 'HEDGE' AND AM.IsHedgeMatch = 1)))
+			AND (@ApplyMatchGroupFilter = 0 OR EXISTS (SELECT 1 FROM #TempMatchGroup mgf WHERE (mgf.Setting = 'NORMAL' AND am.IsPenaltyMatch = 0 AND am.IsExtraTimeMatch = 0 AND am.IsHedgeMatch = 0) OR (mgf.Setting = 'PENALTY' AND AM.IsPenaltyMatch = 1) OR (mgf.Setting = 'EXTRA_TIME' AND AM.IsExtraTimeMatch = 1) OR (mgf.Setting = 'HEDGE' AND AM.IsHedgeMatch = 1)))
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate, P.IsLive
 	ORDER BY Margin DESC, P.EventDate ASC;
 			

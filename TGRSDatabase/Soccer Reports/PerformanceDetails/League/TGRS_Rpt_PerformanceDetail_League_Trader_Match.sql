@@ -182,7 +182,7 @@ BEGIN
 	            @ApplyMatchGroupFilter = 0 OR
 	            EXISTS (
 	                SELECT 1 FROM #TempMatchGroup mgf
-	                WHERE (mgf.Setting = 'NORMAL' AND AM.IsPenaltyMatch = 0 AND AM.IsExtraTimeMatch = 0)
+	                WHERE (mgf.Setting = 'NORMAL' AND am.IsPenaltyMatch = 0 AND am.IsExtraTimeMatch = 0 AND am.IsHedgeMatch = 0)
 	                   OR (mgf.Setting = 'PENALTY' AND AM.IsPenaltyMatch = 1)
 	                   OR (mgf.Setting = 'EXTRA_TIME' AND AM.IsExtraTimeMatch = 1)
 	                   OR (mgf.Setting = 'HEDGE' AND AM.IsHedgeMatch = 1)
