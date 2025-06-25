@@ -205,7 +205,7 @@ BEGIN
 						@ApplyMatchGroupFilter = 0 OR
 						EXISTS (
 							SELECT 1 FROM #TempMatchGroup mgf
-							WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0)
+							WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
 							   OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
 							   OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
@@ -249,7 +249,7 @@ BEGIN
 						@ApplyMatchGroupFilter = 0 OR
 						EXISTS (
 							SELECT 1 FROM #TempMatchGroup mgf
-							WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0)
+							WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
 							   OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
 							   OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
