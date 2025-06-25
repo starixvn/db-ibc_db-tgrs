@@ -90,6 +90,7 @@ BEGIN
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
     WHERE M.sporttype = 1
+      AND M.eventdate BETWEEN @FromDate AND @ToDate
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
@@ -111,6 +112,7 @@ BEGIN
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
     WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
       AND M14.sporttype = 1
+      AND M14.eventdate BETWEEN @FromDate AND @ToDate
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
@@ -132,6 +134,7 @@ BEGIN
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
     WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
       AND MBK.sporttype = 1
+      AND MBK.eventdate BETWEEN @FromDate AND @ToDate
     OPTION (RECOMPILE);
 
     CREATE TABLE #RootMatches (
@@ -238,7 +241,8 @@ BEGIN
 						   OR (mgf.Setting = 'HEDGE' AND am.IsHedgeMatch = 1)
 					)
 				)
-	GROUP BY	tp.CustId, tp.IsLive;	
+	GROUP BY	tp.CustId, tp.IsLive
+    OPTION (RECOMPILE);
 	
 	SELECT	td.CustID
 		,	t.Username
