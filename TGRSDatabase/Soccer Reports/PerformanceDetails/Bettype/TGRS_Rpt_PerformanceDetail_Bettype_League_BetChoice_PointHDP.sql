@@ -84,6 +84,7 @@ BEGIN
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
     WHERE M.sporttype = 1
+      AND M.EventDate >= @FromDate AND M.EventDate <= @ToDate
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
@@ -105,6 +106,7 @@ BEGIN
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
     WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
       AND M14.sporttype = 1
+      AND M14.EventDate >= @FromDate AND M14.EventDate <= @ToDate
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
@@ -126,6 +128,7 @@ BEGIN
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
     WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
       AND MBK.sporttype = 1
+      AND MBK.EventDate >= @FromDate AND MBK.EventDate <= @ToDate
     OPTION (RECOMPILE);
 
     CREATE TABLE #RootMatches (
@@ -200,9 +203,11 @@ BEGIN
 					   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 				)
 			)
-	GROUP BY (CASE WHEN @BetType IN (228,229) THEN P.oddsspread 
-				   WHEN @BetType IN (28,453)  THEN (P.hdp1-P.hdp2)
-				   ELSE P.hdp1 END);
+    GROUP BY 
+        (CASE WHEN @BetType IN (228,229) THEN P.oddsspread 
+              WHEN @BetType IN (28,453)  THEN (P.hdp1-P.hdp2)
+              ELSE P.hdp1 END)
+        ,	P.IsLive
 	
     DROP TABLE IF EXISTS #AllMatches;
     DROP TABLE IF EXISTS #RootMatches;
