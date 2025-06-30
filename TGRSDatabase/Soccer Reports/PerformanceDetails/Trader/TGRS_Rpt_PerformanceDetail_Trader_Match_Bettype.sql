@@ -100,6 +100,7 @@ BEGIN
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
     WHERE M.matchid = @MatchId AND M.sporttype = 1
+	AND M.EventDate >= @FromDate AND M.EventDate <= @ToDate
     OPTION (RECOMPILE);
 
     IF NOT EXISTS (SELECT 1 FROM #AllMatches WHERE matchid = @MatchId)
@@ -122,6 +123,7 @@ BEGIN
         FROM bodb02.dbo.Match14 M14 WITH (NOLOCK)
         LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
         WHERE M14.matchid = @MatchId AND M14.sporttype = 1
+			AND M14.EventDate >= @FromDate AND M14.EventDate <= @ToDate
         OPTION (RECOMPILE);
     END
 
@@ -145,6 +147,7 @@ BEGIN
         FROM bodb_archive.dbo.Match_bk MBK WITH (NOLOCK)
         LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
         WHERE MBK.matchid = @MatchId AND MBK.sporttype = 1
+		AND MBK.EventDate >= @FromDate AND MBK.EventDate <= @ToDate
         OPTION (RECOMPILE);
     END
 
