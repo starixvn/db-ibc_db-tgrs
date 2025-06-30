@@ -89,7 +89,7 @@ BEGIN
         END AS IsHedgeMatch
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
-    WHERE M.matchid = @MatchId AND M.eventdate BETWEEN @FromDate AND @ToDate AND M.sporttype = 1
+    WHERE M.matchid = @MatchId AND M.eventdate BETWEEN CAST(@FromDate AS DATETIME) AND CAST(@ToDate AS DATETIME) AND M.sporttype = 1
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
@@ -109,7 +109,7 @@ BEGIN
         END AS IsHedgeMatch
     FROM bodb02.dbo.Match14 M14 WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
-    WHERE M14.matchid = @MatchId AND M14.eventdate BETWEEN @FromDate AND @ToDate 
+    WHERE M14.matchid = @MatchId AND M14.eventdate BETWEEN CAST(@FromDate AS DATETIME) AND CAST(@ToDate AS DATETIME) 
       AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
       AND M14.sporttype = 1
     OPTION (RECOMPILE);
@@ -131,7 +131,7 @@ BEGIN
         END AS IsHedgeMatch
     FROM bodb_archive.dbo.Match_bk MBK WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
-    WHERE MBK.matchid = @MatchId AND MBK.eventdate BETWEEN @FromDate AND @ToDate
+    WHERE MBK.matchid = @MatchId AND MBK.eventdate BETWEEN CAST(@FromDate AS DATETIME) AND CAST(@ToDate AS DATETIME)
       AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
       AND MBK.sporttype = 1
     OPTION (RECOMPILE);

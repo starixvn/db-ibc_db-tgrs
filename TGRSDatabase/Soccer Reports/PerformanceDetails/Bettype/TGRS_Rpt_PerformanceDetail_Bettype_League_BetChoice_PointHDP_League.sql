@@ -77,7 +77,7 @@ BEGIN
 		CASE WHEN M.MatchCode LIKE N'%hedge%' THEN 1 ELSE 0 END AS IsHedgeMatch
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
-    WHERE M.eventdate BETWEEN @FromDate AND @ToDate
+    WHERE M.eventdate BETWEEN CAST(@FromDate AS DATETIME) AND CAST(@ToDate AS DATETIME)
       AND M.sporttype = 1
     OPTION (RECOMPILE);
 
@@ -89,7 +89,7 @@ BEGIN
 		CASE WHEN M14.MatchCode LIKE N'%hedge%' THEN 1 ELSE 0 END AS IsHedgeMatch
     FROM bodb02.dbo.Match14 M14 WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
-    WHERE M14.eventdate BETWEEN @FromDate AND @ToDate
+    WHERE M14.eventdate BETWEEN CAST(@FromDate AS DATETIME) AND CAST(@ToDate AS DATETIME)
       AND M14.sporttype = 1
       AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
     OPTION (RECOMPILE);
@@ -102,7 +102,7 @@ BEGIN
 		CASE WHEN MBK.MatchCode LIKE N'%hedge%' THEN 1 ELSE 0 END AS IsHedgeMatch
     FROM bodb_archive.dbo.Match_bk MBK WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
-    WHERE MBK.eventdate BETWEEN @FromDate AND @ToDate
+    WHERE MBK.eventdate BETWEEN CAST(@FromDate AS DATETIME) AND CAST(@ToDate AS DATETIME)
       AND MBK.sporttype = 1
       AND NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
     OPTION (RECOMPILE);

@@ -123,7 +123,7 @@ BEGIN
     FROM bodb02.dbo.Match M WITH (NOLOCK)
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
     WHERE M.sporttype = 1
-      AND M.EventDate >= @FromDate AND M.EventDate <= @ToDate
+      AND M.EventDate >= CAST(@FromDate AS DATETIME) AND M.EventDate <= CAST(@ToDate AS DATETIME)
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
@@ -145,7 +145,7 @@ BEGIN
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
     WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
       AND M14.sporttype = 1
-      AND M14.EventDate >= @FromDate AND M14.EventDate <= @ToDate
+      AND M14.EventDate >= CAST(@FromDate AS DATETIME) AND M14.EventDate <= CAST(@ToDate AS DATETIME)
     OPTION (RECOMPILE);
 
     INSERT INTO #AllMatches (matchid, parentid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
@@ -167,7 +167,7 @@ BEGIN
     LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
     WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
       AND MBK.sporttype = 1
-      AND MBK.EventDate >= @FromDate AND MBK.EventDate <= @ToDate
+      AND MBK.EventDate >= CAST(@FromDate AS DATETIME) AND MBK.EventDate <= CAST(@ToDate AS DATETIME)
     OPTION (RECOMPILE);
 
     CREATE TABLE #RootMatches (
