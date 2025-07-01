@@ -1,6 +1,3 @@
-USE bodb_tgrs;
-GO
-
 ALTER PROCEDURE  [dbo].[Task_StagingDataTGRS]
 		@Debug					BIT = 0
 	,	@BeforeMoveBetsDay		BIT = 1	

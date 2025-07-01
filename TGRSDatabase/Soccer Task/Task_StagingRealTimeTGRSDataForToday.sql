@@ -1,6 +1,3 @@
-USE bodb_tgrs;
-GO
-
 ALTER PROCEDURE	[dbo].[Task_StagingRealTimeTGRSDataForToday]
 	@Debug				BIT = 0
 AS
