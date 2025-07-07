@@ -7,7 +7,8 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_Trader_Match]
 	@IsExcludeLeagues	BIT = 1,
 	@Market				SMALLINT = -1,
 	@VRSettings			VARCHAR(100) = 'ALL', -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
-	@MatchGroup			VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	@MatchGroup			VARCHAR(100) = 'ALL', -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	Created:	20160315@Thai.Tran
@@ -22,10 +23,12 @@ AS
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20250524@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-		
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
+
 	Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
-	
+		- @Sites: List of site names delimited by comma
+
 	Example: 
 		exec TGRS_Rpt_PerformanceDetail_Bettype_League_Trader_Match @Bettype=3,@LeagueId=3162,@FromDate='2016-03-02 00:00:00',@ToDate='2016-03-16 00:00:00',@CustId=2438, @VRSettings = 'ALL', @MatchGroup = 'ALL'
   
@@ -33,6 +36,15 @@ AS
  
 BEGIN 
 	SET NOCOUNT ON;
+
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
 
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -132,6 +144,7 @@ BEGIN
 			AND P.EventDate BETWEEN @FromDate AND @ToDate
 			AND (@Market = -1 OR P.IsLive = @Market)
 			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+			AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			AND (@ApplyVRFilter = 0 OR EXISTS (SELECT 1 FROM #TempVRSettings vrs WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0) OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0)) OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)))
 			AND (@ApplyMatchGroupFilter = 0 OR EXISTS (SELECT 1 FROM #TempMatchGroup mgf WHERE (mgf.Setting = 'NORMAL' AND am.IsPenaltyMatch = 0 AND am.IsExtraTimeMatch = 0 AND am.IsHedgeMatch = 0) OR (mgf.Setting = 'PENALTY' AND AM.IsPenaltyMatch = 1) OR (mgf.Setting = 'EXTRA_TIME' AND AM.IsExtraTimeMatch = 1) OR (mgf.Setting = 'HEDGE' AND AM.IsHedgeMatch = 1)))
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate, P.IsLive

@@ -10,6 +10,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice_PointHDP_Min
 	,	@Market				SMALLINT = -1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20220117@John.Ngo
@@ -21,9 +22,10 @@ AS
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-		
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
 	 Param's Explanation:
 		- @BetType IN (228,229): SABA HDP Time Machine
+		- @Sites: List of site names delimited by comma
 */ 
  
 BEGIN 
@@ -37,6 +39,15 @@ BEGIN
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
 	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
 	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
 
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -217,6 +228,7 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 						)
 					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY P.hdp1
 			ORDER BY P.hdp1 ASC;
 		END;
@@ -266,6 +278,7 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 						)
 					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY P.hdp1
 			ORDER BY P.hdp1 ASC;
 		END;	

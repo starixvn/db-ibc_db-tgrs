@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League]
 	,	@Market				SMALLINT = -1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20160315@Thai.Tran
@@ -28,9 +29,11 @@ AS
 		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
 		- 20250312@Jaden.Tang:  Return League Group name instead of League Group ID [Redmine: #213765]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-		
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
+
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
+		- @Sites: List of site names delimited by comma
 
 	 Exam: EXEC  TGRS_Rpt_PerformanceDetail_Bettype_League @FromDate = '2014-01-01', @ToDate= '2014-05-30', @Bettype = 1
   
@@ -39,6 +42,15 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
+
 	DECLARE @OtherGroupsId SMALLINT = 12;
 	
 	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
@@ -231,6 +243,7 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 						)
 					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY P.LeagueId, L.LeagueName
 				,   lg.TargetLeagueGroupId
 				,   lg.LeagueGroupName

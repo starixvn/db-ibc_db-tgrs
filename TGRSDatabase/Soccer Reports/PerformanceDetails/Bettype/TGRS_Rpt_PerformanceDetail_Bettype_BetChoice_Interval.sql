@@ -10,6 +10,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice_Interval]
 	,	@Market				SMALLINT = -1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20210915@Adam.Tran
@@ -22,13 +23,23 @@ AS
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-		
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
 	 Param's Explanation:
+		- @Sites: List of site names delimited by comma
 */ 
  
 BEGIN 
 	SET NOCOUNT ON;
 	
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
+
 	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
 	BEGIN
 		SET @LeagueGroupIds = '' -- Keep consistent with original logic

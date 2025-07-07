@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice]
 	,	@Market				SMALLINT = -1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20171212@Aaron
@@ -27,9 +28,10 @@ AS
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-		
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
+		- @Sites: List of site names delimited by comma
 
 	 Exam: 
 		EXEC  TGRS_Rpt_PerformanceDetail_Bettype_BetChoice @FromDate = '2021-11-01', @ToDate= '2021-12-30', @Bettype = 227, @Market = 1
@@ -38,6 +40,15 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
+
 	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
 	BEGIN
 		SET @LeagueGroupIds = '' -- Keep consistent with original logic that treats empty string for no filter
@@ -236,6 +247,7 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
 				END;
 			ELSE
@@ -281,6 +293,7 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 				END;			
 		END;
@@ -333,6 +346,7 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
 				END;
 			ELSE -- @IsBetChoiceDetail = 0 or 1
@@ -380,6 +394,7 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 				END;
 		END;
