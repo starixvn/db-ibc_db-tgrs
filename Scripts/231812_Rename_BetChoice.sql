@@ -6,6 +6,9 @@
 
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
 
+use bodb02;
+grant SELECT on [Site] to wsv_tgrs;
+
 update BetChoiceMapping
 set TGRSBetChoice = 'Fav'
 where BetType in (select BetType from BetType where TypeName like '%1x2%')
