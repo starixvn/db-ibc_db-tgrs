@@ -207,6 +207,7 @@ BEGIN
 				BEGIN
 					SELECT P.betteam											AS BetTeam
 						,	FM.BetOption										AS BetOption
+						,	P.hdp2												AS hdp2
 						,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
 						,	P.IsLive											AS IsLive
 						,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
@@ -248,7 +249,7 @@ BEGIN
 								)
 							)
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
+					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
 				END;
 			ELSE
 				BEGIN
@@ -303,6 +304,7 @@ BEGIN
 				BEGIN
 					SELECT P.betteam										AS BetTeam
 					,	FM.BetOption										AS BetOption
+					,	P.hdp2												AS hdp2
 					,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
 					,	P.IsLive											AS IsLive
 					,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
@@ -347,7 +349,7 @@ BEGIN
 								)
 							)
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
+					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
 				END;
 			ELSE -- @IsBetChoiceDetail = 0 or 1
 				BEGIN

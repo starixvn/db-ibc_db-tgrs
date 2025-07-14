@@ -5,6 +5,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice_Interval]
 	,	@LeagueGroupIds		VARCHAR(2000) =  ''
 	,	@BetType			SMALLINT
 	,	@BetTeam			NVARCHAR(50)
+	,	@hdp2				SMALLMONEY = -1
 	,	@Oddsspread			MONEY = -1
 	,	@IsExcludeLeagues	BIT = 1
 	,	@Market				SMALLINT = -1
@@ -206,6 +207,7 @@ BEGIN
 			WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 				AND	P.BetType = @BetType
 				AND P.betteam = @BetTeam
+				AND (@hdp2 = -1 OR P.hdp2 = @hdp2)
 				AND	(@Oddsspread = -1 OR P.Oddsspread = @Oddsspread)
 				AND (@Market = -1 OR P.IsLive = @Market)	
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
@@ -255,6 +257,7 @@ BEGIN
 			WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 				AND	P.BetType = @BetType
 				AND P.betteam = @BetTeam
+				AND (@hdp2 = -1 OR P.hdp2 = @hdp2)
 				AND	(@Oddsspread = -1 OR P.Oddsspread = @Oddsspread)
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@Market = -1 OR P.IsLive = @Market)	
