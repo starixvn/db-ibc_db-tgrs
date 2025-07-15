@@ -43,7 +43,8 @@ BEGIN
             finalhomescore,
             finalawayscore,
             livehomescore,
-            liveawayscore
+            liveawayscore,
+            kickofftime
         )
         OUTPUT INSERTED.matchid
         VALUES (
@@ -70,7 +71,8 @@ BEGIN
             FLOOR(RAND() * 5), -- finalhomescore
             FLOOR(RAND() * 5), -- finalawayscore
             FLOOR(RAND() * 2), -- livehomescore
-            FLOOR(RAND() * 2) -- liveawayscore
+            FLOOR(RAND() * 2), -- liveawayscore
+            DATEADD(MINUTE, FLOOR(RAND() * 480), @TargetDate) -- kickofftime
         );
     '
 
