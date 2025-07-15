@@ -5,14 +5,89 @@ CREATE OR ALTER PROCEDURE [dbo].[TGRS_SB_create_match_data]
     @TargetTableChoice INT, -- 1 for _bk, 2 for _14, 3 for live
     @SportType INT,
     @LeagueIdToUse INT,
-    @HomeIdToUse INT,
-    @AwayIdToUse INT,
+    @HomeIdToUse INT = NULL,
+    @AwayIdToUse INT = NULL,
     @TargetDate DATETIME,
     @IsGeneratingPenaltyMatch BIT,
     @MatchIdToUse INT OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    DECLARE @ErrorMessage NVARCHAR(MAX) = NULL;
+    
+    -- Generate teams if not provided
+    IF @HomeIdToUse IS NULL AND @AwayIdToUse IS NULL 
+    BEGIN
+        IF @IsGeneratingPenaltyMatch = 0
+        BEGIN
+            SELECT TOP 2
+                @HomeIdToUse = CASE WHEN T.RowNum = 1 THEN T.teamid ELSE @HomeIdToUse END,
+                @AwayIdToUse = CASE WHEN T.RowNum = 2 THEN T.teamid ELSE @AwayIdToUse END
+            FROM (
+                SELECT
+                    teamid,
+                    ROW_NUMBER() OVER (ORDER BY NEWID()) AS RowNum
+                FROM bodb02.dbo.team
+                WHERE SportType IN (SELECT SportType FROM bodb02.dbo.league WHERE leagueid = @LeagueIdToUse)
+                    AND teamid > 0
+                    AND teamname NOT LIKE '%PENALTY%'
+                ) AS T
+            WHERE T.RowNum <= 2;
+        END
+        ELSE
+        BEGIN
+            SELECT TOP 2
+                @HomeIdToUse = CASE WHEN T.RowNum = 1 THEN T.teamid ELSE @HomeIdToUse END,
+                @AwayIdToUse = CASE WHEN T.RowNum = 2 THEN T.teamid ELSE @AwayIdToUse END
+            FROM (
+                SELECT
+                    teamid,
+                    ROW_NUMBER() OVER (ORDER BY NEWID()) AS RowNum
+                FROM bodb02.dbo.team
+                WHERE SportType IN (SELECT SportType FROM bodb02.dbo.league WHERE leagueid = @LeagueIdToUse)
+                    AND teamid > 0
+                    AND teamname LIKE '%PENALTY%'
+                ) AS T
+            WHERE T.RowNum <= 2;
+        END
+    END
+    ELSE
+    BEGIN
+        -- Check valid home and away team
+        IF @HomeIdToUse IS NOT NULL AND NOT EXISTS (
+            SELECT 1
+            FROM bodb02.dbo.team
+            WHERE teamid = @HomeIdToUse
+                AND SportType IN (SELECT SportType FROM bodb02.dbo.league WHERE leagueid = @LeagueIdToUse)
+        )
+        BEGIN
+            SET @ErrorMessage = 'Home team ' + CAST(@HomeIdToUse AS VARCHAR) + ' not valid.';
+            THROW 51000, @ErrorMessage, 1;
+            RETURN;
+        END
+        
+        IF @AwayIdToUse IS NOT NULL AND NOT EXISTS (
+            SELECT 1
+            FROM bodb02.dbo.team
+            WHERE teamid = @AwayIdToUse
+                AND SportType IN (SELECT SportType FROM bodb02.dbo.league WHERE leagueid = @LeagueIdToUse)
+        )
+        BEGIN
+            SET @ErrorMessage = 'Away team ' + CAST(@AwayIdToUse AS VARCHAR) + ' not valid.';
+            THROW 51000, @ErrorMessage, 1;
+            RETURN;
+        END
+    END
+
+    IF @HomeIdToUse IS NULL
+        OR @AwayIdToUse IS NULL
+        OR @HomeIdToUse = @AwayIdToUse
+    BEGIN
+        SET @ErrorMessage = 'Could not find two distinct active teams for the specified league and sport type';
+        THROW 51000, @ErrorMessage, 1;
+        RETURN;
+    END
     
     DECLARE @ParentMatchId INT = NULL;
     DECLARE @NextAvailableMatchId INT = NULL;
