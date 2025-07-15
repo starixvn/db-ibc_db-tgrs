@@ -5,16 +5,18 @@ BEGIN TRANSACTION;
 DECLARE @TargetDate DATETIME = '2025-07-13';
 DECLARE @NumberOfTransactions INT = 50; -- Configurable number of mock transactions
 
-DECLARE @SportTypeToGenerate INT = 1;
+DECLARE @SportTypeToUse INT = 1;
 DECLARE @BetTypeToGenerate INT = NULL; -- Specific BetType to generate, if NULL, use random bet type from SBM
 ---
 DECLARE @MatchIdToUse INT = NULL; -- The ID of the match to use, null to use random existing match on TargetDate, if no existing match then create new
-DECLARE @ForceCreateNewMatch BIT = 1; -- If 1, then create new match even if existing match is found
+DECLARE @ForceCreateNewMatch BIT = 0; -- If 1, then create new match even if existing match is found
 ---
-DECLARE @LeagueIdToUse INT = 147230; -- The ID of the league to use (if matchIdToUse is NULL), null to use random league
+DECLARE @LeagueIdToUse INT = NULL; -- The ID of the league to use (if matchIdToUse is NULL), null to use random league
 DECLARE @HomeIdToUse INT = NULL; -- The ID of the home team to use (if matchIdToUse is NULL), null to use random home team
 DECLARE @AwayIdToUse INT = NULL; -- The ID of the away team to use (if matchIdToUse is NULL), null to use random away team
 ---
+
+DECLARE @ErrorMessage NVARCHAR(MAX) = NULL;
 
 BEGIN --calculate target table choice 
     DECLARE @BalanceUpDay SMALLDATETIME, @MoveBetsDay SMALLDATETIME;
@@ -51,8 +53,39 @@ BEGIN --calculate target table choice
     END;
 END
 
--- Check for existing suitable match
-PRINT 'Checking for existing completed soccer match on ' + CONVERT(VARCHAR, @TargetDate, 23) + '...';
+-- Handle LeagueID
+IF @LeagueIdToUse IS NULL
+BEGIN
+    SELECT TOP 1
+        @LeagueIdToUse = leagueid
+    FROM bodb02.dbo.league
+    WHERE sporttype = @SportTypeToUse
+        AND leagueid > 0
+    ORDER BY NEWID();
+
+    PRINT 'No LeagueID provided. Using random LeagueID: ' + CAST(@LeagueIdToUse AS VARCHAR);
+END
+ELSE
+BEGIN
+    -- Check if league exists
+    IF NOT EXISTS (
+        SELECT 1
+        FROM bodb02.dbo.league
+        WHERE leagueid = @LeagueIdToUse
+    )
+    BEGIN
+        SET @ErrorMessage = 'League ' + CAST(@LeagueIdToUse AS VARCHAR) + ' not found.';
+        THROW 51000, @ErrorMessage, 1;
+        RETURN;
+    END
+END
+IF @LeagueIdToUse IS NULL
+BEGIN
+    SET @ErrorMessage = 'No active League found';
+    THROW 51000, @ErrorMessage, 1;
+    RETURN;
+END
+-- End of LeagueID handling
 
 IF @TargetTableChoice = 1
 BEGIN
@@ -60,7 +93,7 @@ BEGIN
         @MatchIdToUse = matchid
     FROM bodb_Archive.dbo.match_bk WITH (NOLOCK)
     WHERE eventdate = @TargetDate
-        AND sporttype = 1
+        AND sporttype = @SportTypeToUse
         AND eventstatus = 'completed'
         AND matchcode NOT LIKE '%hedge%'
         AND leagueid = @LeagueIdToUse
@@ -72,7 +105,7 @@ BEGIN
         @MatchIdToUse = matchid
     FROM bodb02.dbo.match14 WITH (NOLOCK)
     WHERE eventdate = @TargetDate
-        AND sporttype = 1
+        AND sporttype = @SportTypeToUse
         AND eventstatus = 'completed'
         AND matchcode NOT LIKE '%hedge%'
         AND leagueid = @LeagueIdToUse
@@ -84,7 +117,7 @@ BEGIN
         @MatchIdToUse = matchid
     FROM bodb02.dbo.match WITH (NOLOCK)
     WHERE eventdate = @TargetDate
-        AND sporttype = 1
+        AND sporttype = @SportTypeToUse
         AND eventstatus = 'completed'
         AND matchcode NOT LIKE '%hedge%'
         AND leagueid = @LeagueIdToUse
@@ -107,35 +140,6 @@ BEGIN
         PRINT 'No suitable existing match found. Creating new match...';
     END
 
-    IF @LeagueIdToUse IS NULL
-    BEGIN
-        SELECT TOP 1
-            @LeagueIdToUse = leagueid
-        FROM bodb02.dbo.league
-        WHERE sporttype = 1
-            AND leagueid > 0
-        ORDER BY NEWID();
-    END
-    ELSE
-    BEGIN
-        -- Check if league exists
-        IF NOT EXISTS (
-            SELECT 1
-            FROM bodb02.dbo.league
-            WHERE leagueid = @LeagueIdToUse
-        )
-        BEGIN
-            RAISERROR('League @LeagueIdToUse not found.', 16, 1);
-            RETURN;
-        END
-    END
-
-    IF @LeagueIdToUse IS NULL
-    BEGIN
-        RAISERROR('No active League found', 16, 1);
-        RETURN;
-    END
-
     DECLARE @LeagueNameToUse NVARCHAR(255);
     SELECT @LeagueNameToUse = leaguename
     FROM bodb02.dbo.league
@@ -151,7 +155,6 @@ BEGIN
     -- Create match data using the centralized stored procedure
     EXEC bodb_tgrs.dbo.TGRS_SB_create_match_data 
         @TargetTableChoice = @TargetTableChoice,
-        @SportType = @SportTypeToGenerate,
         @LeagueIdToUse = @LeagueIdToUse,
         @HomeIdToUse = @HomeIdToUse,
         @AwayIdToUse = @AwayIdToUse,
