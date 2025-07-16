@@ -100,6 +100,21 @@ BEGIN
         RETURN;
     END
     
+    -- Generate realistic scores for parent match (main match + extra time, no penalties)
+    DECLARE @HTHomeScore INT = FLOOR(RAND() * 4); -- 0-3 goals at half-time
+    DECLARE @HTAwayScore INT = FLOOR(RAND() * 4); -- 0-3 goals at half-time
+    
+    -- Final scores: half-time + additional goals (0-2 more each)
+    DECLARE @FinalHomeScore INT = @HTHomeScore + FLOOR(RAND() * 3); -- 0-2 more goals
+    DECLARE @FinalAwayScore INT = @HTAwayScore + FLOOR(RAND() * 3); -- 0-2 more goals
+    
+    -- For penalty matches, ensure main match ends in draw (before penalties)
+    IF @IsGeneratingPenaltyMatch = 1
+    BEGIN
+        -- Force a draw in parent match final scores
+        SET @FinalAwayScore = @FinalHomeScore;
+    END
+    
     DECLARE @ParentMatchId INT = NULL;
     DECLARE @NextAvailableMatchId INT = NULL;
     DECLARE @InsertedMatchIdTable TABLE(matchid INT);
@@ -152,15 +167,16 @@ BEGIN
             0, -- AwayDisplayPatternID
             0, -- IsNeutral
             @ParentID,
-            FLOOR(RAND() * 3), -- hthomescore
-            FLOOR(RAND() * 3), -- htawayscore
-            FLOOR(RAND() * 5), -- finalhomescore
-            FLOOR(RAND() * 5), -- finalawayscore
-            FLOOR(RAND() * 2), -- livehomescore
-            FLOOR(RAND() * 2), -- liveawayscore
+            @HTHomeScoreParam, -- hthomescore (parameter)
+            @HTAwayScoreParam, -- htawayscore (parameter)
+            @FinalHomeScore, -- finalhomescore
+            @FinalAwayScore, -- finalawayscore
+            @FinalHomeScore, -- livehomescore (same as final for completed match)
+            @FinalAwayScore, -- liveawayscore (same as final for completed match)
             DATEADD(MINUTE, FLOOR(RAND() * 480), @TargetDate) -- kickofftime
         );
     '
+    DECLARE @HomePenaltyScore INT, @AwayPenaltyScore INT;
 
     -- Create new match record conditionally based on @TargetTableChoice
     IF @TargetTableChoice = 1 -- Target _bk
@@ -168,8 +184,8 @@ BEGIN
         SET @NextAvailableMatchId = ISNULL((SELECT MAX(matchid) FROM bodb_Archive.dbo.match_bk), 0) + 1;
         SET @InsertMatchSQL = REPLACE(@InsertMatchSQLTemplate, '[[table_name_here]]', 'bodb_Archive.dbo.match_bk');
         EXEC sp_executesql @InsertMatchSQL
-        , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-        , @NextAvailableMatchId, @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, NULL;
+        , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+        , @NextAvailableMatchId, @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, NULL, @HTHomeScore, @HTAwayScore, @FinalHomeScore, @FinalAwayScore, @SportType;
 
         SET @MatchIdToUse = @NextAvailableMatchId;
         PRINT 'Created parent Match in bodb_Archive.dbo.match_bk with ID: ' + CAST(@MatchIdToUse AS VARCHAR);
@@ -182,24 +198,33 @@ BEGIN
             SET @MatchIdToUse = NULL;
 
             BEGIN TRY
+                -- Create child matches using same template with half-time scores = 0
                 SET @NextAvailableMatchId = @NextAvailableMatchId + 1;
                 INSERT INTO @InsertedMatchIdTable
                 EXEC sp_executesql @InsertMatchSQL
-                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-                , @NextAvailableMatchId, @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId;
+                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+                , @NextAvailableMatchId, @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId, 0, 0, @FinalHomeScore, @FinalAwayScore, @SportType;
                 SET @MatchIdToUse = @NextAvailableMatchId;
 
                 SET @NextAvailableMatchId = @NextAvailableMatchId + 1;
                 INSERT INTO @InsertedMatchIdTable
                 EXEC sp_executesql @InsertMatchSQL
-                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-                , @NextAvailableMatchId, @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId;
+                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+                , @NextAvailableMatchId, @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId, 0, 0, @FinalHomeScore, @FinalAwayScore, @SportType;
                 SET @MatchIdToUse = @NextAvailableMatchId;
 
                 PRINT 'Created penalty Match in bodb_Archive.dbo.match_bk with ID: ' + CAST(@MatchIdToUse AS VARCHAR);
                 
-                -- Generate penalty shootout data
-                EXEC bodb_tgrs.dbo.TGRS_SB_gen_penalty_shootout_data @MatchIdToUse, @TargetTableChoice;
+                -- Generate penalty shootout data and get final scores
+                EXEC bodb_tgrs.dbo.TGRS_SB_gen_penalty_shootout_data @MatchIdToUse, @TargetTableChoice, @HomePenaltyScore OUTPUT, @AwayPenaltyScore OUTPUT;
+                
+                -- Update child match with penalty final scores
+                UPDATE bodb_Archive.dbo.match_bk 
+                SET finalhomescore = @HomePenaltyScore,
+                    finalawayscore = @AwayPenaltyScore,
+                    livehomescore = @HomePenaltyScore,
+                    liveawayscore = @AwayPenaltyScore
+                WHERE matchid = @MatchIdToUse;
             END TRY
             BEGIN CATCH
                 PRINT 'Something wrong with dynamic SQL execution. Please check the error message.';
@@ -212,8 +237,8 @@ BEGIN
         SET @NextAvailableMatchId = ISNULL((SELECT MAX(matchid) FROM bodb02.dbo.match14), 0) + 1;
         SET @InsertMatchSQL = REPLACE(@InsertMatchSQLTemplate, '[[table_name_here]]', 'bodb02.dbo.match14');
         EXEC sp_executesql @InsertMatchSQL
-        , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-        , @NextAvailableMatchId, @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, NULL;
+        , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+        , @NextAvailableMatchId, @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, NULL, @HTHomeScore, @HTAwayScore, @FinalHomeScore, @FinalAwayScore, @SportType;
 
         SET @MatchIdToUse = @NextAvailableMatchId;
         PRINT 'Created parent Match in bodb02.dbo.match14 with ID: ' + CAST(@MatchIdToUse AS VARCHAR);
@@ -226,24 +251,33 @@ BEGIN
             SET @MatchIdToUse = NULL;
 
             BEGIN TRY
+                -- Create child matches using same template with half-time scores = 0
                 SET @NextAvailableMatchId = @NextAvailableMatchId + 1;
                 INSERT INTO @InsertedMatchIdTable
                 EXEC sp_executesql @InsertMatchSQL
-                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-                , @NextAvailableMatchId, @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId;
+                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+                , @NextAvailableMatchId, @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId, 0, 0, @FinalHomeScore, @FinalAwayScore, @SportType;
                 SET @MatchIdToUse = @NextAvailableMatchId;
 
                 SET @NextAvailableMatchId = @NextAvailableMatchId + 1;
                 INSERT INTO @InsertedMatchIdTable
                 EXEC sp_executesql @InsertMatchSQL
-                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-                , @NextAvailableMatchId, @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId;
+                , N'@NextAvailableMatchId INT, @LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+                , @NextAvailableMatchId, @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId, 0, 0, @FinalHomeScore, @FinalAwayScore, @SportType;
                 SET @MatchIdToUse = @NextAvailableMatchId;
 
                 PRINT 'Created penalty Match in bodb02.dbo.match14 with ID: ' + CAST(@MatchIdToUse AS VARCHAR);
                 
-                -- Generate penalty shootout data
-                EXEC bodb_tgrs.dbo.TGRS_SB_gen_penalty_shootout_data @MatchIdToUse, @TargetTableChoice;
+                -- Generate penalty shootout data and get final scores
+                EXEC bodb_tgrs.dbo.TGRS_SB_gen_penalty_shootout_data @MatchIdToUse, @TargetTableChoice, @HomePenaltyScore OUTPUT, @AwayPenaltyScore OUTPUT;
+                
+                -- Update child match with penalty final scores
+                UPDATE bodb02.dbo.match14 
+                SET finalhomescore = @HomePenaltyScore,
+                    finalawayscore = @AwayPenaltyScore,
+                    livehomescore = @HomePenaltyScore,
+                    liveawayscore = @AwayPenaltyScore
+                WHERE matchid = @MatchIdToUse;
             END TRY
             BEGIN CATCH
                 PRINT 'Something wrong with dynamic SQL execution. Please check the error message.';
@@ -260,8 +294,8 @@ BEGIN
 
         INSERT INTO @InsertedMatchIdTable
         EXEC sp_executesql @InsertMatchSQL
-        , N'@LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-        , @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, NULL;
+        , N'@LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+        , @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, NULL, @HTHomeScore, @HTAwayScore, @FinalHomeScore, @FinalAwayScore, @SportType;
 
         SET @MatchIdToUse = (SELECT TOP 1 matchid FROM @InsertedMatchIdTable);
         PRINT 'Created parent Match in bodb02.dbo.match with ID: ' + CAST(@MatchIdToUse AS VARCHAR);
@@ -274,21 +308,30 @@ BEGIN
             SET @MatchIdToUse = NULL;
 
             BEGIN TRY
+                -- Create child matches using same template with half-time scores = 0
                 INSERT INTO @InsertedMatchIdTable
                 EXEC sp_executesql @InsertMatchSQL
-                , N'@LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-                , @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId;
+                , N'@LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+                , @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId, 0, 0, @FinalHomeScore, @FinalAwayScore, @SportType;
 
                 INSERT INTO @InsertedMatchIdTable
                 EXEC sp_executesql @InsertMatchSQL
-                , N'@LeagueIdToUse INT, @SportType INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT'
-                , @LeagueIdToUse, @SportType, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId;
+                , N'@LeagueIdToUse INT, @HomeIdToUse INT, @AwayIdToUse INT, @TargetDate DATETIME, @ParentID INT, @HTHomeScoreParam INT, @HTAwayScoreParam INT, @FinalHomeScore INT, @FinalAwayScore INT, @SportType INT'
+                , @LeagueIdToUse, @HomeIdToUse, @AwayIdToUse, @TargetDate, @ParentMatchId, 0, 0, @FinalHomeScore, @FinalAwayScore, @SportType;
 
                 SET @MatchIdToUse = (SELECT TOP 1 matchid FROM @InsertedMatchIdTable);
                 PRINT 'Using penalty match in bodb02.dbo.match with ID: ' + CAST(@MatchIdToUse AS VARCHAR);
 
-                -- Generate penalty shootout data
-                EXEC bodb_tgrs.dbo.TGRS_SB_gen_penalty_shootout_data @MatchIdToUse, @TargetTableChoice;
+                -- Generate penalty shootout data and get final scores
+                EXEC bodb_tgrs.dbo.TGRS_SB_gen_penalty_shootout_data @MatchIdToUse, @TargetTableChoice, @HomePenaltyScore OUTPUT, @AwayPenaltyScore OUTPUT;
+                
+                -- Update child match with penalty final scores
+                UPDATE bodb02.dbo.match 
+                SET finalhomescore = @HomePenaltyScore,
+                    finalawayscore = @AwayPenaltyScore,
+                    livehomescore = @HomePenaltyScore,
+                    liveawayscore = @AwayPenaltyScore
+                WHERE matchid = @MatchIdToUse;
             END TRY
             BEGIN CATCH
                 PRINT 'Something wrong with dynamic SQL execution. Please check the error message.';

@@ -3,7 +3,9 @@ GO
 
 CREATE OR ALTER PROCEDURE [dbo].[TGRS_SB_gen_penalty_shootout_data]
     @MatchId INT,
-    @TargetTableChoice INT -- 1 for _bk, 2 for _14, 3 for live
+    @TargetTableChoice INT, -- 1 for _bk, 2 for _14, 3 for live
+    @HomePenaltyScore INT OUTPUT,
+    @AwayPenaltyScore INT OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -67,8 +69,9 @@ BEGIN
     -- Generate penalty results round by round
     WHILE @Round <= @MaxRounds OR (@Round <= 10 AND @MatchDecided = 0)
     BEGIN
-        SET @HomeResourceID = '381' + RIGHT('00' + CAST(@Round AS VARCHAR), 2);
-        SET @AwayResourceID = '382' + RIGHT('00' + CAST(@Round AS VARCHAR), 2);
+        -- Fixed resource ID prefixes: '381' for Away, '382' for Home
+        SET @HomeResourceID = '382' + RIGHT('00' + CAST(@Round AS VARCHAR), 2);
+        SET @AwayResourceID = '381' + RIGHT('00' + CAST(@Round AS VARCHAR), 2);
         
         -- Realistic penalty success rate: ~75% for home, ~70% for away
         -- Adjust rates for sudden death scenarios
@@ -131,12 +134,6 @@ BEGIN
                         SET @AwayResult = 'NT'; -- Away doesn't take penalty
                     END
                 END
-                -- ELSE IF @Round > 5
-                -- BEGIN
-                    -- In sudden death, any advantage after home penalty means potential win
-                    -- But away team still gets their chance in the same round
-                    -- So we don't decide here, only after away penalty
-                -- END
             END
             
             -- Away team penalty (only if match not decided)
@@ -181,7 +178,6 @@ BEGIN
                 END
             END
         END
-        -- No ELSE block needed - loop will break when match is decided
         
         -- Insert this round's results
         INSERT INTO @PenaltyRounds VALUES 
@@ -196,13 +192,15 @@ BEGIN
         IF @Round > 10 BREAK;
     END
     
+    -- Set OUTPUT parameters
+    SET @HomePenaltyScore = @HomeScore;
+    SET @AwayPenaltyScore = @AwayScore;
+    
     DECLARE @SuddenDeathText NVARCHAR(50) = '';
     IF @Round - 1 > 5
     BEGIN
         SET @SuddenDeathText = ' - SUDDEN DEATH';
     END
-    
-    PRINT 'Generated penalty shootout: Home ' + CAST(@HomeScore AS VARCHAR) + ' - ' + CAST(@AwayScore AS VARCHAR) + ' Away (after ' + CAST(@Round - 1 AS VARCHAR) + ' rounds)' + @SuddenDeathText;
     
     -- Insert Home team penalty results
     DECLARE @CurrentRound INT;
