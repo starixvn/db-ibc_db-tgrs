@@ -118,73 +118,72 @@ BEGIN
                 SET @HomeResult = 'M';
             END
             
-            -- Check if match is decided after home penalty
+            -- Away team penalty
+            IF (ABS(CHECKSUM(NEWID())) % 100) < @AwaySuccessRate
+            BEGIN
+                SET @AwayResult = 'S';
+                SET @AwayScore = @AwayScore + 1;
+            END
+            ELSE
+            BEGIN
+                SET @AwayResult = 'M';
+            END
+            
+            -- Check if match is decided after both teams have taken penalties in this round
             IF @Round >= 5
             BEGIN
                 IF @Round = 5
                 BEGIN
-                    -- In round 5, calculate if away team can still catch up
-                    DECLARE @RemainingRounds INT = @MaxRounds - @Round;
-                    DECLARE @AwayMaxPossible INT = @AwayScore + @RemainingRounds;
-                    
-                    -- Match decided if away team can't catch up
-                    IF @HomeScore > @AwayMaxPossible
+                    -- After 5 rounds, check for sudden death
+                    IF @HomeScore = @AwayScore
+                    BEGIN
+                        SET @MaxRounds = 10; -- Extend to potential sudden death
+                        PRINT 'Scores tied after 5 rounds (' + CAST(@HomeScore AS VARCHAR) + '-' + CAST(@AwayScore AS VARCHAR) + '), entering sudden death...';
+                    END
+                    ELSE
+                    BEGIN
+                        -- Match decided in regular 5 rounds
+                        SET @MatchDecided = 1;
+                    END
+                END
+                ELSE IF @Round > 5
+                BEGIN
+                    -- Sudden death: first team to have advantage wins
+                    IF @HomeScore <> @AwayScore
                     BEGIN
                         SET @MatchDecided = 1;
-                        SET @AwayResult = 'NT'; -- Away doesn't take penalty
+                        PRINT 'Sudden death decided in round ' + CAST(@Round AS VARCHAR) + ': ' + CAST(@HomeScore AS VARCHAR) + '-' + CAST(@AwayScore AS VARCHAR);
                     END
                 END
             END
-            
-            -- Away team penalty (only if match not decided)
-            IF @MatchDecided = 0
+            ELSE
             BEGIN
-                IF (ABS(CHECKSUM(NEWID())) % 100) < @AwaySuccessRate
-                BEGIN
-                    SET @AwayResult = 'S';
-                    SET @AwayScore = @AwayScore + 1;
-                END
-                ELSE
-                BEGIN
-                    SET @AwayResult = 'M';
-                END
+                -- Check if match is mathematically decided before round 5
+                DECLARE @RemainingRounds INT = 5 - @Round;
+                DECLARE @HomeMaxPossible INT = @HomeScore + @RemainingRounds;
+                DECLARE @AwayMaxPossible INT = @AwayScore + @RemainingRounds;
                 
-                -- Check if match is decided after away penalty
-                IF @Round >= 5
+                IF @HomeScore > @AwayMaxPossible OR @AwayScore > @HomeMaxPossible
                 BEGIN
-                    IF @Round = 5
-                    BEGIN
-                        -- After 5 rounds, check for sudden death
-                        IF @HomeScore = @AwayScore
-                        BEGIN
-                            SET @MaxRounds = 10; -- Extend to potential sudden death
-                            PRINT 'Scores tied after 5 rounds (' + CAST(@HomeScore AS VARCHAR) + '-' + CAST(@AwayScore AS VARCHAR) + '), entering sudden death...';
-                        END
-                        ELSE
-                        BEGIN
-                            -- Match decided in regular 5 rounds
-                            SET @MatchDecided = 1;
-                        END
-                    END
-                    ELSE IF @Round > 5
-                    BEGIN
-                        -- Sudden death: first team to have advantage wins
-                        IF @HomeScore <> @AwayScore
-                        BEGIN
-                            SET @MatchDecided = 1;
-                            PRINT 'Sudden death decided in round ' + CAST(@Round AS VARCHAR) + ': ' + CAST(@HomeScore AS VARCHAR) + '-' + CAST(@AwayScore AS VARCHAR);
-                        END
-                    END
+                    SET @MatchDecided = 1;
+                    PRINT 'Match decided early in round ' + CAST(@Round AS VARCHAR) + ': ' + CAST(@HomeScore AS VARCHAR) + '-' + CAST(@AwayScore AS VARCHAR);
                 END
             END
+        END
+        ELSE
+        BEGIN
+            -- Match is already decided, mark remaining penalties as NT
+            SET @HomeResult = 'NT';
+            SET @AwayResult = 'NT';
         END
         
         -- Insert this round's results
         INSERT INTO @PenaltyRounds VALUES 
             (@Round, @HomeResourceID, @AwayResourceID, @HomeResult, @AwayResult);
         
-        -- Break immediately if match is decided
-        IF @MatchDecided = 1 BREAK;
+        -- For rounds 1-5: Always complete all 5 rounds (even if decided early)
+        -- For rounds 6+: Break immediately if match is decided (sudden death)
+        IF @MatchDecided = 1 AND @Round >= 5 BREAK;
         
         SET @Round = @Round + 1;
         

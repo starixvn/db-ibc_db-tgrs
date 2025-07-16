@@ -106,7 +106,7 @@ BEGIN
         END
     END
     ELSE 
-    BEGIN
+BEGIN
     SELECT TOP 1
         @MatchIdToUse = matchid
     FROM bodb_Archive.dbo.match_bk WITH (NOLOCK)
@@ -137,7 +137,7 @@ BEGIN
         END
     END
     ELSE
-    BEGIN
+BEGIN
     SELECT TOP 1
         @MatchIdToUse = matchid
     FROM bodb02.dbo.match14 WITH (NOLOCK)
@@ -168,7 +168,7 @@ BEGIN
         END
     END
     ELSE
-    BEGIN
+BEGIN
     SELECT TOP 1
         @MatchIdToUse = matchid
     FROM bodb02.dbo.match WITH (NOLOCK)
