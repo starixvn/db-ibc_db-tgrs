@@ -58,6 +58,7 @@ AS
 		- 20220222@John.Ngo: Ignore wrong xml data in bettrans_bk (Transid: 111674398151) [Redmine: #161859]
 		- 20230103@John.Ngo: Fix Odds Spread Setting - ReCalculate Original Winlost [Redmine ID: 182351]
 		- 20240217@Jaden.Tang: Remove TradeCust table (#206895)
+		- 20250611@Jaden.Tang: Re-allow hedge match (#227903)
 		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -644,8 +645,7 @@ BEGIN
 				LEFT JOIN bodb02.dbo.team AS t WITH (NOLOCK) ON t.teamid = homeid
 		WHERE	m.EventDate BETWEEN @FromDateBK AND @ToDateBK
 				AND	m.SportType = 1
-				AND m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%';
+				AND m.EventStatus = 'completed';
 		
 		IF @DotExtraPTDate <= @FromDateBK
 		BEGIN
@@ -1351,8 +1351,7 @@ BEGIN
 				LEFT JOIN bodb02.dbo.team AS t WITH (NOLOCK) ON t.teamid = homeid
 		WHERE	m.EventDate BETWEEN @FromDate14 AND @ToDate14
 				AND	m.SportType = 1
-				AND m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%';
+				AND m.EventStatus = 'completed';
 		
 		INSERT INTO	#tmpDLTrader (TraderId, LeagueId, MatchId, EventDate, BetType, TeamId, Grade)
 		SELECT	DISTINCT
@@ -1896,8 +1895,7 @@ BEGIN
 				LEFT JOIN bodb02.dbo.team AS t WITH (NOLOCK) ON t.teamid = homeid
 		WHERE	m.EventDate BETWEEN @FromDateOrigin AND @ToDateOrigin
 				AND	m.SportType = 1
-				AND m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%';
+				AND m.EventStatus = 'completed';
 		
 		-- REMOVE Scanned Match List: if existing any Ticket has not been settled (ruben <> 1)
 		DELETE	sm

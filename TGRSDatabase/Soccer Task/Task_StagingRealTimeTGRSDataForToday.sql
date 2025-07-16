@@ -340,7 +340,6 @@ BEGIN
 		WHERE	m.EventDate = @WinlostDate
 				AND	m.SportType = 1
 				AND m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%'
 				AND tp.MatchId IS NULL;
 										
 		SELECT	@RowCount	= @@ROWCOUNT
@@ -1289,7 +1288,6 @@ BEGIN
 		WHERE		m.EventDate = @WinlostDate
 				AND	m.EventStatus = 'completed'
 				AND	m.SportType = 1
-				AND	m.MatchCode NOT LIKE '%hedge%'	
 				AND a.TraderId <> 0
 				AND a.TraderID = dat.TraderID
 				AND a.MatchId = dat.MatchId
@@ -1336,8 +1334,7 @@ BEGIN
 			AND	b.statusID IN (112, 113)
 			AND	b.Currency NOT IN (20, 27, 28)
 			AND	b.LiveIndicator = 1
-			AND	m.SportType = 1
-			AND	m.MatchCode NOT LIKE '%hedge%';
+			AND	m.SportType = 1;
 			
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
