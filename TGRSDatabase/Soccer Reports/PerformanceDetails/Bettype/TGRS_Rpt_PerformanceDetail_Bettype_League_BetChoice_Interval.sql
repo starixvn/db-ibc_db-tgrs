@@ -4,6 +4,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League_BetChoice_Inter
 	,	@LeagueId			INT
 	,	@BetType			SMALLINT
 	,	@BetTeam			NVARCHAR(50)
+	,	@hdp2				SMALLINT = -1
 	,	@Oddsspread			MONEY = -1
 	,	@IsExcludeLeagues	BIT = 1
 	,	@Market				SMALLINT = -1
@@ -183,7 +184,7 @@ BEGIN
 		,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
 		,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 	FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)	
-		INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam
+		INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 		INNER JOIN dbo.FastMarket_IntervalGroup AS IG WITH (NOLOCK) ON IG.IntervalGroupId = FM.IntervalGroupId AND IG.hdp1 = P.hdp1
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 		INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
@@ -192,6 +193,7 @@ BEGIN
 		AND	P.BetType = @Bettype 
 		AND P.LeagueId = @LeagueId
 		AND P.betteam = @BetTeam
+		AND	(@hdp2 = -1 OR P.hdp2 = @hdp2)
 		AND	(@Oddsspread = -1 OR P.Oddsspread = @Oddsspread)
 		AND (@Market = -1 OR P.IsLive = @Market)	
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)

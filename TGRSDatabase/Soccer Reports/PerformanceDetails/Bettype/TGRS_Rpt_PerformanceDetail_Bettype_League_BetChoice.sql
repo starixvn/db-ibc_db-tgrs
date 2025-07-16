@@ -187,6 +187,7 @@ BEGIN
 		BEGIN
 			SELECT 	P.betteam											AS BetTeam
 				,	FM.BetOption										AS BetOption
+				,	FM.hdp2												AS hdp2
 				,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
 				,	P.IsLive											AS IsLive				
 				,	ISNULL(COUNT(DISTINCT P.MatchID), 0)				AS MatchCount
@@ -226,7 +227,7 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 						)
 					)
-			GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
+			GROUP BY P.betteam, FM.BetOption, FM.hdp2, P.oddsspread, P.IsLive;
 		END;
 	ELSE -- @IsBetChoiceDetail = 0 or 1
 		BEGIN
