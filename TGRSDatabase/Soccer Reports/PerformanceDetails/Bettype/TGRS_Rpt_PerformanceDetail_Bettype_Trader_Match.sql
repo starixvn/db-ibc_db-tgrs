@@ -6,7 +6,9 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_Trader_Match]
 	,	@CustId				INT
 	,	@Bettype			SMALLINT
 	,	@IsExcludeLeagues	BIT = 1
-	,	@Market				SMALLINT = 1
+	,	@Market				SMALLINT = -1
+	,	@VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
+	,	@MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
 AS    
 /*  
 	Created:	20160315@Thai.Tran
@@ -24,6 +26,7 @@ AS
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
+		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group (excluding RootMatch logic) [Redmine: #227903]
 
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live 	
@@ -40,6 +43,109 @@ BEGIN
 	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
 	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
 	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+
+	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
+	BEGIN
+		SET @VRSettings = NULL
+	END
+
+    CREATE TABLE #TempVRSettings (Setting VARCHAR(20) PRIMARY KEY);
+    IF @VRSettings IS NOT NULL
+    BEGIN
+        INSERT INTO #TempVRSettings (Setting)
+        SELECT DISTINCT UPPER(value) FROM STRING_SPLIT(@VRSettings, ',');
+    END
+
+	IF @MatchGroup IS NULL OR @MatchGroup = 'ALL'
+	BEGIN
+		SET @MatchGroup = NULL
+	END
+    
+    CREATE TABLE #TempMatchGroup (Setting VARCHAR(20) PRIMARY KEY);
+    IF @MatchGroup IS NOT NULL AND @MatchGroup <> ''
+    BEGIN
+        INSERT INTO #TempMatchGroup (Setting)
+        SELECT DISTINCT UPPER(value) FROM STRING_SPLIT(@MatchGroup, ',');
+    END
+    
+    DECLARE @ApplyVRFilter BIT = 1;
+    IF NOT EXISTS (SELECT 1 FROM #TempVRSettings) SET @ApplyVRFilter = 0;
+    
+    DECLARE @ApplyMatchGroupFilter BIT = 1;
+    IF NOT EXISTS (SELECT 1 FROM #TempMatchGroup) SET @ApplyMatchGroupFilter = 0;
+
+    CREATE TABLE #AllMatches (
+        matchid INT,
+        IsPenaltyMatch BIT,
+        IsExtraTimeMatch BIT,
+        IsHedgeMatch BIT,
+        PRIMARY KEY (matchid)
+    );
+
+    INSERT INTO #AllMatches (matchid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
+    SELECT 
+        M.matchid, 
+        CASE 
+            WHEN HT.teamname LIKE N'%(PEN)%' THEN 1
+            ELSE 0 
+        END AS IsPenaltyMatch,
+        CASE 
+            WHEN HT.teamname LIKE N'%(ET)%' THEN 1
+            ELSE 0 
+        END AS IsExtraTimeMatch,
+        CASE 
+            WHEN M.MatchCode LIKE N'%hedge%' THEN 1
+            ELSE 0 
+        END AS IsHedgeMatch
+    FROM bodb02.dbo.Match M WITH (NOLOCK)
+    LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M.homeid = HT.teamid AND HT.SportType = M.sporttype
+    WHERE M.sporttype = 1
+      AND M.EventDate >= CAST(@FromDate AS DATETIME) AND M.EventDate <= CAST(@ToDate AS DATETIME)
+    OPTION (RECOMPILE);
+
+    INSERT INTO #AllMatches (matchid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
+    SELECT 
+        M14.matchid, 
+        CASE 
+            WHEN HT.teamname LIKE N'%(PEN)%' THEN 1
+            ELSE 0 
+        END AS IsPenaltyMatch,
+        CASE 
+            WHEN HT.teamname LIKE N'%(ET)%' THEN 1
+            ELSE 0 
+        END AS IsExtraTimeMatch,
+        CASE 
+            WHEN M14.MatchCode LIKE N'%hedge%' THEN 1
+            ELSE 0 
+        END AS IsHedgeMatch
+    FROM bodb02.dbo.Match14 M14 WITH (NOLOCK)
+    LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON M14.homeid = HT.teamid AND HT.SportType = M14.sporttype
+    WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = M14.matchid)
+      AND M14.sporttype = 1
+      AND M14.EventDate >= CAST(@FromDate AS DATETIME) AND M14.EventDate <= CAST(@ToDate AS DATETIME)
+    OPTION (RECOMPILE);
+
+    INSERT INTO #AllMatches (matchid, IsPenaltyMatch, IsExtraTimeMatch, IsHedgeMatch)
+    SELECT 
+        MBK.matchid, 
+        CASE 
+            WHEN HT.teamname LIKE N'%(PEN)%' THEN 1
+            ELSE 0 
+        END AS IsPenaltyMatch,
+        CASE 
+            WHEN HT.teamname LIKE N'%(ET)%' THEN 1
+            ELSE 0 
+        END AS IsExtraTimeMatch,
+        CASE 
+            WHEN MBK.MatchCode LIKE N'%hedge%' THEN 1
+            ELSE 0 
+        END AS IsHedgeMatch
+    FROM bodb_archive.dbo.Match_bk MBK WITH (NOLOCK)
+    LEFT JOIN bodb02.dbo.Team HT WITH (NOLOCK) ON MBK.homeid = HT.teamid AND HT.SportType = MBK.sporttype
+    WHERE NOT EXISTS (SELECT 1 FROM #AllMatches am WHERE am.matchid = MBK.matchid)
+      AND MBK.sporttype = 1
+      AND MBK.EventDate >= CAST(@FromDate AS DATETIME) AND MBK.EventDate <= CAST(@ToDate AS DATETIME)
+    OPTION (RECOMPILE);
 
 	IF (@LeagueName IS NULL OR @LeagueName = '')
 		BEGIN
@@ -61,12 +167,32 @@ BEGIN
 	 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+				INNER JOIN #AllMatches am WITH (NOLOCK) ON P.MatchId = am.matchid
 			 WHERE	P.CustId = @CustId
 				AND P.BetType = @Bettype
 				AND P.EventDate BETWEEN @FromDate AND @ToDate
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (
+						@ApplyVRFilter = 0 OR
+						EXISTS (
+							SELECT 1 FROM #TempVRSettings vrs
+							WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
+							   OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
+							   OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
+						)
+					)
+				AND (
+						@ApplyMatchGroupFilter = 0 OR
+						EXISTS (
+							SELECT 1 FROM #TempMatchGroup mgf
+							WHERE (mgf.Setting = 'NORMAL' AND am.IsPenaltyMatch = 0 AND am.IsExtraTimeMatch = 0 AND am.IsHedgeMatch = 0)
+							   OR (mgf.Setting = 'PENALTY' AND am.IsPenaltyMatch = 1)
+							   OR (mgf.Setting = 'EXTRA_TIME' AND am.IsExtraTimeMatch = 1)
+							   OR (mgf.Setting = 'HEDGE' AND am.IsHedgeMatch = 1)
+						)
+					)
 			GROUP BY P.MatchId, P.LeagueId
 				,   lg.TargetLeagueGroupId
 				,	P.HomeId, P.AwayId, P.EventDate, P.IsLive
@@ -91,7 +217,8 @@ BEGIN
 			 FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 	 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
-				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId		 
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+				INNER JOIN #AllMatches am WITH (NOLOCK) ON P.MatchId = am.matchid
 			 WHERE	P.CustId = @CustId
 				AND P.BetType = @Bettype
 				AND P.EventDate BETWEEN @FromDate AND @ToDate
@@ -99,14 +226,36 @@ BEGIN
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
 				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (
+						@ApplyVRFilter = 0 OR
+						EXISTS (
+							SELECT 1 FROM #TempVRSettings vrs
+							WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
+							   OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
+							   OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
+						)
+					)
+				AND (
+						@ApplyMatchGroupFilter = 0 OR
+						EXISTS (
+							SELECT 1 FROM #TempMatchGroup mgf
+							WHERE (mgf.Setting = 'NORMAL' AND am.IsPenaltyMatch = 0 AND am.IsExtraTimeMatch = 0 AND am.IsHedgeMatch = 0)
+							   OR (mgf.Setting = 'PENALTY' AND am.IsPenaltyMatch = 1)
+							   OR (mgf.Setting = 'EXTRA_TIME' AND am.IsExtraTimeMatch = 1)
+							   OR (mgf.Setting = 'HEDGE' AND am.IsHedgeMatch = 1)
+						)
+					)
 			GROUP BY P.MatchId, P.LeagueId
 				,   lg.TargetLeagueGroupId
 				,	P.HomeId, P.AwayId, P.EventDate, P.IsLive
 			ORDER BY Margin DESC, P.EventDate ASC;
 		END;
-	
+			
+    DROP TABLE IF EXISTS #AllMatches;
+    DROP TABLE IF EXISTS #TempVRSettings;
+    DROP TABLE IF EXISTS #TempMatchGroup;
 END;
 
 GO
 
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
