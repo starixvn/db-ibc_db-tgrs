@@ -52,7 +52,6 @@ BEGIN
     DECLARE @HomeScore INT = 0;
     DECLARE @AwayScore INT = 0;
     DECLARE @MatchDecided BIT = 0;
-    DECLARE @MaxRounds INT = 5; -- Minimum 5 rounds
     DECLARE @HomeResult NVARCHAR(10);
     DECLARE @AwayResult NVARCHAR(10);
     DECLARE @HomeResourceID NVARCHAR(10);
@@ -67,7 +66,7 @@ BEGIN
     END
     
     -- Generate penalty results round by round
-    WHILE @Round <= @MaxRounds OR (@Round <= 10 AND @MatchDecided = 0)
+    WHILE @Round <= 5 OR (@Round > 5 AND @MatchDecided = 0)
     BEGIN
         -- Fixed resource ID prefixes: '381' for Away, '382' for Home
         SET @HomeResourceID = '382' + RIGHT('00' + CAST(@Round AS VARCHAR), 2);
@@ -137,7 +136,7 @@ BEGIN
                     -- After 5 rounds, check for sudden death
                     IF @HomeScore = @AwayScore
                     BEGIN
-                        SET @MaxRounds = 10; -- Extend to potential sudden death
+                        -- Enter sudden death mode - no max rounds limit
                         PRINT 'Scores tied after 5 rounds (' + CAST(@HomeScore AS VARCHAR) + '-' + CAST(@AwayScore AS VARCHAR) + '), entering sudden death...';
                     END
                     ELSE
@@ -187,8 +186,12 @@ BEGIN
         
         SET @Round = @Round + 1;
         
-        -- Safety break for sudden death
-        IF @Round > 10 BREAK;
+        -- Safety break to prevent infinite loops (very unlikely but good practice)
+        IF @Round > 50 
+        BEGIN
+            PRINT 'WARNING: Penalty shootout reached 50 rounds. Breaking to prevent infinite loop.';
+            BREAK;
+        END
     END
     
     -- Set OUTPUT parameters
