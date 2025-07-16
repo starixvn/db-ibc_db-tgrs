@@ -42,7 +42,7 @@ BEGIN
                 FROM bodb02.dbo.team
                 WHERE SportType = @SportType
                     AND teamid > 0
-                    AND teamname NOT LIKE '%PENALTY%'
+                    AND teamname NOT LIKE '%(PEN) '
                 ) AS T
             WHERE T.RowNum <= 2;
         END
@@ -58,7 +58,7 @@ BEGIN
                 FROM bodb02.dbo.team
                 WHERE SportType = @SportType
                     AND teamid > 0
-                    AND teamname LIKE '%PENALTY%'
+                    AND teamname LIKE '%(PEN) '
                 ) AS T
             WHERE T.RowNum <= 2;
         END
