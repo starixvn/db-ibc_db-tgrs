@@ -47,6 +47,10 @@ BEGIN
     PRINT 'SiteID column already exists in TraderPerformance_BetChoice_Detail table'
 END
 
+--RELOAD 2025 DATA!--
+EXEC dbo.Task_StagingDataTGRS @GenerateFromDate = '2025-01-01', @GenerateToDate = '2025-07-17'
+    , @Debug = 1
+
 PRINT 'Script execution completed'
 
 GO 
