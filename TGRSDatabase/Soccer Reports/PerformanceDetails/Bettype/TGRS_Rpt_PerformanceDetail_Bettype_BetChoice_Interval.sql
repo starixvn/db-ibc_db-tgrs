@@ -231,6 +231,7 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 						)
 					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY IG.Interval
 			ORDER BY IG.Interval;
 		END;
@@ -282,6 +283,7 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 						)
 					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY IG.Interval
 			ORDER BY IG.Interval;
 		END;	
