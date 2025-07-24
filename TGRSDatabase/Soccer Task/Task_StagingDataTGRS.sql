@@ -385,6 +385,10 @@ BEGIN
 			CustId				ASC
 	);
 
+	CREATE TABLE #tmpCustomer (CustID INT PRIMARY KEY CLUSTERED, [Site] VARCHAR(200));
+	-- support vairables for performance
+	DECLARE @MinDWCustID INT, @MaxDWCustID INT
+
 	-- Initialize date range
 	DECLARE @IsGetDataFromOrigin	BIT = 0
 		,	@IsGetDataFrom14		BIT = 0
@@ -1044,6 +1048,25 @@ BEGIN
 				RAISERROR('From BK - ReCalculate Original Winlost #tmpDLFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 			
+			SELECT @MinDWCustID = MIN(CustID), @MaxDWCustID = MAX(CustID)
+			FROM #tmpDLFilteredBettransByBatch
+            WHERE CustID NOT IN (SELECT custid FROM bodb02.dbo.vw_customer);
+
+			INSERT INTO #tmpCustomer  (CustID, Site)
+            SELECT CustID, Site
+            FROM bodb02.dbo.vw_customer c
+            WHERE custid IN (SELECT CustID FROM #tmpDLFilteredBettransByBatch)
+              AND CustID BETWEEN @MinDWCustID AND @MaxDWCustID
+            OPTION (RECOMPILE);
+
+			-- customers in bodb02 frequently get deleted due to inactivity, need to get missing data from DW
+			INSERT INTO #tmpCustomer  (CustID, Site)
+			SELECT CustID, Site
+			FROM DBWH.bodb_Account.dbo.vw_customer
+			WHERE CustID BETWEEN @MinDWCustID AND @MaxDWCustID
+              AND CustID NOT IN (SELECT custid FROM bodb02.dbo.vw_customer)
+            OPTION (RECOMPILE);
+
 			INSERT INTO	#tmpDLStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail
 			, VarianceVR, SiteID
@@ -1082,8 +1105,8 @@ BEGIN
 				,	[SiteID]			= s.SiteId
 			FROM	#tmpDLFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-				INNER JOIN bodb02.dbo.customer AS c WITH(NOLOCK) ON b.custid = c.CustId
-				INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.site = s.site
+				INNER JOIN #tmpCustomer AS c WITH(NOLOCK) ON b.custid = c.CustId
+				INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.Site = s.site
 				LEFT JOIN #tmpDLTraderbk AS t WITH (NOLOCK)
 						ON	b.winlostdate = t.EventDate
 						AND	b.matchId = t.matchId
@@ -1319,6 +1342,7 @@ BEGIN
 
 			TRUNCATE TABLE #tmpDLStagingTraderPerformance;
 			TRUNCATE TABLE #tmpDLFilteredBettransByBatch;
+			TRUNCATE TABLE #tmpCustomer;
 		END;
 	END;
 
@@ -1606,6 +1630,25 @@ BEGIN
 				RAISERROR('From 14 - ReCalculate Original Winlost #tmpDLFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
+			SELECT @MinDWCustID = MIN(CustID), @MaxDWCustID = MAX(CustID)
+			FROM #tmpDLFilteredBettransByBatch
+            WHERE CustID NOT IN (SELECT custid FROM bodb02.dbo.vw_customer);
+
+			INSERT INTO #tmpCustomer  (CustID, Site)
+            SELECT CustID, Site
+            FROM bodb02.dbo.vw_customer c
+            WHERE custid IN (SELECT CustID FROM #tmpDLFilteredBettransByBatch)
+              AND CustID BETWEEN @MinDWCustID AND @MaxDWCustID
+            OPTION (RECOMPILE);
+
+			-- customers in bodb02 frequently get deleted due to inactivity, need to get missing data from DW
+			INSERT INTO #tmpCustomer  (CustID, Site)
+			SELECT CustID, Site
+			FROM DBWH.bodb_Account.dbo.vw_customer
+			WHERE CustID BETWEEN @MinDWCustID AND @MaxDWCustID
+              AND CustID NOT IN (SELECT custid FROM bodb02.dbo.vw_customer)
+            OPTION (RECOMPILE);
+
 			INSERT INTO	#tmpDLStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail
 			, VarianceVR, SiteID
@@ -1644,8 +1687,8 @@ BEGIN
 				,	[SiteID]			= s.SiteID
 			FROM	#tmpDLFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-				INNER JOIN bodb02.dbo.customer AS c WITH(NOLOCK) ON b.custid = c.CustId
-				INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.site = s.site
+				INNER JOIN #tmpCustomer AS c WITH(NOLOCK) ON b.custid = c.CustId
+				INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.Site = s.site
 				LEFT JOIN #tmpDLTraderbk AS t WITH (NOLOCK)
 						ON	b.winlostdate = t.EventDate
 						AND	b.matchId = t.matchId
@@ -1886,6 +1929,7 @@ BEGIN
 
 			TRUNCATE TABLE #tmpDLStagingTraderPerformance;
 			TRUNCATE TABLE #tmpDLFilteredBettransByBatch;
+			TRUNCATE TABLE #tmpCustomer;
 		END;
 	END;
 	
@@ -2183,6 +2227,25 @@ BEGIN
 				RAISERROR('From Origin - ReCalculate Original Winlost #tmpDLFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
 			END;
 
+			SELECT @MinDWCustID = MIN(CustID), @MaxDWCustID = MAX(CustID)
+			FROM #tmpDLFilteredBettransByBatch
+            WHERE CustID NOT IN (SELECT custid FROM bodb02.dbo.vw_customer);
+
+			INSERT INTO #tmpCustomer  (CustID, Site)
+            SELECT CustID, Site
+            FROM bodb02.dbo.vw_customer c
+            WHERE custid IN (SELECT CustID FROM #tmpDLFilteredBettransByBatch)
+              AND CustID BETWEEN @MinDWCustID AND @MaxDWCustID
+            OPTION (RECOMPILE);
+
+			-- customers in bodb02 frequently get deleted due to inactivity, need to get missing data from DW
+			INSERT INTO #tmpCustomer  (CustID, Site)
+			SELECT CustID, Site
+			FROM DBWH.bodb_Account.dbo.vw_customer
+			WHERE CustID BETWEEN @MinDWCustID AND @MaxDWCustID
+              AND CustID NOT IN (SELECT custid FROM bodb02.dbo.vw_customer)
+            OPTION (RECOMPILE);
+
 			INSERT INTO	#tmpDLStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail,
 			VarianceVR, SiteID)
@@ -2220,8 +2283,8 @@ BEGIN
 				,	[SiteID]			= s.SiteID
 			FROM	#tmpDLFilteredBettransByBatch AS b WITH (NOLOCK)
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
-				INNER JOIN bodb02.dbo.customer AS c WITH(NOLOCK) ON b.custid = c.CustId
-				INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.site = s.site
+				INNER JOIN #tmpCustomer AS c WITH(NOLOCK) ON b.custid = c.CustId
+				INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.Site = s.site
 				LEFT JOIN #tmpDLTrader AS t WITH (NOLOCK)
 						ON	b.winlostdate = t.EventDate
 						AND	b.matchid = t.matchid
@@ -2459,6 +2522,7 @@ BEGIN
 
 			TRUNCATE TABLE #tmpDLStagingTraderPerformance;
 			TRUNCATE TABLE #tmpDLFilteredBettransByBatch;
+			TRUNCATE TABLE #tmpCustomer;
 		END;
 	END;
 END;
