@@ -48,9 +48,15 @@ BEGIN
 		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
 	END;
 
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName VARCHAR(200));
+    IF @LeagueGroupIds IS NOT NULL
+    BEGIN
+        INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName)
+        SELECT DISTINCT TRY_CAST(value AS SMALLINT), LG.GroupName
+        FROM STRING_SPLIT(@LeagueGroupIds, ',')
+		INNER JOIN bodb02.dbo.LeagueGroup LG ON LG.GroupID = TRY_CAST(value AS SMALLINT)
+        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
+    END
 
 	IF	OBJECT_ID('tempdb..#tmpTraderDetail') IS NOT NULL
 	BEGIN
@@ -245,7 +251,7 @@ BEGIN
 				,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 			FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON	tm.BetType = tp.BetType	AND	tm.WorkShift = tp.WorkShift
 				LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
@@ -255,7 +261,7 @@ BEGIN
 				AND	 tp.EventDate BETWEEN @FromDate AND @ToDate		
 				AND (@Market = -1 OR tp.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (
@@ -311,7 +317,7 @@ BEGIN
 				,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 			FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON	tm.BetType = tp.BetType	AND	tm.WorkShift = tp.WorkShift
 				LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
@@ -322,7 +328,7 @@ BEGIN
 					AND L.LeagueName LIKE '%' + @LeagueName + '%'
 					AND (@Market = -1 OR tp.IsLive = @Market)
 					AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-					AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+					AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 					AND (
 							@ApplyVRFilter = 0 OR
 							EXISTS (

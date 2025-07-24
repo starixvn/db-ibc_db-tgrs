@@ -57,9 +57,15 @@ BEGIN
 		SET @LeagueGroupIds = '' -- Keep consistent with original logic
 	END
 	
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName VARCHAR(200));
+    IF @LeagueGroupIds IS NOT NULL
+    BEGIN
+        INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName)
+        SELECT DISTINCT TRY_CAST(value AS SMALLINT), LG.GroupName
+        FROM STRING_SPLIT(@LeagueGroupIds, ',')
+		INNER JOIN bodb02.dbo.LeagueGroup LG ON LG.GroupID = TRY_CAST(value AS SMALLINT)
+        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
+    END
   
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -201,7 +207,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,   lg.ID AS LeagueGroupID
 						,	lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
@@ -215,17 +221,17 @@ BEGIN
 						,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId						
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
+						LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.BetType = @BetType 
 						AND P.betteam = @BetTeam
 						AND	(@Oddsspread = -1 OR P.Oddsspread = @Oddsspread)
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -247,7 +253,7 @@ BEGIN
 							)
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY P.LeagueId, L.LeagueName
-						,	lg.TargetLeagueGroupId
+						,	lg.ID
 						,	lg.LeagueGroupName
 						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;
@@ -256,7 +262,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,   lg.ID AS LeagueGroupID
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
@@ -270,17 +276,17 @@ BEGIN
 						,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 					FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)    
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = @BetType AND bcm.BetChoice = p.BetChoice
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
+						LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.BetType = @BetType 
 						AND ISNULL(bcm.TGRSBetChoice,P.BetChoice) = @BetChoice
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -303,7 +309,7 @@ BEGIN
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY P.LeagueId, L.LeagueName
 						,   lg.LeagueGroupName
-						,   lg.TargetLeagueGroupId
+						,   lg.ID
 						,	P.IsLive
 					ORDER BY Margin DESC, LeagueName ASC;     
 				END;
@@ -314,7 +320,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,   lg.ID AS LeagueGroupID
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
@@ -328,10 +334,10 @@ BEGIN
 						,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)    
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId						
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
+						LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND  P.BetType = @BetType 
 						AND P.betteam = @BetTeam
@@ -339,7 +345,7 @@ BEGIN
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -362,7 +368,7 @@ BEGIN
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY P.LeagueId, L.LeagueName
 						,   lg.LeagueGroupName
-						,   lg.TargetLeagueGroupId
+						,   lg.ID
 						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;
 				END;
@@ -370,7 +376,7 @@ BEGIN
 				BEGIN
 					SELECT 	P.LeagueId
 						,	L.LeagueName
-						,   lg.TargetLeagueGroupId AS LeagueGroupID
+						,   lg.ID AS LeagueGroupID
 						,   lg.LeagueGroupName
 						,	P.IsLive
 						,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount  
@@ -384,18 +390,18 @@ BEGIN
 						,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 					FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)    
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = @BetType AND bcm.BetChoice = p.BetChoice
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
+						LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 					WHERE P.EventDate BETWEEN @FromDate AND @ToDate
 						AND P.BetType = @BetType 
 						AND ISNULL(bcm.TGRSBetChoice,P.BetChoice) = @BetChoice
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL) 
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -418,7 +424,7 @@ BEGIN
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY P.LeagueId, L.LeagueName
 						,   lg.LeagueGroupName
-						,   lg.TargetLeagueGroupId
+						,   lg.ID
 						,	P.IsLive    
 					ORDER BY Margin DESC, LeagueName ASC;     
 				END;

@@ -46,9 +46,14 @@ BEGIN
 		SET @LeagueGroupIds = '' -- Keep consistent with original logic
 	END
 	
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY);
+    IF @LeagueGroupIDs IS NOT NULL
+    BEGIN
+        INSERT INTO #TempLeagueGroupIDs (ID)
+        SELECT DISTINCT TRY_CAST(value AS SMALLINT)
+        FROM STRING_SPLIT(@LeagueGroupIDs, ',')
+        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
+    END
 
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -201,7 +206,6 @@ BEGIN
 				INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 				INNER JOIN dbo.FastMarket_IntervalGroup AS IG WITH (NOLOCK) ON IG.IntervalGroupId = FM.IntervalGroupId AND IG.hdp1 = P.hdp1
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 				INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 				LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
 			WHERE P.EventDate BETWEEN @FromDate AND @ToDate
@@ -211,7 +215,7 @@ BEGIN
 				AND	(@Oddsspread = -1 OR P.Oddsspread = @Oddsspread)
 				AND (@Market = -1 OR P.IsLive = @Market)	
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (
@@ -252,7 +256,6 @@ BEGIN
 				INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
 				INNER JOIN dbo.FastMarket_IntervalGroup AS IG WITH (NOLOCK) ON IG.IntervalGroupId = FM.IntervalGroupId AND IG.hdp1 = P.hdp1
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId	
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId				
 				INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 				LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
 			WHERE P.EventDate BETWEEN @FromDate AND @ToDate
@@ -263,7 +266,7 @@ BEGIN
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@Market = -1 OR P.IsLive = @Market)	
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (

@@ -51,9 +51,15 @@ BEGIN
 
 	DECLARE @OtherGroupsId SMALLINT = 12;
 	
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName VARCHAR(200));
+    IF @LeagueGroupIds IS NOT NULL
+    BEGIN
+        INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName)
+        SELECT DISTINCT TRY_CAST(value AS SMALLINT), LG.GroupName
+        FROM STRING_SPLIT(@LeagueGroupIds, ',')
+		INNER JOIN bodb02.dbo.LeagueGroup LG ON LG.GroupID = TRY_CAST(value AS SMALLINT)
+        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
+    END
 
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -162,7 +168,7 @@ BEGIN
 		BEGIN
 			SELECT 	P.MatchId
 				, 	P.LeagueId
-				,   lg.TargetLeagueGroupId AS LeagueGroupID
+				,   lg.ID AS LeagueGroupID
 				, 	P.HomeId
 				, 	P.AwayId
 				, 	P.EventDate
@@ -176,15 +182,15 @@ BEGIN
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 			 FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 	 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				INNER JOIN #AllMatches am WITH (NOLOCK) ON P.MatchId = am.matchid
 			 WHERE	P.CustId = @CustId
 				AND P.BetType = @Bettype
 				AND P.EventDate BETWEEN @FromDate AND @ToDate
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (
@@ -206,7 +212,7 @@ BEGIN
 					)
 				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY P.MatchId, P.LeagueId
-				,   lg.TargetLeagueGroupId
+				,   lg.ID
 				,	P.HomeId, P.AwayId, P.EventDate, P.IsLive
 			ORDER BY Margin DESC, P.EventDate ASC;
 		END;
@@ -214,7 +220,7 @@ BEGIN
 		BEGIN			
 			SELECT 	P.MatchId
 				, 	P.LeagueId
-				,   lg.TargetLeagueGroupId AS LeagueGroupID
+				,   lg.ID AS LeagueGroupID
 				, 	P.HomeId
 				, 	P.AwayId
 				, 	P.EventDate
@@ -228,8 +234,8 @@ BEGIN
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 			 FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 	 			INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				INNER JOIN #AllMatches am WITH (NOLOCK) ON P.MatchId = am.matchid
 			 WHERE	P.CustId = @CustId
 				AND P.BetType = @Bettype
@@ -237,7 +243,7 @@ BEGIN
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (
@@ -258,7 +264,7 @@ BEGIN
 						)
 					)
 			GROUP BY P.MatchId, P.LeagueId
-				,   lg.TargetLeagueGroupId
+				,   lg.ID
 				,	P.HomeId, P.AwayId, P.EventDate, P.IsLive
 			ORDER BY Margin DESC, P.EventDate ASC;
 		END;
