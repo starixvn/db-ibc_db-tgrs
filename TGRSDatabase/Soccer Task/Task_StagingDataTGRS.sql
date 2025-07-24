@@ -1056,7 +1056,6 @@ BEGIN
             SELECT CustID, Site
             FROM bodb02.dbo.vw_customer c
             WHERE custid IN (SELECT CustID FROM #tmpDLFilteredBettransByBatch)
-              AND CustID BETWEEN @MinDWCustID AND @MaxDWCustID
             OPTION (RECOMPILE);
 
 			-- customers in bodb02 frequently get deleted due to inactivity, need to get missing data from DW
@@ -1638,7 +1637,6 @@ BEGIN
             SELECT CustID, Site
             FROM bodb02.dbo.vw_customer c
             WHERE custid IN (SELECT CustID FROM #tmpDLFilteredBettransByBatch)
-              AND CustID BETWEEN @MinDWCustID AND @MaxDWCustID
             OPTION (RECOMPILE);
 
 			-- customers in bodb02 frequently get deleted due to inactivity, need to get missing data from DW
@@ -2235,7 +2233,6 @@ BEGIN
             SELECT CustID, Site
             FROM bodb02.dbo.vw_customer c
             WHERE custid IN (SELECT CustID FROM #tmpDLFilteredBettransByBatch)
-              AND CustID BETWEEN @MinDWCustID AND @MaxDWCustID
             OPTION (RECOMPILE);
 
 			-- customers in bodb02 frequently get deleted due to inactivity, need to get missing data from DW
