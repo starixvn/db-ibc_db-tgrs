@@ -139,9 +139,14 @@ BEGIN
       AND MBK.sporttype = 1
     OPTION (RECOMPILE);
 
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY);
+    IF @LeagueGroupIds IS NOT NULL
+    BEGIN
+        INSERT INTO #TempLeagueGroupIDs (ID)
+        SELECT DISTINCT TRY_CAST(value AS SMALLINT)
+        FROM STRING_SPLIT(@LeagueGroupIds, ',')
+        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;	
+    END
 
     DECLARE @BettypeList TABLE (BetType SMALLINT);		
     IF @Bettypes <> '0'
@@ -168,7 +173,6 @@ BEGIN
 	, 	ISNULL(SUM(P.BetCount), 0) as BetCount
 	FROM	dbo.TraderPerformance AS P WITH (NOLOCK)
 		INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-		LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 		INNER JOIN #AllMatches AM ON P.MatchId = AM.matchid
 	WHERE	P.EventDate BETWEEN @FromDate AND @ToDate
@@ -176,7 +180,7 @@ BEGIN
 		AND P.BetType IN (SELECT Bettype FROM @BettypeList)
 		AND (@Market = -1 OR P.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+		AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 		AND (
 			@ApplyVRFilter = 0 OR
 			EXISTS (
