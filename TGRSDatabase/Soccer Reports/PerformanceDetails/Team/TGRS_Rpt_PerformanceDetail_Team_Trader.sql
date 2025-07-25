@@ -170,9 +170,14 @@ BEGIN
     FROM MatchHierarchy_CTE
     OPTION (RECOMPILE);
 
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY);
+    IF @LeagueGroupIds IS NOT NULL
+    BEGIN
+        INSERT INTO #TempLeagueGroupIDs (ID)
+        SELECT DISTINCT TRY_CAST(value AS SMALLINT)
+        FROM STRING_SPLIT(@LeagueGroupIds, ',')
+        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;	
+    END
 
 	DECLARE @BettypeList TABLE(
 			bettype			SMALLINT
@@ -241,7 +246,6 @@ BEGIN
 		INNER JOIN bodb02.dbo.League AS L WITH ( NOLOCK ) ON tp.LeagueId = L.LeagueId
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType AND tm.WorkShift = tp.WorkShift
 		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
-		LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
 		INNER JOIN #AllMatches M ON tp.MatchId = M.matchid
         LEFT JOIN #RootMatches RM ON tp.MatchId = RM.ChildMatchID
@@ -250,7 +254,7 @@ BEGIN
 		AND t.TeamId = @TeamId
 		AND (@Market = -1 OR tp.IsLive = @Market)
 		AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-		AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+		AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 		AND (
             @ApplyVRFilter = 0 OR
             EXISTS (
