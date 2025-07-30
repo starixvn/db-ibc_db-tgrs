@@ -139,14 +139,11 @@ BEGIN
       AND MBK.sporttype = 1
     OPTION (RECOMPILE);
 
-	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY);
-    IF @LeagueGroupIds IS NOT NULL
-    BEGIN
-        INSERT INTO #TempLeagueGroupIDs (ID)
-        SELECT DISTINCT TRY_CAST(value AS SMALLINT)
-        FROM STRING_SPLIT(@LeagueGroupIds, ',')
-        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;	
-    END
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
     DECLARE @BettypeList TABLE (BetType SMALLINT);		
     IF @Bettypes <> '0'

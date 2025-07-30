@@ -62,19 +62,12 @@ BEGIN
         WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
     END
 
-	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
-	BEGIN
-		SET @LeagueGroupIds = NULL
-	END
-
-    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY);
-    IF @LeagueGroupIDs IS NOT NULL
-    BEGIN
-        INSERT INTO #TempLeagueGroupIDs (ID)
-        SELECT DISTINCT TRY_CAST(value AS SMALLINT)
-        FROM STRING_SPLIT(@LeagueGroupIDs, ',')
-        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
-    END
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    -- I don't know why this fuckery happens, but it is what it is
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
 	IF @LeagueName IS NULL OR @LeagueName = '' OR @LeagueName = 'ALL'
 	BEGIN

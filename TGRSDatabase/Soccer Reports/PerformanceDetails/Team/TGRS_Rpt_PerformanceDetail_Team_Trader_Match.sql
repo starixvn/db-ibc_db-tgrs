@@ -144,15 +144,11 @@ BEGIN
 
 	DECLARE @OtherGroupsId SMALLINT = 12;
 
-	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName VARCHAR(200));
-    IF @LeagueGroupIds IS NOT NULL
-    BEGIN
-        INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName)
-        SELECT DISTINCT TRY_CAST(value AS SMALLINT), LG.GroupName
-        FROM STRING_SPLIT(@LeagueGroupIds, ',')
-		INNER JOIN bodb02.dbo.LeagueGroup LG ON LG.GroupID = TRY_CAST(value AS SMALLINT)
-        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;	
-    END
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
 	DECLARE @BettypeList AS TABLE(bettype SMALLINT);
 
@@ -167,7 +163,7 @@ BEGIN
 
 	SELECT	P.MatchId
 		,	P.LeagueId
-		,   lg.ID AS LeagueGroupID
+		,   lg.TargetLeagueGroupID AS LeagueGroupID
 		,	P.HomeId
 		,	P.AwayId
 		,	P.EventDate
@@ -213,7 +209,7 @@ BEGIN
 				)
 			)
 	GROUP BY P.MatchId, P.LeagueId, L.LeagueGroupID, P.HomeId, P.AwayId, P.EventDate 
-		,   lg.ID
+		,   lg.TargetLeagueGroupID
 		,	P.IsLive
 	ORDER BY P.LeagueId ASC, Margin DESC, P.EventDate ASC;
 

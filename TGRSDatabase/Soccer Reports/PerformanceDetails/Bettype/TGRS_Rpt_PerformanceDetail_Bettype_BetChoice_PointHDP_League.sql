@@ -43,20 +43,11 @@ BEGIN
 
 	DECLARE @OtherGroupsId SMALLINT = 12;
 
-	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
-	BEGIN
-		SET @LeagueGroupIds = '' -- Keep consistent with original logic
-	END
-	
-	CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName VARCHAR(200));
-    IF @LeagueGroupIDs IS NOT NULL
-    BEGIN
-        INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName)
-        SELECT DISTINCT TRY_CAST(value AS SMALLINT), LG.GroupName
-        FROM STRING_SPLIT(@LeagueGroupIds, ',')
-		INNER JOIN bodb02.dbo.LeagueGroup LG ON LG.GroupID = TRY_CAST(value AS SMALLINT)
-        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
-    END
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -196,7 +187,7 @@ BEGIN
 		BEGIN
 			SELECT 	P.LeagueId
 				,	L.LeagueName
-				,   lg.ID AS LeagueGroupID
+				,   lg.TargetLeagueGroupID AS LeagueGroupID
 				,	lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.MatchID), 0)				AS MatchCount
@@ -244,7 +235,7 @@ BEGIN
 					)
 				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY P.LeagueId, L.LeagueName
-				,   lg.ID
+				,   lg.TargetLeagueGroupID
 				,	lg.LeagueGroupName
 				,	P.IsLive
 			ORDER BY Margin DESC, LeagueName ASC;
@@ -253,7 +244,7 @@ BEGIN
 		BEGIN
 			SELECT 	P.LeagueId
 				,	L.LeagueName
-				,   lg.ID AS LeagueGroupID
+				,   lg.TargetLeagueGroupID AS LeagueGroupID
 				,	lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.MatchID), 0)				AS MatchCount
@@ -302,7 +293,7 @@ BEGIN
 					)
 				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY P.LeagueId, L.LeagueName
-				,   lg.ID
+				,   lg.TargetLeagueGroupID
 				,	lg.LeagueGroupName
 				,	P.IsLive
 			ORDER BY Margin DESC, LeagueName ASC;
