@@ -44,6 +44,7 @@ AS
 		- 20230421@John.Ngo: Update formula of Juice and Leftover (Separate 8RM data) [Redmine ID: 187082]
 		- 20240217@Jaden.Tang: Remove TradeCust table (#206895)
 		- 20250409@Jaden.Tang: Add VarianceVR for TGRS Staging Data [Redmine ID: #213765]
+		- 20250707@Jaden.Tang: Add SiteID for TGRS Staging Data [Redmine ID: #213812]
 		
 	Param's Explanation:
 		
@@ -248,6 +249,7 @@ BEGIN
 		,   BetChoice			NVARCHAR(10)
 		,	IsBetChoiceDetail	BIT
 		,	VarianceVR			DECIMAL(9,6) NULL -- Added VarianceVR
+		,	SiteID				INT NULL
 	);
 	
 	CREATE CLUSTERED INDEX #CIX_tmpRTStagingTraderPerformanceIdx ON #tmpRTStagingTraderPerformance (
@@ -544,7 +546,7 @@ BEGIN
 			
 		INSERT INTO	#tmpRTStagingTraderPerformance (TraderId, CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, 
 			TeamId, Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, Spread, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, hdp1, hdp2, oddsspread, Is8RM, BetChoice, IsBetChoiceDetail
-			, VarianceVR -- Added VarianceVR
+			, VarianceVR, SiteID
 			)
 		SELECT		[TraderId]			= CASE WHEN b.LiveIndicator = 0 THEN @IdForNonLiveUnassignedTrader ELSE ISNULL(t.TraderId, @IdForLiveUnassignedTrader) END
 				,	[CustId]			= b.custid
@@ -576,9 +578,12 @@ BEGIN
 				,	[Is8RM]				= b.Is8RM
 				,	[BetChoice]			= b.BetChoice
 				,	[IsBetChoiceDetail]	= bt.IsBetChoiceDetail
-				,	[VarianceVR]		= b.VarianceVR -- Added VarianceVR from source
+				,	[VarianceVR]		= b.VarianceVR
+				,	[SiteID]			= s.SiteID
 		FROM	#tmpRTFilteredBettransByBatch AS b WITH (NOLOCK)
 			INNER JOIN #tmpRTSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
+			INNER JOIN bodb02.dbo.customer AS c WITH(NOLOCK) ON b.custid = c.CustId
+			INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.site = s.site
 			LEFT JOIN	#tmpRTTrader AS t WITH (NOLOCK)
 					ON	b.winlostdate = t.EventDate
 					AND	b.matchid = t.matchid
@@ -660,7 +665,7 @@ BEGIN
 
 		INSERT INTO	dbo.TraderPerformance (CustId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType, 
 			IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount, Spread
-			, VarianceVR -- Added VarianceVR
+			, VarianceVR, SiteID
 			)
 		SELECT	[CustId]			= t.TraderId
 			,	[WorkShift]			= t.WorkShift
@@ -688,12 +693,12 @@ BEGIN
 			,	[WinLost_VAR]		= SUM((t.WinLost + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.WinLost * t.ExtraPT END) + (CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)
 			,	[BetCount]			= SUM(t.BetCount)
 			,	[Spread]			= MAX(t.Spread)
-			,	[VarianceVR]		= t.VarianceVR -- Added VarianceVR
+			,	[VarianceVR]		= t.VarianceVR
+			,	[SiteID]			= t.SiteID
 		FROM	#tmpRTStagingTraderPerformance AS t 
 		WHERE	t.EventDate = @winlostdate
 		GROUP BY t.TraderId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM
-		, t.VarianceVR -- Added VarianceVR to GROUP BY
-		;
+		, t.VarianceVR, t.SiteID;
 
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
@@ -705,7 +710,7 @@ BEGIN
 		END;
 
 		INSERT INTO	[dbo].[TraderPerformance_BetChoice](CustId, MatchId, EventDate, SportType, LeagueId, BetType, BetChoice, IsLive, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount
-			, VarianceVR -- Added VarianceVR
+			, VarianceVR, SiteID
 			)
 		SELECT		[CustId]			= t.TraderId
 				,	[MatchId]			= t.MatchId
@@ -727,15 +732,15 @@ BEGIN
 				,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate > t.ActualRate THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
 				,	[WinLost_VAR]		= SUM((t.WinLost + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.WinLost * t.ExtraPT END) + (CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)
 				,	[BetCount]			= SUM(t.BetCount)
-				,	[VarianceVR]		= t.VarianceVR -- Added VarianceVR
+				,	[VarianceVR]		= t.VarianceVR
+				,	[SiteID]			= t.SiteID
 		FROM #tmpRTStagingTraderPerformance AS t
 		WHERE t.EventDate = @winlostdate AND t.BetChoice IS NOT NULL
 		GROUP BY t.TraderId, t.MatchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.Is8RM
-		, t.VarianceVR -- Added VarianceVR to GROUP BY
-		;
+		, t.VarianceVR, t.SiteID;
 
 		INSERT INTO	[dbo].[TraderPerformance_BetChoice_Detail](CustId, MatchId, EventDate, SportType, LeagueId, BetType, betteam, IsLive, hdp1, hdp2, oddsspread, Stake, WinLost, Comm, Stake_AR, WinLost_AR, Comm_AR, Is8RM, Stake_Real, WinLost_Real, Stake_VAR, WinLost_VAR, BetCount
-			, VarianceVR -- Added VarianceVR
+			, VarianceVR, SiteID
 			)
 		SELECT		[CustId]			= t.TraderId
 				,	[MatchId]			= t.MatchId
@@ -760,14 +765,14 @@ BEGIN
 				,	[Stake_VAR]			= SUM(CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE (1 - t.TPositionTaking - t.ExtraPT) END  * ABS(t.Stake) * t.ActualRate * (CASE WHEN t.VirtualRate > t.ActualRate THEN (t.VirtualRate/t.ActualRate -1) ELSE -(t.VirtualRate/t.ActualRate - 1) END))
 				,	[WinLost_VAR]		= SUM((t.WinLost + t.SMAWinLost - (CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.WinLost * t.ExtraPT END) + (CASE WHEN t.VirtualRate < t.ActualRate THEN (t.Comm - CASE WHEN t.TPositionTaking=1 THEN 0 ELSE t.Comm * t.ExtraPT/(1-t.TPositionTaking) END) ELSE 0 END)) * (t.VirtualRate/t.ActualRate - 1)*t.ActualRate)
 				,	[BetCount]			= SUM(t.BetCount)
-				,	[VarianceVR]		= t.VarianceVR -- Added VarianceVR
+				,	[VarianceVR]		= t.VarianceVR
+				,	[SiteID]			= t.SiteID
 		FROM #tmpRTStagingTraderPerformance AS t
 		WHERE t.EventDate = @winlostdate 
 			AND t.BetChoice IS NOT NULL
 			AND t.IsBetChoiceDetail = 1
 		GROUP BY t.TraderId, t.MatchId, t.EventDate, t.SportType, t.LeagueId, t.BetType, t.BetChoice, t.LiveIndicator, t.hdp1, t.hdp2, t.oddsspread, t.Is8RM
-		, t.VarianceVR -- Added VarianceVR to GROUP BY
-		;
+		, t.VarianceVR, t.SiteID;
 				
 		SELECT	@RowCount	= @@ROWCOUNT
 			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
