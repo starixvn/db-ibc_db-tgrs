@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_BetType]
 	,	@Market				SMALLINT = -1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,   @Sites				NVARCHAR(MAX) = ''
 AS
 /*  
 	Created:	20160216@Thai
@@ -29,6 +30,7 @@ AS
 		
 	Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
+		- @Sites: List of site names delimited by comma
 
 	Exam: EXEC [TGRS_Rpt_PerformanceDetail_BetType] @FromDate = '2014-01-01', @ToDate= '2015-12-30' 
   
@@ -36,6 +38,15 @@ AS
  
 BEGIN
     SET NOCOUNT ON;
+
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
 
 	IF @Bettypes IS NULL OR @Bettypes = '0' OR @Bettypes = 'ALL'
 	BEGIN
@@ -51,19 +62,12 @@ BEGIN
         WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
     END
 
-	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
-	BEGIN
-		SET @LeagueGroupIds = NULL
-	END
-
-    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY);
-    IF @LeagueGroupIDs IS NOT NULL
-    BEGIN
-        INSERT INTO #TempLeagueGroupIDs (ID)
-        SELECT DISTINCT TRY_CAST(value AS SMALLINT)
-        FROM STRING_SPLIT(@LeagueGroupIDs, ',')
-        WHERE TRY_CAST(value AS SMALLINT) IS NOT NULL;
-    END
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    -- I don't know why this fuckery happens, but it is what it is
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
 	IF @LeagueName IS NULL OR @LeagueName = '' OR @LeagueName = 'ALL'
 	BEGIN
@@ -260,7 +264,8 @@ BEGIN
                        OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
                 )
             )
-			AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+          AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+          AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
     )
     SELECT
 		BetType,

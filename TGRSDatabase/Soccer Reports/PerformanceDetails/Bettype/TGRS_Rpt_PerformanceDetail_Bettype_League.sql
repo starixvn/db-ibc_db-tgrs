@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_League]
 	,	@Market				SMALLINT = -1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20160315@Thai.Tran
@@ -28,9 +29,11 @@ AS
 		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
 		- 20250312@Jaden.Tang:  Return League Group name instead of League Group ID [Redmine: #213765]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-		
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
+
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live  
+		- @Sites: List of site names delimited by comma
 
 	 Exam: EXEC  TGRS_Rpt_PerformanceDetail_Bettype_League @FromDate = '2014-01-01', @ToDate= '2014-05-30', @Bettype = 1
   
@@ -39,6 +42,15 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
+
 	DECLARE @OtherGroupsId SMALLINT = 12;
 	
 	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
@@ -46,9 +58,11 @@ BEGIN
 		SET @LeagueGroupIds = '' -- Keep consistent with original logic
 	END
 	
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -188,7 +202,7 @@ BEGIN
 		BEGIN
 			SELECT P.LeagueId
 				,	L.LeagueName
-				,   lg.TargetLeagueGroupId AS LeagueGroupID
+				,   lg.TargetLeagueGroupID AS LeagueGroupID
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
@@ -203,7 +217,7 @@ BEGIN
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 				INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 				LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
@@ -211,7 +225,7 @@ BEGIN
 				AND  P.Bettype = @Bettype
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (
@@ -231,8 +245,9 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 						)
 					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 			GROUP BY P.LeagueId, L.LeagueName
-				,   lg.TargetLeagueGroupId
+				,   lg.TargetLeagueGroupID
 				,   lg.LeagueGroupName
 				,	P.IsLive 	
 			ORDER BY Margin DESC, LeagueName ASC;
@@ -241,7 +256,7 @@ BEGIN
 		BEGIN			
 			SELECT  P.LeagueId
 				,	L.LeagueName
-				,   lg.TargetLeagueGroupId AS LeagueGroupID
+				,   lg.TargetLeagueGroupID AS LeagueGroupID
 				,   lg.LeagueGroupName
 				,	P.IsLive
 				,	ISNULL(COUNT(DISTINCT P.CustId), 0) 	AS TraderCount
@@ -256,7 +271,7 @@ BEGIN
 				,	CASE WHEN ISNULL(SUM(P.Stake_Real),0) <> 0 THEN ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) * 100/ISNULL(SUM(P.Stake_Real),0) ELSE NULL END AS MarginReal				
 			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)	 
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 				INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 				LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
@@ -265,7 +280,7 @@ BEGIN
 				AND L.LeagueName LIKE '%' + @LeagueName + '%'
 				AND (@Market = -1 OR P.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (
@@ -286,7 +301,7 @@ BEGIN
 						)
 					)
 			GROUP BY P.LeagueId, L.LeagueName
-				,   lg.TargetLeagueGroupId
+				,   lg.TargetLeagueGroupID
 				,   lg.LeagueGroupName
 				,	P.IsLive 	
 			ORDER BY Margin DESC, LeagueName ASC;

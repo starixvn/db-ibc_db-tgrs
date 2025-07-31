@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice]
 	,	@Market				SMALLINT = -1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20171212@Aaron
@@ -27,9 +28,10 @@ AS
 		- 20220117@John.Ngo: 	Support view down for Total Goal, Time Machine and Corner bettype [Redmine: #166679]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-		
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
+		- @Sites: List of site names delimited by comma
 
 	 Exam: 
 		EXEC  TGRS_Rpt_PerformanceDetail_Bettype_BetChoice @FromDate = '2021-11-01', @ToDate= '2021-12-30', @Bettype = 227, @Market = 1
@@ -38,14 +40,20 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-	IF @LeagueGroupIds IS NULL OR @LeagueGroupIds = '' OR @LeagueGroupIds = 'ALL'
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
 	BEGIN
-		SET @LeagueGroupIds = '' -- Keep consistent with original logic that treats empty string for no filter
-	END
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
 
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
 	IF @VRSettings IS NULL OR @VRSettings = 'ALL'
 	BEGIN
@@ -196,6 +204,7 @@ BEGIN
 				BEGIN
 					SELECT P.betteam											AS BetTeam
 						,	FM.BetOption										AS BetOption
+						,	P.hdp2												AS hdp2
 						,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
 						,	P.IsLive											AS IsLive
 						,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
@@ -208,7 +217,6 @@ BEGIN
 					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId						
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
@@ -216,7 +224,7 @@ BEGIN
 						AND P.EventDate BETWEEN @FromDate AND @ToDate
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -236,7 +244,8 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
+					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
 				END;
 			ELSE
 				BEGIN
@@ -251,7 +260,6 @@ BEGIN
 						,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
 					FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = P.BetType
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
@@ -261,7 +269,7 @@ BEGIN
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -281,6 +289,7 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 				END;			
 		END;
@@ -290,6 +299,7 @@ BEGIN
 				BEGIN
 					SELECT P.betteam										AS BetTeam
 					,	FM.BetOption										AS BetOption
+					,	P.hdp2												AS hdp2
 					,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
 					,	P.IsLive											AS IsLive
 					,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
@@ -304,7 +314,6 @@ BEGIN
 					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
 						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId						
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
 						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
@@ -313,7 +322,7 @@ BEGIN
 						AND L.LeagueName LIKE '%' + @LeagueName + '%'
 						AND (@Market = -1 OR P.IsLive = @Market)						
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -333,7 +342,8 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive;
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
+					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
 				END;
 			ELSE -- @IsBetChoiceDetail = 0 or 1
 				BEGIN
@@ -349,7 +359,6 @@ BEGIN
 					,	ISNULL(SUM(P.BetCount), 0)							AS BetCount				
 					FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
 						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
 						LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = P.BetType
 						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
 						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
@@ -360,7 +369,7 @@ BEGIN
 						AND (@Market = -1 OR P.IsLive = @Market)
 						AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
 						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
 						AND (
 								@ApplyVRFilter = 0 OR
 								EXISTS (
@@ -380,6 +389,7 @@ BEGIN
 									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
 								)
 							)
+						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
 					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
 				END;
 		END;

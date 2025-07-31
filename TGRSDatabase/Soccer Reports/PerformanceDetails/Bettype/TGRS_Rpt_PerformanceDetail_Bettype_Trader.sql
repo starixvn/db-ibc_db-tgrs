@@ -8,6 +8,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_Trader]
 		,	@Market				SMALLINT = -1
 		,	@VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 		,	@MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+		,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	Created:	20160329@Thai.Tran
@@ -25,9 +26,11 @@ AS
 		- 20210809@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
 		
 	Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live 	
+		- @Sites: List of site names delimited by comma
 
 	Exam: 
 		exec [TGRS_Rpt_PerformanceDetail_Bettype_Trader] @Bettype=3,@FromDate='2016-03-02 00:00:00',@ToDate='2016-03-16 00:00:00'
@@ -36,9 +39,20 @@ AS
 BEGIN 
 	SET NOCOUNT ON;
 	
-	DECLARE @LeagueGroups AS TABLE (LeagueGroupId SMALLINT PRIMARY KEY CLUSTERED, LeagueGroupName VARCHAR(200), TargetLeagueGroupId SMALLINT)
-	INSERT INTO @LeagueGroups(LeagueGroupId, LeagueGroupName, TargetLeagueGroupId)
-	EXECUTE dbo.[TGRS_LeagueGroupSoccer_Get] @LeagueGroupIds = @LeagueGroupIds;
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
+
+    -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
+    -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
+    CREATE TABLE #TempLeagueGroupIDs (ID SMALLINT PRIMARY KEY, LeagueGroupName NVARCHAR(255), TargetLeagueGroupId INT);
+    INSERT INTO #TempLeagueGroupIDs (ID, LeagueGroupName, TargetLeagueGroupId)
+    EXEC TGRS_LeagueGroupSoccer_Get @LeagueGroupIds;
 
 	IF	OBJECT_ID('tempdb..#tmpTraderDetail') IS NOT NULL
 	BEGIN
@@ -233,7 +247,7 @@ BEGIN
 				,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 			FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON	tm.BetType = tp.BetType	AND	tm.WorkShift = tp.WorkShift
 				LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
@@ -243,7 +257,7 @@ BEGIN
 				AND	 tp.EventDate BETWEEN @FromDate AND @ToDate		
 				AND (@Market = -1 OR tp.IsLive = @Market)
 				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-				AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+				AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 				AND (
 						@ApplyVRFilter = 0 OR
 						EXISTS (
@@ -263,6 +277,7 @@ BEGIN
 							   OR (mgf.Setting = 'HEDGE' AND am.IsHedgeMatch = 1)
 						)
 					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = tp.SiteID))
 			GROUP BY tp.CustId, tp.IsLive;
 		END;
 	ELSE
@@ -298,7 +313,7 @@ BEGIN
 				,	ISNULL(SUM(tp.Stake * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
 			FROM	dbo.TraderPerformance AS tp WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON tp.LeagueId = L.LeagueId
-				LEFT JOIN @LeagueGroups AS lg ON L.LeagueGroupId = lg.LeagueGroupId
+				LEFT JOIN #TempLeagueGroupIDs lg ON L.LeagueGroupId = lg.ID
 				LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON	tm.BetType = tp.BetType	AND	tm.WorkShift = tp.WorkShift
 				LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
@@ -309,7 +324,7 @@ BEGIN
 					AND L.LeagueName LIKE '%' + @LeagueName + '%'
 					AND (@Market = -1 OR tp.IsLive = @Market)
 					AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-					AND (@LeagueGroupIds = '' OR lg.LeagueGroupId IS NOT NULL)
+					AND (@LeagueGroupIds = '' OR lg.LeagueGroupName IS NOT NULL)
 					AND (
 							@ApplyVRFilter = 0 OR
 							EXISTS (
