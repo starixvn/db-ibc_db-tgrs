@@ -61,6 +61,7 @@ AS
 		- 20250611@Jaden.Tang: Re-allow hedge match (#227903)
 		- 20250409@Jaden.Tang: Add VarianceVR for TGRS Staging Data [Redmine ID: #213765]
 		- 20250707@Jaden.Tang: Add SiteID for TGRS Staging Data [Redmine ID: #231812]
+		- 20250804@Jaden.Tang: Fix typo (#235172)
 		
 	Param's Explanation:
 		- @Bettype = 0: All bettype
@@ -1670,7 +1671,7 @@ BEGIN
 				INNER JOIN #tmpDLSupportedBettypes AS bt WITH(NOLOCK) ON b.BetType = bt.BetType
 				INNER JOIN bodb02.dbo.customer AS c WITH(NOLOCK) ON b.custid = c.CustId
 				INNER JOIN bodb02.dbo.site AS s WITH(NOLOCK) ON c.Site = s.site
-				LEFT JOIN #tmpDLTraderbk AS t WITH (NOLOCK)
+				LEFT JOIN #tmpDLTrader AS t WITH (NOLOCK)
 						ON	b.winlostdate = t.EventDate
 						AND	b.matchId = t.matchId
 						AND	(b.BetType = t.BetType OR (b.bettype = 23 AND t.BetType = 1))
