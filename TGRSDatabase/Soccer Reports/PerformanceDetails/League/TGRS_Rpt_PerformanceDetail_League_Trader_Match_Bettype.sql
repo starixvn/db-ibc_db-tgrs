@@ -8,7 +8,8 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League_Trader_Match_Bettype]
 	@IsExcludeLeagues	BIT = 1,
 	@Market				SMALLINT = 1,
 	@VRSettings         VARCHAR(100) = 'ALL', -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
-	@MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	@MatchGroup         VARCHAR(100) = 'ALL', -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20160301@Thai
@@ -25,7 +26,7 @@ AS
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
 		- 20210825@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20250524@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
-
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #235099]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live 
 	
@@ -65,6 +66,15 @@ BEGIN
     
     DECLARE @ApplyMatchGroupFilter BIT = 1;
     IF NOT EXISTS (SELECT 1 FROM #TempMatchGroup) SET @ApplyMatchGroupFilter = 0;
+
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
 
     CREATE TABLE #AllMatches (
         matchid INT,
@@ -220,6 +230,7 @@ BEGIN
 				   OR (mgf.Setting = 'HEDGE' AND am.IsHedgeMatch = 1)
             )
         )
+		AND EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = tp.SiteId)
 	GROUP BY	tp.BetType, TN.TypeName, tp.IsLive;
 
 	SELECT	bd.BetType

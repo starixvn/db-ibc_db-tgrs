@@ -16,6 +16,7 @@ ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_League]
 	,	@Market				SMALLINT = 1
 	,   @VRSettings         VARCHAR(100) = 'ALL' -- Comma-separated: "VR_PLUS", "NO_VR", "VR_MINUS", "ALL"
 	,   @MatchGroup         VARCHAR(100) = 'ALL' -- Comma-separated: "NORMAL", "EXTRA_TIME", "PENALTY", "HEDGE", "ALL"
+	,	@Sites				NVARCHAR(MAX) = ''
 AS    
 /*  
 	 Created:	20160216@Long.Luu
@@ -35,6 +36,7 @@ AS
 		- 20220307@John.Ngo: 	Update Separate League Group for Virtual [Redmine: #161859]
 		- 20250312@AI.Assistant:  Return League Group name instead of League Group ID [Redmine: #213765]
 		- 20250524@Jaden.Tang:	Support new filter VR Settings, Match Group and remove MONEY params [Redmine: #227903]
+		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #235099]
 
 	 Param's Explanation:  
 		- @Market: -1 All; 0 Nonlive; 1 Live	
@@ -69,6 +71,15 @@ BEGIN
 		,	MarginReal			MONEY
 		,	BetCount			INT
 	);
+
+	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
+	IF @Sites <> ''
+	BEGIN
+		INSERT INTO @SitesList
+		SELECT SiteId 
+		FROM bodb02.dbo.site WITH (NOLOCK)
+		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
+	END;
 
     -- It seems like web is calling TGRS_LeagueGroupSoccer_Get to pass TargetLeagueGroupIds to SP, 
     -- NOT the actual group ids, then SP must call TGRS_LeagueGroupSoccer_Get again to get original LeagueGroupIDs back
@@ -282,6 +293,7 @@ BEGIN
 						   OR (mgf.Setting = 'HEDGE' AND AM.IsHedgeMatch = 1)
 					)
 				)
+				AND EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteId)
 			GROUP BY P.LeagueId 
 				, 	L.LeagueName
 				,   lg.TargetLeagueGroupID
