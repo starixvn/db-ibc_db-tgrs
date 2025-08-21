@@ -1,5 +1,7 @@
+--should be around 10 minutes per month
+
 DECLARE @FromDateBK		SMALLDATETIME = '2025-01-01'
-	,	@ToDateBK	    SMALLDATETIME = '2025-01-04'
+	,	@ToDateBK	    SMALLDATETIME = '2025-01-30'
 
 BEGIN;
 	SET NOCOUNT ON;
@@ -9,13 +11,13 @@ BEGIN;
 	
 	-- Create BetType mapping table for better performance
 	CREATE TABLE #tmpBetTypeMapping (
-		OriginalBetType		SMALLINT,
+		BetType		SMALLINT,
 		SpecialType			SMALLINT,
 		MappedBetType		SMALLINT,
-		PRIMARY KEY (OriginalBetType, SpecialType)
+		PRIMARY KEY (BetType, SpecialType)
 	);
 	
-	INSERT INTO #tmpBetTypeMapping (OriginalBetType, SpecialType, MappedBetType) 
+	INSERT INTO #tmpBetTypeMapping (BetType, SpecialType, MappedBetType) 
 	VALUES
 		(1, 0, 1),   -- HDP
 		(3, 0, 3),   -- O/U
@@ -43,7 +45,7 @@ BEGIN;
 		TraderId				INT
 	,	EventDate				DATE
 	,	MatchId					INT
-	,	BetType					SMALLINT
+	,	BetType			SMALLINT
 	,	BetTeam					VARCHAR(10)
 	,	ScoreHDP				SMALLMONEY
 	,	AVGOdds					FLOAT
@@ -57,52 +59,7 @@ BEGIN;
 	,	Is8RM					BIT	
 	);
 
-	CREATE TABLE	#tmpFilteredBettransBKByBatch2 (
-		MatchId					INT
-	,	Winlostdate				SMALLDATETIME
-	,	Bettype					SMALLINT
-	,	Virtualrate				FLOAT
-	,	Actualrate				FLOAT
-	,	Tpositiontaking			SMALLMONEY
-	,	Scomm					MONEY
-	,	Betteam					VARCHAR(10)
-	,	Odds					SMALLMONEY
-	,	StatusID				TINYINT
-	,	ExtraPT					DECIMAL(12, 8)
-	,	ScoreHDP				SMALLMONEY
-	,	StakeMY					MONEY
-	,	Stake					MONEY
-	,	Is8RM					BIT
-	);
 
-	CREATE TABLE	#tmpTrader2 (
-		TraderId				INT
-	,	MatchId					INT
-	,	BetType					SMALLINT
-	);
-	
-	CREATE TABLE    #tmpSpecialType (
-		MatchId					INT
-	,	SpecialType				SMALLINT
-	);
-
-	CREATE TABLE #tmpStagingTraderPerformance (
-		TraderId			INT,
-		EventDate			DATE,
-		MatchId				INT,
-		BetType				SMALLINT,
-		BetTeam				VARCHAR(10),
-		ScoreHDP			SMALLMONEY,
-		Odds				SMALLMONEY,
-		StakeMY				MONEY,
-		Stake				MONEY,
-		ExtraPT				DECIMAL(12, 8),
-		TPositionTaking		SMALLMONEY,
-		VirtualRate			FLOAT,
-		ActualRate			FLOAT,
-		Scomm				MONEY,
-		Is8RM				BIT
-	);
 	
 	CREATE TABLE	#tmpJuice (
 			EventDate				DATE
@@ -135,153 +92,101 @@ BEGIN;
 		,	Is8RM					BIT
 	);
 
-	CREATE TABLE	#tmpResults (
-			EventDate				DATE
-		,	MatchId					INT
-		,	BetType					SMALLINT
-		,	StakeMYBeforeComm		MONEY
-		,	Juice					MONEY
-		,	StakeMYRJuice			MONEY
-		,	StakeMYBeforeComm_AR	MONEY
-		,	Juice_AR				MONEY
-		,	StakeMYRJuice_AR		MONEY
-		,	Is8RM					BIT
-	);
-
-	DECLARE @InsertedMatchID TABLE (
-			MatchId					INT
-	);
-
     SET STATISTICS XML ON 
 	BEGIN
-		--slow
-        INSERT INTO #tmpFilteredBettransBKByBatch2 (MatchId, Winlostdate, Bettype, Virtualrate, Actualrate, 
-        Tpositiontaking, Scomm, Betteam, Odds, ExtraPT, ScoreHDP, StakeMY, Stake, Is8RM)
-		OUTPUT	INSERTED.MatchId
-		INTO	@InsertedMatchID
-        SELECT	[MatchId]			= b.matchid
-            ,	[Winlostdate]		= b.winlostdate
-            ,	[Bettype]			= b.bettype
-            ,	[Virtualrate]		= b.virtualrate
-            ,	[Actualrate]		= b.actualrate
-            ,	[Tpositiontaking]	= b.tpositiontaking
-            ,	[Scomm]				= b.scomm
-            ,	[Betteam]			= b.betteam
-            ,	[Odds]				= b.odds
-            ,	[ExtraPT]			= ISNULL(b.epositiontaking, 0)
-            ,	[ScoreHDP]			= CASE	WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore)
-                                            ELSE b.hdp1
-                                        END
-            ,	[StakeMY]			= CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END
-                                    * CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END
-                                    * ABS(b.stake)
-            ,	[Stake]				= CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END
-                                    * ABS(b.stake)
-            ,	[Is8RM]				= CASE WHEN b.recommend != 52466 THEN 0 ELSE 1 END
-        FROM		bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
-        WHERE	b.winlostdate BETWEEN @FromDateBK AND @ToDateBK
-            AND	b.bettype IN (1, 3, 7, 8)
-            AND	b.StatusID IN (112, 113)
-            AND	b.Currency NOT IN (20, 27, 28)
-            AND	b.LiveIndicator = 1
-        OPTION (RECOMPILE)
-        
-        ;WITH LatestTraderAssignments AS (
-            SELECT 
-                a.TraderId,
-                a.MatchId,
-                a.BetType,
-                ROW_NUMBER() OVER(
-                    PARTITION BY a.MatchId, a.BetType 
-                    ORDER BY a.UpdatedTime DESC,a.ID DESC
-                ) AS Row_Num
-            FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK)
-            WHERE a.TraderId <> 0 AND a.MatchID IN (SELECT MatchID FROM @InsertedMatchID)
-			   AND a.bettype IN (1, 3, 7, 8)
-        )
-        INSERT INTO	#tmpTrader2 (TraderId, MatchId, BetType)
-        SELECT DISTINCT
-            lta.TraderId,
-            lta.MatchId,
-            lta.BetType
-        FROM LatestTraderAssignments lta
-        WHERE lta.Row_Num = 1
-        OPTION (RECOMPILE);
+		-- Step 1: Insert all data with placeholder TraderId = @IdForUnassignedTrader
+		INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
+			AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR, Is8RM)
+		SELECT	
+			[TraderId]			= @IdForUnassignedTrader,
+			[EventDate]			= b.winlostdate,
+			[MatchId]			= b.matchid,
+			[BetType]		    = b.BetType,
+			[BetTeam]			= b.betteam,
+			[ScoreHDP]			= CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END,
+			[AVGOdds]			= SUM((CASE WHEN b.odds < 0 THEN 1 ELSE b.odds END) * ABS(
+				CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)
+			) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * b.virtualrate)
+									/ SUM((CASE WHEN b.odds < 0 THEN -b.odds ELSE 1 END) * ABS(
+				CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)
+			) * (CASE WHEN (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0) = 0) THEN 1 ELSE (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) END) * b.virtualrate),
+			[StakeMYBeforeComm]	= SUM((CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * b.virtualrate),
+			[StakeMY]			= SUM((CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * b.virtualrate - (b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm * ISNULL(b.epositiontaking, 0) / (1 - b.tpositiontaking) END) * (CASE WHEN b.virtualrate > b.actualrate THEN b.actualrate ELSE b.virtualrate END)),
+			[Stake]				= SUM(CASE WHEN b.odds < 0 THEN -b.odds ELSE 1 END * ABS(CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * b.virtualrate - (b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm * ISNULL(b.epositiontaking, 0) / (1 - b.tpositiontaking) END) * (CASE WHEN b.virtualrate > b.actualrate THEN b.actualrate ELSE b.virtualrate END)),
+			[AVGOdds_AR]		= SUM((CASE WHEN b.odds < 0 THEN 1 ELSE b.odds END) * ABS(CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * (CASE WHEN b.virtualrate > b.actualrate THEN b.virtualrate ELSE b.actualrate END))
+									/ SUM((CASE WHEN b.odds < 0 THEN -b.odds ELSE 1 END) * ABS(CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (CASE WHEN (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0) = 0) THEN 1 ELSE (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) END) * (CASE WHEN b.virtualrate > b.actualrate THEN b.virtualrate ELSE b.actualrate END)),
+			[StakeMYBeforeComm_AR]	= SUM((CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * (CASE WHEN b.virtualrate > b.actualrate THEN b.virtualrate ELSE b.actualrate END)),
+			[StakeMY_AR]		= SUM((CASE WHEN ABS(b.odds) <= 1 THEN 1 ELSE ABS(b.odds) END * CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * (CASE WHEN b.virtualrate > b.actualrate THEN b.virtualrate ELSE b.actualrate END) - (b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm * ISNULL(b.epositiontaking, 0) / (1 - b.tpositiontaking) END) * b.actualrate),
+			[Stake_AR]			= SUM(CASE WHEN b.odds < 0 THEN -b.odds ELSE 1 END * ABS(CASE WHEN ABS(b.modds) = 0.25 THEN 0.5 ELSE 1 END * ABS(b.stake)) * (1 - b.tpositiontaking - ISNULL(b.epositiontaking, 0)) * (CASE WHEN b.virtualrate > b.actualrate THEN b.virtualrate ELSE b.actualrate END) - (b.scomm - CASE WHEN b.tpositiontaking = 1 THEN 0 ELSE b.scomm * ISNULL(b.epositiontaking, 0) / (1 - b.tpositiontaking) END) * b.actualrate),
+			[Is8RM]				= CASE WHEN b.recommend != 52466 THEN 0 ELSE 1 END
+		FROM bodb_Archive.dbo.bettrans_bk AS b WITH (NOLOCK)
+		WHERE b.winlostdate BETWEEN @FromDateBK AND @ToDateBK
+			AND b.bettype IN (1, 3, 7, 8)
+			AND b.StatusID IN (112, 113)
+			AND b.Currency NOT IN (20, 27, 28)
+			AND b.LiveIndicator = 1
+		GROUP BY 
+			b.winlostdate,
+			b.matchid,
+			b.BetType,
+			b.BetType,
+			b.betteam,
+			CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END,
+			CASE WHEN b.recommend != 52466 THEN 0 ELSE 1 END
+		OPTION (RECOMPILE, MAX_GRANT_PERCENT = 15);
 
-		;WITH SpecialType AS (
-			SELECT  fm.MatchId,
-					CASE 
-						WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%' THEN 1
-						WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS%' AND tm.TeamName LIKE '%No.of Corners%' THEN 2
-						WHEN l.LeagueName LIKE '%SPECIALS' AND (tm.TeamName LIKE '%Over' OR tm.TeamName LIKE '%Under') THEN 3
-						WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS%' THEN 4
-						WHEN l.LeagueName LIKE '%SPECIFIC 10 MINS%' THEN 5
-						WHEN tm.TeamName LIKE '%No.of Corners%' THEN 6
-						WHEN tm.TeamName LIKE '%Total Bookings' THEN 7
-						WHEN tm.TeamName LIKE '%Corner%' THEN 8
-						WHEN tm.TeamName LIKE '%Booking' THEN 9
-						ELSE 0
-					END AS SpecialType
-				FROM bodb_archive.dbo.match_bk AS fm WITH (NOLOCK)
-				LEFT JOIN bodb02.dbo.Team AS tm WITH (NOLOCK) ON fm.homeid = tm.teamid
-				LEFT JOIN bodb02.dbo.League AS l WITH (NOLOCK) ON fm.leagueid = l.LeagueId
-				WHERE fm.MatchId IN (SELECT MatchId FROM @InsertedMatchID)
+		-- Step 2: Update TraderId using a simple join (force use seek on IX_MatchID and key look up - fast for under ~50k rows)
+		WITH LatestTraderAssignments AS (
+			SELECT 
+				a.TraderId,
+				a.MatchId,
+				a.BetType,
+				ROW_NUMBER() OVER(
+					PARTITION BY a.MatchId, a.BetType 
+					ORDER BY a.UpdatedTime DESC, a.ID DESC
+				) AS Row_Num
+			FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK, INDEX(IX_MatchID))
+			WHERE a.TraderId <> 0 
+				AND a.bettype IN (1, 3, 7, 8)
+				AND a.MatchId IN (SELECT MatchId FROM #tmpDataGroup)
 		)
-		INSERT INTO #tmpSpecialType (MatchId, SpecialType)
-		SELECT
-			MatchId,
-			SpecialType
-		FROM SpecialType;
-        
-		--slow
-        INSERT INTO #tmpStagingTraderPerformance
-        SELECT	[TraderId]			= ISNULL(t.TraderId, @IdForUnassignedTrader)
-            ,	[EventDate]			= b.winlostdate
-            ,	[MatchId]			= b.matchid
-            ,	[BetType]			= ISNULL(btm.MappedBetType, b.BetType)
-            ,	[BetTeam]			= b.betteam
-            ,	[ScoreHDP]			= b.ScoreHDP
-            ,	[Odds]				= b.odds
-            ,	[StakeMY]			= b.StakeMY
-            ,	[Stake]				= b.Stake
-            ,	[ExtraPT]			= ISNULL(b.ExtraPT, 0)
-            ,	[TPositionTaking]	= b.tpositiontaking
-            ,	[VirtualRate]		= b.virtualrate
-            ,	[ActualRate]		= b.actualrate
-            ,	[Scomm]				= b.scomm
-            ,	[Is8RM]				= b.Is8RM
-        FROM		#tmpFilteredBettransBKByBatch2 AS b WITH(NOLOCK)
-            LEFT JOIN	#tmpTrader2 AS t WITH (NOLOCK)
-                    ON	b.matchid = t.matchid
-                    AND	b.BetType = t.BetType
-			LEFT JOIN #tmpSpecialType AS st WITH (NOLOCK)
-					ON b.matchid = st.MatchId
-			LEFT JOIN #tmpBetTypeMapping AS btm WITH (NOLOCK)
-					ON b.BetType = btm.OriginalBetType
-					AND st.SpecialType = btm.SpecialType;
-        
-		--slow
-        INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
-            AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR, Is8RM)
-        SELECT	[TraderId]			= t.TraderId
-            ,	[EventDate]			= t.EventDate
-            ,	[MatchId]			= t.MatchId
-            ,	[BetType]			= t.BetType
-            ,	[BetTeam]			= t.BetTeam
-            ,	[ScoreHDP]			= t.ScoreHDP
-            ,	[AVGOdds]			= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
-                                    / SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (CASE WHEN (1 - t.TPositionTaking - t.ExtraPT = 0) THEN 1 ELSE (1 - t.TPositionTaking - t.ExtraPT) END) * t.VirtualRate)
-            ,	[StakeMYBeforeComm]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate)
-            ,	[StakeMY]			= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
-            ,	[Stake]				= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * t.VirtualRate - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.ActualRate ELSE t.VirtualRate END))
-            ,	[AVGOdds_AR]		= SUM((CASE WHEN t.Odds < 0 THEN 1 ELSE t.Odds END) * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
-                                    / SUM((CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END) * ABS(t.Stake) * (CASE WHEN (1 - t.TPositionTaking - t.ExtraPT = 0) THEN 1 ELSE (1 - t.TPositionTaking - t.ExtraPT) END) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
-            ,	[StakeMYBeforeComm_AR]	= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END))
-            ,	[StakeMY_AR]		= SUM(t.StakeMY * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
-            ,	[Stake_AR]			= SUM(CASE WHEN t.Odds < 0 THEN -t.Odds ELSE 1 END * ABS(t.Stake) * (1 - t.TPositionTaking - t.ExtraPT) * (CASE WHEN t.VirtualRate > t.ActualRate THEN t.VirtualRate ELSE t.ActualRate END) - (t.Scomm - CASE WHEN t.TPositionTaking = 1 THEN 0 ELSE t.Scomm * t.ExtraPT / (1 - t.TPositionTaking) END) * t.ActualRate)
-            ,	[Is8RM]				= t.Is8RM	
-        FROM	#tmpStagingTraderPerformance AS t
-        GROUP BY t.TraderId, t.EventDate, t.MatchId, t.BetType, t.BetTeam, t.ScoreHDP, t.Is8RM;
+		UPDATE dg 
+		SET TraderId = lta.TraderId
+		FROM #tmpDataGroup dg
+		INNER JOIN LatestTraderAssignments lta 
+			ON dg.MatchId = lta.MatchId 
+			AND dg.BetType = lta.BetType 
+			AND lta.Row_Num = 1;
+
+		-- Step 3: Update BetType to the mapped bettype
+		WITH SpecialType AS (
+			SELECT  
+				fm.MatchId,
+				CASE 
+					WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%' THEN 1
+					WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS%' AND tm.TeamName LIKE '%No.of Corners%' THEN 2
+					WHEN l.LeagueName LIKE '%SPECIALS' AND (tm.TeamName LIKE '%Over' OR tm.TeamName LIKE '%Under') THEN 3
+					WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS%' THEN 4
+					WHEN l.LeagueName LIKE '%SPECIFIC 10 MINS%' THEN 5
+					WHEN tm.TeamName LIKE '%No.of Corners%' THEN 6
+					WHEN tm.TeamName LIKE '%Total Bookings' THEN 7
+					WHEN tm.TeamName LIKE '%Corner%' THEN 8
+					WHEN tm.TeamName LIKE '%Booking' THEN 9
+					ELSE 0
+				END AS SpecialType
+			FROM bodb_archive.dbo.match_bk AS fm WITH (NOLOCK)
+			LEFT HASH JOIN bodb02.dbo.Team AS tm WITH (NOLOCK) ON fm.homeid = tm.teamid
+			LEFT HASH JOIN bodb02.dbo.League AS l WITH (NOLOCK) ON fm.leagueid = l.LeagueId
+		)
+		UPDATE dg
+		SET dg.BetType = btm.MappedBetType
+		FROM #tmpDataGroup dg
+		INNER HASH JOIN SpecialType st
+			ON dg.MatchId = st.MatchId
+		INNER JOIN #tmpBetTypeMapping btm
+			ON dg.BetType = btm.BetType
+			AND st.SpecialType = btm.SpecialType
+		OPTION (MAX_GRANT_PERCENT = 10);
 	END;
 
 
@@ -366,28 +271,28 @@ BEGIN;
 		,	[Is8RM]				= t.Is8RM
 	FROM	#tmpJuice t WITH(NOLOCK)
 	GROUP BY t.EventDate, t.MatchId, t.BetType, t.ScoreHDP, t.Is8RM;
-		
-	INSERT INTO #tmpResults (EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR, Is8RM)
-	SELECT	[EventDate]			= t.EventDate
-		,	[MatchId]			= t.MatchId
-		,	[BetType]			= t.BetType
-		,	[StakeMYBeforeComm]	= SUM(t.StakeMYBeforeComm)
-		,	[Juice]				= SUM(t.Juice)
-		,	[StakeMYRJuice]		= SUM(t.StakeMYRJuice)		
-		,	[StakeMYBeforeComm_AR]	= SUM(t.StakeMYBeforeComm_AR)
-		,	[Juice_AR]			= SUM(t.Juice_AR)
-		,	[StakeMYRJuice_AR]	= SUM(t.StakeMYRJuice_AR)
-		,	[Is8RM]				= t.Is8RM
-	FROM	#tmpSumTotal t WITH(NOLOCK)
-	GROUP BY t.EventDate, t.MatchId, t.BetType, t.Is8RM;
 	
-	SELECT TOP 100 t.* 
+	/*SELECT TOP 100 t.* 
     FROM #tmpResults t WITH (NOLOCK)
     INNER JOIN dbo.TraderPerformance AS tp WITH (NOLOCK)
     ON tp.EventDate = t.EventDate 
     AND tp.matchid = t.MatchId 
     AND tp.bettype = t.BetType 
-    AND tp.Is8RM = t.Is8RM;
+    AND tp.Is8RM = t.Is8RM;*/
+
+	--Update real data
+	UPDATE	tp
+	SET		tp.Juice = t.Juice
+		,	tp.StakeMYR = t.StakeMYBeforeComm
+		,	tp.StakeMYRJuice = t.StakeMYRJuice
+		,	tp.Juice_AR = t.Juice_AR
+		,	tp.StakeMYR_AR = t.StakeMYBeforeComm_AR
+		,	tp.StakeMYRJuice_AR = t.StakeMYRJuice_AR
+	FROM dbo.TraderPerformance AS tp WITH (ROWLOCK, UPDLOCK)
+		INNER JOIN	#tmpSumTotal AS t WITH (NOLOCK) ON t.MatchId = tp.matchid
+				AND	t.BetType = tp.bettype AND t.Is8RM = tp.Is8RM
+	WHERE tp.EventDate = t.EventDate
+		AND tp.IsLive = 1; -- Temporarily update Juice for live tickets only
 	
 END;
 
