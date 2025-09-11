@@ -44,8 +44,9 @@ BEGIN;
 	CREATE TABLE	#tmpDataGroup (
 		TraderId				INT
 	,	EventDate				DATE
+	,   CustID					INT
 	,	MatchId					INT
-	,	BetType			SMALLINT
+	,	BetType					SMALLINT
 	,	BetTeam					VARCHAR(10)
 	,	ScoreHDP				SMALLMONEY
 	,	AVGOdds					FLOAT
@@ -63,6 +64,8 @@ BEGIN;
 	
 	CREATE TABLE	#tmpJuice (
 			EventDate				DATE
+		,	TraderId				INT
+		,	CustID					INT
 		,	MatchId					INT
 		,	BetType					SMALLINT
 		,	StakeMYBeforeComm		MONEY
@@ -81,6 +84,8 @@ BEGIN;
 
 	CREATE TABLE	#tmpSumTotal (
 			EventDate				DATE
+		,	TraderId				INT
+		,	SiteID					INT
 		,	MatchId					INT
 		,	BetType					SMALLINT
 		,	StakeMYBeforeComm		MONEY
@@ -92,14 +97,15 @@ BEGIN;
 		,	Is8RM					BIT
 	);
 
-    SET STATISTICS XML ON 
+    --SET STATISTICS XML ON 
 	BEGIN
 		-- Step 1: Insert all data with placeholder TraderId = @IdForUnassignedTrader
-		INSERT INTO #tmpDataGroup (TraderId, EventDate, MatchId, BetType, BetTeam, ScoreHDP, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
+		INSERT INTO #tmpDataGroup (TraderId, EventDate, CustID, MatchId, BetType, BetTeam, ScoreHDP, AVGOdds, StakeMYBeforeComm, StakeMY, Stake, 
 			AVGOdds_AR, StakeMYBeforeComm_AR, StakeMY_AR, Stake_AR, Is8RM)
 		SELECT	
 			[TraderId]			= @IdForUnassignedTrader,
 			[EventDate]			= b.winlostdate,
+			[CustID]			= b.custid,
 			[MatchId]			= b.matchid,
 			[BetType]		    = b.BetType,
 			[BetTeam]			= b.betteam,
@@ -127,8 +133,8 @@ BEGIN;
 			AND b.LiveIndicator = 1
 		GROUP BY 
 			b.winlostdate,
+			b.custid,
 			b.matchid,
-			b.BetType,
 			b.BetType,
 			b.betteam,
 			CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END,
@@ -190,10 +196,12 @@ BEGIN;
 	END;
 
 
-	INSERT INTO #tmpJuice (EventDate, MatchId, BetType, ScoreHDP, StakeMYBeforeComm, StakeMY, Juice, StakeMYRJuice, StakeMYRTotal, 
+	INSERT INTO #tmpJuice (EventDate, TraderId, MatchId, CustID, BetType, ScoreHDP, StakeMYBeforeComm, StakeMY, Juice, StakeMYRJuice, StakeMYRTotal, 
 		StakeMYBeforeComm_AR, StakeMY_AR, Juice_AR, StakeMYRJuice_AR, StakeMYRTotal_AR, Is8RM)
 	SELECT	[EventDate]			= temp1.EventDate
+		,	[TraderId]			= temp1.TraderId
 		,	[MatchId]			= temp1.MatchId
+		,	[CustID]			= temp1.CustID
 		,	[BetType]			= temp1.BetType
 		,	[ScoreHDP]			= temp1.ScoreHDP
 		,	[StakeMYBeforeComm]	= SUM(temp1.StakeMYBeforeComm)
@@ -256,11 +264,15 @@ BEGIN;
 			AND	temp1.ScoreHDP = temp2.ScoreHDP
 			AND	temp1.BetTeam <> temp2.BetTeam
 			AND	temp1.Is8RM = temp2.Is8RM
-	GROUP BY temp1.EventDate, temp1.MatchId, temp1.BetType, temp1.ScoreHDP, temp1.Is8RM;
+			AND	temp1.TraderId = temp2.TraderId
+			AND	temp1.CustID = temp2.CustID
+	GROUP BY temp1.EventDate, temp1.TraderId, temp1.MatchId, temp1.CustID, temp1.BetType, temp1.ScoreHDP, temp1.Is8RM;
 
-	INSERT INTO	#tmpSumTotal (EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR, Is8RM)
+	INSERT INTO	#tmpSumTotal (EventDate, TraderId, MatchId, SiteID, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR, Is8RM)
 	SELECT	[EventDate]			= t.EventDate
+		,	[TraderId]			= t.TraderId
 		,	[MatchId]			= t.MatchId
+		,	[SiteID]			= s.siteid
 		,	[BetType]			= t.BetType
 		,	[StakeMYBeforeComm]	= SUM(t.StakeMYBeforeComm)
 		,	[Juice]				= SUM(t.Juice)
@@ -270,16 +282,10 @@ BEGIN;
 		,	[StakeMYRJuice_AR]	= SUM(CASE WHEN t.StakeMYRTotal_AR = 0 THEN 0 ELSE CAST(t.StakeMYBeforeComm_AR AS DECIMAL(38,18)) * t.StakeMYRJuice_AR / t.StakeMYRTotal_AR END) -- Before comm
 		,	[Is8RM]				= t.Is8RM
 	FROM	#tmpJuice t WITH(NOLOCK)
-	GROUP BY t.EventDate, t.MatchId, t.BetType, t.ScoreHDP, t.Is8RM;
+		INNER JOIN bodb02.dbo.vw_Customer AS c WITH (NOLOCK) ON t.CustID = c.CustID
+		INNER JOIN bodb02.dbo.Site AS s WITH (NOLOCK) ON c.site = s.site
+	GROUP BY t.EventDate, t.TraderId, t.MatchId, s.siteid, t.BetType, t.ScoreHDP, t.Is8RM;
 	
-	/*SELECT TOP 100 t.* 
-    FROM #tmpResults t WITH (NOLOCK)
-    INNER JOIN dbo.TraderPerformance AS tp WITH (NOLOCK)
-    ON tp.EventDate = t.EventDate 
-    AND tp.matchid = t.MatchId 
-    AND tp.bettype = t.BetType 
-    AND tp.Is8RM = t.Is8RM;*/
-
 	--Update real data
 	UPDATE	tp
 	SET		tp.Juice = t.Juice
@@ -290,10 +296,12 @@ BEGIN;
 		,	tp.StakeMYRJuice_AR = t.StakeMYRJuice_AR
 	FROM dbo.TraderPerformance AS tp WITH (ROWLOCK, UPDLOCK)
 		INNER JOIN	#tmpSumTotal AS t WITH (NOLOCK) ON t.MatchId = tp.matchid
-				AND	t.BetType = tp.bettype AND t.Is8RM = tp.Is8RM
+			AND	t.BetType = tp.bettype AND t.Is8RM = tp.Is8RM AND t.TraderId = tp.CustID AND t.SiteID = tp.SiteID
 	WHERE tp.EventDate = t.EventDate
-		AND tp.IsLive = 1; -- Temporarily update Juice for live tickets only
-	
+		AND tp.EventDate BETWEEN @FromDateBK AND @ToDateBK
+		AND tp.IsLive = 1
+	OPTION (RECOMPILE, MAX_GRANT_PERCENT = 15);
+    
 END;
 
 GO
