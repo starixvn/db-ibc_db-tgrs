@@ -11,10 +11,10 @@ TO FILEGROUP TraderJuicePerformance_Table;
 DROP TABLE IF EXISTS dbo.TraderJuicePerformance;
 
 CREATE TABLE dbo.TraderJuicePerformance (
-    TraderId INT,
     EventDate DATE,
     MatchId INT,
     BetType SMALLINT,
+    TraderId INT,
     Is8RM BIT,
     Juice MONEY,
     StakeMYR MONEY,
@@ -25,7 +25,7 @@ CREATE TABLE dbo.TraderJuicePerformance (
 ) ON TraderJuicePerformance_Table;
 
 CREATE UNIQUE CLUSTERED INDEX CLUSTERED_TraderJuicePerformance_Table 
-ON dbo.TraderJuicePerformance (TraderId, EventDate, MatchId, BetType)
+ON dbo.TraderJuicePerformance (EventDate, MatchId, BetType, TraderId)
 ON TraderJuicePerformance_Table;
 
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
