@@ -39,9 +39,6 @@ AS
 BEGIN;
 	SET NOCOUNT ON;
 
-	-- Common variables
-	DECLARE	@IdForUnassignedTrader	INT	= 0;
-
 	DECLARE @BalanceUpDay SMALLDATETIME, @MoveBetsDay SMALLDATETIME;
 	SELECT @MoveBetsDay = MoveBetsDay, @BalanceUpDay = BalanceUpDay
 	FROM OPENQUERY(DBACC,'exec bodb02.dbo.Age_SelBalanceUpDay')
@@ -117,6 +114,7 @@ BEGIN;
 	,	BetType					SMALLINT
 	,	BetTeam					VARCHAR(10)
 	,	ScoreHDP				SMALLMONEY
+	/*Juice metrics*/
 	,	AVGOdds					FLOAT
 	,	StakeMYBeforeComm		MONEY
 	,	StakeMY					MONEY
@@ -125,7 +123,7 @@ BEGIN;
 	,	StakeMYBeforeComm_AR	MONEY
 	,	StakeMY_AR				MONEY
 	,	Stake_AR				MONEY
-	,	Is8RM					BIT	
+	,	Is8RM					BIT
 	);
 
 
@@ -150,7 +148,6 @@ BEGIN;
 
 	CREATE TABLE	#tmpSumTotal (
 			EventDate				DATE
-		,	TraderId				INT
 		,	MatchId					INT
 		,	BetType					SMALLINT
 		,	StakeMYBeforeComm		MONEY
@@ -253,7 +250,7 @@ BEGIN;
 		b.betteam,
 		CASE WHEN b.bettype IN (1, 7) THEN (b.hdp1 + b.livehomescore) - (b.hdp2 + b.liveawayscore) ELSE b.hdp1 END,
 		CASE WHEN b.recommend != 52466 THEN 0 ELSE 1 END
-	OPTION (RECOMPILE, MAX_GRANT_PERCENT = 15, HASH JOIN);
+	OPTION (RECOMPILE, MAX_GRANT_PERCENT = 10, HASH JOIN);
 
 	CREATE CLUSTERED INDEX #IDX_tmpDataGroup ON #tmpDataGroup (MatchId, BetType);
 
@@ -326,10 +323,9 @@ BEGIN;
 			AND	temp1.Is8RM = temp2.Is8RM
 	GROUP BY temp1.EventDate, temp1.MatchId, temp1.BetType, temp1.ScoreHDP, temp1.Is8RM;
 
-	-- Step 3: Aggregate data by MatchId/BetType with default TraderId
-	INSERT INTO	#tmpSumTotal (EventDate, TraderId, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR, Is8RM)
+	-- Step 3: Aggregate data by MatchId/BetType
+	INSERT INTO	#tmpSumTotal (EventDate, MatchId, BetType, StakeMYBeforeComm, Juice, StakeMYRJuice, StakeMYBeforeComm_AR, Juice_AR, StakeMYRJuice_AR, Is8RM)
 	SELECT	[EventDate]			= t.EventDate
-		,	[TraderId]			= @IdForUnassignedTrader
 		,	[MatchId]			= t.MatchId
 		,	[BetType]			= t.BetType
 		,	[StakeMYBeforeComm]	= SUM(t.StakeMYBeforeComm)
@@ -343,15 +339,12 @@ BEGIN;
 	GROUP BY t.EventDate, t.MatchId, t.BetType, t.Is8RM;
 
 	-- Step 4: Prepare match data for filtering and mapping to TGRS specific bettypes
+	-- Prerequisite: TraderPerformance must already be populated
 	INSERT INTO #tmpSoccerMatch (MatchId, LeagueId, HomeId)
-	SELECT MatchId, LeagueId, HomeId FROM bodb_archive.dbo.match_bk WITH (NOLOCK, INDEX(PK_match_bk))
-	WHERE SportType = 1 AND MatchID IN (SELECT MatchId FROM #tmpSumTotal)
-	UNION
-	SELECT MatchId, LeagueId, HomeId FROM bodb02.dbo.match14 WITH (NOLOCK, INDEX(PK_match14_1))
-	WHERE SportType = 1 AND MatchID IN (SELECT MatchId FROM #tmpSumTotal)
-	UNION
-	SELECT MatchId, LeagueId, HomeId FROM bodb02.dbo.match WITH (NOLOCK, INDEX(PK_match))
-	WHERE SportType = 1 AND MatchID IN (SELECT MatchId FROM #tmpSumTotal);
+	SELECT DISTINCT MatchId, LeagueId, HomeId FROM bodb_TGRS.dbo.TraderPerformance WITH (NOLOCK)
+	WHERE EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
+		AND IsLive = 1
+	OPTION (RECOMPILE, MAX_GRANT_PERCENT = 10);
 	
 	WITH CTE_SpecialMatch AS (
 		SELECT fm.MatchId, 
@@ -401,75 +394,78 @@ BEGIN;
 	FROM #tmpSoccerMatch AS fm
 	INNER JOIN CTE_SpecialMatch AS sm ON fm.MatchId = sm.MatchId;
 
-	DELETE FROM #tmpSumTotal
-	WHERE MatchId NOT IN (SELECT MatchId FROM #tmpSoccerMatch);
-
-	-- Step 5: Update latest TraderId for each MatchId/BetType
-	WITH LatestTraderAssignments AS (
-		SELECT 
-			a.TraderId,
-			a.MatchId,
-			a.Bettype,
-			ROW_NUMBER() OVER(
-				PARTITION BY a.MatchId, a.BetType 
-				ORDER BY a.UpdatedTime DESC, a.ID DESC
-			) AS Row_Num
-		FROM (
-			SELECT TraderId, MatchId, BetType, ID, UpdatedTime
-			FROM bodb_archive.dbo.Dot_Admin_Assignment_Trader_bk AS a WITH (NOLOCK, INDEX(IX_MatchID))
-			UNION ALL
-			SELECT TraderId, MatchId, BetType, ID, UpdatedTime
-			FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK, INDEX(IX_MatchID))
-		) AS a
-		WHERE EXISTS (
-			SELECT 1 FROM #tmpSumTotal st
-			WHERE a.MatchId = st.MatchId
-		)
-	)
-	UPDATE #tmpSumTotal
-	SET TraderId = LatestTraderAssignments.TraderId
-	FROM LatestTraderAssignments
-	WHERE LatestTraderAssignments.Row_Num = 1
-		AND #tmpSumTotal.MatchId = LatestTraderAssignments.MatchId
-		AND #tmpSumTotal.BetType = LatestTraderAssignments.BetType;
-
-	-- Step 6: Update BetType to the mapped bettype
+	-- Step 5: Update BetType to the mapped bettype
 	UPDATE #tmpSumTotal
 	SET BetType = btm.MappedBetType
 	FROM #tmpSumTotal AS tst
 	INNER JOIN #tmpSoccerMatch AS sm ON tst.MatchId = sm.MatchId
 	INNER JOIN #tmpBetTypeMapping AS btm ON sm.SpecialType = btm.SpecialType AND tst.BetType = btm.BetType;
 
-	-- Step 7: Delete existing data and insert new data
+	-- Step 6: Delete existing data and insert new data
 	DELETE FROM dbo.TraderJuicePerformance
 	WHERE EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
 	OPTION (RECOMPILE);
 
 	INSERT INTO dbo.TraderJuicePerformance (
-		EventDate, 
-		TraderId, 
-		MatchId, 
-		BetType, 
-		Is8RM, 
-		Juice, 
-		StakeMYR, 
-		StakeMYRJuice, 
-		Juice_AR, 
-		StakeMYR_AR, 
-		StakeMYRJuice_AR
+		EventDate,
+		MatchId,
+		BetType,
+		LeagueID,
+		HomeID,
+		AwayID,
+		WorkShift,
+		Is8RM,
+		IsLive,
+		/*Juice metrics: Get from #tmpSumTotal*/
+		Juice,
+		StakeMYR,
+		StakeMYRJuice,
+		Juice_AR,
+		StakeMYR_AR,
+		StakeMYRJuice_AR,
+		/*Other metrics: Get from TraderPerformance*/
+		WinLost,
+		Comm,
+		Spread,
+		BetCount
 	)
-	SELECT EventDate, 
-		TraderId, 
-		MatchId, 
-		BetType, 
-		Is8RM, 
-		Juice, 
-		StakeMYBeforeComm, 
-		StakeMYRJuice, 
-		Juice_AR, 
-		StakeMYBeforeComm_AR, 
-		StakeMYRJuice_AR
-	FROM #tmpSumTotal;
+	SELECT tst.EventDate, 
+		tst.MatchId, 
+		tst.BetType,
+		tp.LeagueId,
+		tp.HomeId,
+		tp.AwayId,
+		tp.WorkShift,
+		tst.Is8RM, 
+		tp.IsLive,
+		SUM(tst.Juice) AS Juice, 
+		SUM(tst.StakeMYBeforeComm) AS StakeMYR, 
+		SUM(tst.StakeMYRJuice) AS StakeMYRJuice,
+		SUM(tst.Juice_AR) AS Juice_AR, 
+		SUM(tst.StakeMYBeforeComm_AR) AS StakeMYR_AR,
+		SUM(tst.StakeMYRJuice_AR) AS StakeMYRJuice_AR,
+		SUM(tp.WinLost) AS WinLost,
+		SUM(tp.Comm) AS Comm,
+		MAX(tp.Spread) AS Spread,
+		SUM(tp.BetCount) AS BetCount
+	FROM #tmpSumTotal AS tst
+	LEFT JOIN bodb_tgrs.dbo.TraderPerformance AS tp WITH (NOLOCK)
+		ON tst.EventDate = tp.EventDate
+		AND tst.MatchId = tp.MatchId
+		AND tst.BetType = tp.BetType
+		AND tst.Is8RM = tp.Is8RM
+	WHERE tp.EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
+		AND tp.IsLive = 1
+	GROUP BY tst.EventDate, 
+		tst.MatchId, 
+		tst.BetType,
+		tp.LeagueId,
+		tp.HomeId,
+		tp.AwayId,
+		tp.WorkShift,
+		tst.Is8RM, 
+		tp.IsLive
+	OPTION (RECOMPILE);
 
 	DROP TABLE #tmpBetTypeMapping;
 	DROP TABLE #tmpDataGroup;

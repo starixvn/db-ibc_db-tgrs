@@ -14,18 +14,29 @@ CREATE TABLE dbo.TraderJuicePerformance (
     EventDate DATE,
     MatchId INT,
     BetType SMALLINT,
-    TraderId INT,
+    CustID INT, --TraderID
+    LeagueID INT,
+    HomeID INT,
+    AwayID INT,
+    WorkShift TINYINT,
     Is8RM BIT,
+    IsLive BIT,
+    /*Juice metrics*/
     Juice MONEY,
     StakeMYR MONEY,
     StakeMYRJuice MONEY,
     Juice_AR MONEY,
     StakeMYR_AR MONEY,
-    StakeMYRJuice_AR MONEY
+    StakeMYRJuice_AR MONEY,
+    /*Other metrics*/
+    WinLost MONEY,
+    Comm MONEY,
+    Spread MONEY,
+    BetCount INT
 ) ON TraderJuicePerformance_Table;
 
 CREATE UNIQUE CLUSTERED INDEX CLUSTERED_TraderJuicePerformance_Table 
-ON dbo.TraderJuicePerformance (EventDate, MatchId, BetType, TraderId)
+ON dbo.TraderJuicePerformance (EventDate, MatchId, BetType, CustID)
 ON TraderJuicePerformance_Table;
 
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
