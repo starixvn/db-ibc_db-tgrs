@@ -347,25 +347,18 @@ BEGIN;
 	INNER JOIN #tmpSoccerMatch AS sm ON tst.MatchId = sm.MatchId
 	INNER JOIN #tmpBetTypeMapping AS btm ON sm.SpecialType = btm.SpecialType AND tst.BetType = btm.BetType;
 
-	--Update real data
-	-- UPDATE	tp
-	-- SET		tp.Juice = t.Juice
-	-- 	,	tp.StakeMYR = t.StakeMYBeforeComm
-	-- 	,	tp.StakeMYRJuice = t.StakeMYRJuice
-	-- 	,	tp.Juice_AR = t.Juice_AR
-	-- 	,	tp.StakeMYR_AR = t.StakeMYBeforeComm_AR
-	-- 	,	tp.StakeMYRJuice_AR = t.StakeMYRJuice_AR
-	-- FROM dbo.TraderPerformance AS tp WITH (ROWLOCK, UPDLOCK)
-	-- 	INNER JOIN	#tmpSumTotal AS t WITH (NOLOCK) ON t.MatchId = tp.matchid
-	-- 		AND	t.BetType = tp.bettype AND t.Is8RM = tp.Is8RM
-	-- WHERE tp.EventDate = t.EventDate
-	-- 	AND tp.EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
-	-- 	AND tp.IsLive = 1
-	-- OPTION (RECOMPILE, MAX_GRANT_PERCENT = 15);
+	DELETE FROM dbo.TraderJuicePerformance
+	WHERE EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
+	OPTION (RECOMPILE);
 
-	SELECT EventDate, Bettype, SUM(Juice) AS Juice, SUM(StakeMYBeforeComm) AS StakeMYR, SUM(StakeMYRJuice) AS StakeMYRJuice, SUM(StakeMYBeforeComm_AR) StakeMYBeforeComm_AR, SUM(Juice_AR) Juice_AR, SUM(StakeMYRJuice_AR) StakeMYRJuice_AR
+	INSERT INTO dbo.TraderJuicePerformance (EventDate, TraderId, MatchId, BetType, Is8RM, Juice, StakeMYR, StakeMYRJuice, Juice_AR, StakeMYR_AR, StakeMYRJuice_AR)
+	SELECT EventDate, TraderId, MatchId, BetType, Is8RM, Juice, StakeMYBeforeComm, StakeMYRJuice, Juice_AR, StakeMYBeforeComm_AR, StakeMYRJuice_AR
 	FROM #tmpSumTotal
-	GROUP BY EventDate, Bettype;
+	OPTION (RECOMPILE);
+
+	-- SELECT EventDate, Bettype, SUM(Juice) AS Juice, SUM(StakeMYBeforeComm) AS StakeMYR, SUM(StakeMYRJuice) AS StakeMYRJuice, SUM(StakeMYBeforeComm_AR) StakeMYBeforeComm_AR, SUM(Juice_AR) Juice_AR, SUM(StakeMYRJuice_AR) StakeMYRJuice_AR
+	-- FROM #tmpSumTotal
+	-- GROUP BY EventDate, Bettype;
 
 	DROP TABLE #tmpBetTypeMapping;
 	DROP TABLE #tmpDataGroup;
