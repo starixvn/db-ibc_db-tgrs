@@ -409,6 +409,7 @@ BEGIN;
 	INSERT INTO dbo.TraderJuicePerformance (
 		EventDate,
 		MatchId,
+		CustID,
 		BetType,
 		LeagueID,
 		HomeID,
@@ -431,6 +432,7 @@ BEGIN;
 	)
 	SELECT tst.EventDate, 
 		tst.MatchId, 
+		tp.CustId,
 		tst.BetType,
 		tp.LeagueId,
 		tp.HomeId,
@@ -458,6 +460,7 @@ BEGIN;
 		AND tp.IsLive = 1
 	GROUP BY tst.EventDate, 
 		tst.MatchId, 
+		tp.CustId,
 		tst.BetType,
 		tp.LeagueId,
 		tp.HomeId,
