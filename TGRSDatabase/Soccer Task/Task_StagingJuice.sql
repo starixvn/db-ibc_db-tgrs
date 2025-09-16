@@ -341,7 +341,7 @@ BEGIN;
 	-- Step 4: Prepare match data for filtering and mapping to TGRS specific bettypes
 	-- Prerequisite: TraderPerformance must already be populated
 	INSERT INTO #tmpSoccerMatch (MatchId, LeagueId, HomeId)
-	SELECT DISTINCT MatchId, LeagueId, HomeId FROM bodb_TGRS.dbo.TraderPerformance WITH (NOLOCK)
+	SELECT DISTINCT MatchId, LeagueId, HomeId FROM dbo.TraderPerformance WITH (NOLOCK)
 	WHERE EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
 		AND IsLive = 1
 	OPTION (RECOMPILE, MAX_GRANT_PERCENT = 10);
@@ -451,7 +451,7 @@ BEGIN;
 		MAX(tp.Spread) AS Spread,
 		SUM(tp.BetCount) AS BetCount
 	FROM #tmpSumTotal AS tst
-	LEFT JOIN bodb_tgrs.dbo.TraderPerformance AS tp WITH (NOLOCK)
+	LEFT JOIN dbo.TraderPerformance AS tp WITH (NOLOCK)
 		ON tst.EventDate = tp.EventDate
 		AND tst.MatchId = tp.MatchId
 		AND tst.BetType = tp.BetType
