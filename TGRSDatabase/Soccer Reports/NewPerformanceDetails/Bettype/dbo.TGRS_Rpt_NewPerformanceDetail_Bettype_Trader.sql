@@ -17,6 +17,7 @@ AS
 		- 20180911@Long.Luu:	Support excluding Leagues from report [Redmine ID: #100322]  
 		- 20190919@Long.Luu:	Support Nonlive Data [Redmine ID: 118959]
 		- 20191023@John.Ngo:	Enhance performance [Redmine ID: 121268]
+		- 20250916@Jaden.Tang: Use new table TraderJuicePerformance [Redmine ID: 237899]
  
  Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
@@ -71,7 +72,7 @@ BEGIN
 		,	ISNULL(SUM(tp.StakeMYRJuice), 0) AS TurnoverJuice
 		,	ISNULL(SUM(tp.Juice), 0) AS Juice
 		,	ISNULL(SUM(tp.StakeMYR * ISNULL(s.BenchMark, tp.Spread * tm.Rate)), 0) AS SumCategory
-	FROM dbo.TraderPerformance AS tp WITH (NOLOCK)
+	FROM dbo.TraderJuicePerformance AS tp WITH (NOLOCK)
 		LEFT JOIN dbo.TargetedMargin AS tm WITH (NOLOCK) ON tm.BetType = tp.BetType AND tm.WorkShift = tp.WorkShift
 		LEFT JOIN dbo.Benchmark_SpecialSetting AS s WITH (NOLOCK) ON s.Spread = tp.Spread AND s.Rate = tm.Rate
 		LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON tp.LeagueId = le.LeagueId
@@ -107,4 +108,4 @@ BEGIN
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
