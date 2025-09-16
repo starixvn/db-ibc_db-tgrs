@@ -36,7 +36,7 @@ CREATE TABLE dbo.TraderJuicePerformance (
 ) ON TraderJuicePerformance_Table;
 
 CREATE UNIQUE CLUSTERED INDEX CLUSTERED_TraderJuicePerformance_Table 
-ON dbo.TraderJuicePerformance (EventDate, MatchId, BetType, CustID)
+ON dbo.TraderJuicePerformance (EventDate, MatchId, BetType, CustID, Is8RM, IsLive)
 ON TraderJuicePerformance_Table;
 
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
