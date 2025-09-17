@@ -17,7 +17,7 @@ BEGIN;
 	SET NOCOUNT ON;
 
 	-- Look back slightly more than the job interval
-    DECLARE @LookbackMinutes INT = 65;
+    DECLARE @LookbackMinutes INT = 15;
     DECLARE @Now DATETIME = GETDATE();
 
     IF @LookbackTime IS NULL
