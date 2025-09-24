@@ -406,6 +406,26 @@ BEGIN;
 	WHERE EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
 	OPTION (RECOMPILE);
 
+	WITH CTE_TraderPerformance AS (
+		SELECT EventDate, 
+			MatchId, 
+			BetType, 
+			Is8RM, 
+			IsLive, 
+			CustId,
+			LeagueId,
+			HomeId,
+			AwayId,
+			WorkShift,
+			SUM(WinLost) AS WinLost, 
+			SUM(Comm) AS Comm, 
+			SUM(BetCount) AS BetCount, 
+			MAX(Spread) AS Spread
+		FROM dbo.TraderPerformance WITH (NOLOCK)
+		WHERE EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
+			AND IsLive = 1
+		GROUP BY EventDate, MatchId, BetType, Is8RM, IsLive, CustId, LeagueId, HomeId, AwayId, WorkShift
+	)
 	INSERT INTO dbo.TraderJuicePerformance (
 		EventDate,
 		MatchId,
@@ -451,13 +471,11 @@ BEGIN;
 		MAX(tp.Spread) AS Spread,
 		SUM(tp.BetCount) AS BetCount
 	FROM #tmpSumTotal AS tst
-	LEFT JOIN dbo.TraderPerformance AS tp WITH (NOLOCK)
+	LEFT JOIN CTE_TraderPerformance AS tp WITH (NOLOCK)
 		ON tst.EventDate = tp.EventDate
 		AND tst.MatchId = tp.MatchId
 		AND tst.BetType = tp.BetType
 		AND tst.Is8RM = tp.Is8RM
-	WHERE tp.EventDate BETWEEN @GenerateFromDate AND @GenerateToDate
-		AND tp.IsLive = 1
 	GROUP BY tst.EventDate, 
 		tst.MatchId, 
 		tp.CustId,
