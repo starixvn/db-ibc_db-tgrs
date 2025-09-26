@@ -27,7 +27,7 @@ BEGIN;
 		MatchId INT,
 		LeagueId INT,
 		HomeId INT,
-		SpecialType SMALLINT,
+		SpecialType SMALLINT DEFAULT 0,
 		PRIMARY KEY (MatchId)
 	);
 
@@ -302,24 +302,6 @@ BEGIN;
 	WITH CTE_SpecialMatch AS (
 		SELECT fm.MatchId, 
 			CASE 
-				WHEN tm.TeamName LIKE '%No.of Corners%' THEN 6
-				WHEN tm.TeamName LIKE '%Total Bookings' THEN 7
-				WHEN tm.TeamName LIKE '%Corner%' THEN 8
-				WHEN tm.TeamName LIKE '%Booking' THEN 9
-				ELSE 0
-			END AS SpecialType
-		FROM #tmpSoccerMatch AS fm
-		INNER JOIN bodb02.dbo.Team AS tm WITH (NOLOCK) 
-				ON fm.homeid = tm.teamid
-				AND (
-					tm.TeamName LIKE '%No.of Corners%'
-					OR tm.TeamName LIKE '%Total Bookings'
-					OR tm.TeamName LIKE '%Corner%'
-					OR tm.TeamName LIKE '%Booking%'
-				)
-		UNION ALL
-		SELECT fm.MatchId, 
-			CASE 
 				WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS TOTAL BOOKINGS%' THEN 1
 				WHEN l.LeagueName LIKE '%SPECIFIC 15 MINS%' AND tm.TeamName LIKE '%No.of Corners%' THEN 2
 				WHEN l.LeagueName LIKE '%SPECIALS' AND (tm.TeamName LIKE '%Over' OR tm.TeamName LIKE '%Under') THEN 3
@@ -347,6 +329,31 @@ BEGIN;
 	FROM #tmpSoccerMatch AS fm
 	INNER JOIN CTE_SpecialMatch AS sm ON fm.MatchId = sm.MatchId;
 
+	WITH CTE_SpecialMatch AS (
+		SELECT fm.MatchId, 
+			CASE 
+				WHEN tm.TeamName LIKE '%No.of Corners%' THEN 6
+				WHEN tm.TeamName LIKE '%Total Bookings' THEN 7
+				WHEN tm.TeamName LIKE '%Corner%' THEN 8
+				WHEN tm.TeamName LIKE '%Booking' THEN 9
+				ELSE 0
+			END AS SpecialType
+		FROM #tmpSoccerMatch AS fm
+		INNER JOIN bodb02.dbo.Team AS tm WITH (NOLOCK) 
+				ON fm.homeid = tm.teamid
+				AND (
+					tm.TeamName LIKE '%No.of Corners%'
+					OR tm.TeamName LIKE '%Total Bookings'
+					OR tm.TeamName LIKE '%Corner%'
+					OR tm.TeamName LIKE '%Booking%'
+				)
+	)
+	UPDATE #tmpSoccerMatch
+	SET SpecialType = sm.SpecialType
+	FROM #tmpSoccerMatch AS fm
+	INNER JOIN CTE_SpecialMatch AS sm ON fm.MatchId = sm.MatchId
+	WHERE fm.SpecialType = 0 OR fm.SpecialType IS NULL;
+
 	-- Step 5: Update BetType to the mapped bettype
 	UPDATE #tmpSumTotal
 	SET BetType = btm.MappedBetType
@@ -359,6 +366,26 @@ BEGIN;
 	WHERE MatchId IN (SELECT MatchId FROM #tmpSoccerMatch)
 	OPTION (RECOMPILE);
 
+	WITH CTE_TraderPerformance AS (
+		SELECT EventDate, 
+			MatchId, 
+			BetType, 
+			Is8RM, 
+			IsLive, 
+			CustId,
+			LeagueId,
+			HomeId,
+			AwayId,
+			WorkShift,
+			SUM(WinLost) AS WinLost, 
+			SUM(Comm) AS Comm, 
+			SUM(BetCount) AS BetCount, 
+			MAX(Spread) AS Spread
+		FROM dbo.TraderPerformance WITH (NOLOCK)
+		WHERE MatchId IN (SELECT MatchId FROM #tmpSoccerMatch)
+			AND IsLive = 1
+		GROUP BY EventDate, MatchId, BetType, Is8RM, IsLive, CustId, LeagueId, HomeId, AwayId, WorkShift
+	)
 	INSERT INTO dbo.TraderJuicePerformance (
 		EventDate,
 		MatchId,
@@ -404,13 +431,11 @@ BEGIN;
 		MAX(tp.Spread) AS Spread,
 		SUM(tp.BetCount) AS BetCount
 	FROM #tmpSumTotal AS tst
-	LEFT JOIN dbo.TraderPerformance AS tp WITH (NOLOCK)
+	LEFT JOIN CTE_TraderPerformance AS tp WITH (NOLOCK)
 		ON tst.EventDate = tp.EventDate
 		AND tst.MatchId = tp.MatchId
 		AND tst.BetType = tp.BetType
 		AND tst.Is8RM = tp.Is8RM
-	WHERE tp.MatchId IN (SELECT MatchId FROM #tmpSoccerMatch)
-		AND tp.IsLive = 1
 	GROUP BY tst.EventDate, 
 		tst.MatchId, 
 		tp.CustId,
