@@ -16,6 +16,7 @@ AS
 		- 20200106@John.Ngo: Update generate data for RT3 [Redmine ID: 123714]
 		- 20200407@John.Ngo: Call xtest for SPs [Redmine ID: 120634]
 		- 20230606@John.Ngo: Update generate data for E-Sports/Basketball trader performance by class [Redmine ID: 187083]
+		- 20250915@Jaden.Tang: Updated Task_StagingJuice params [Redmine ID: #237899]
 
 	Param's Explanation (filtered by):
 		@Flagged: 0 - All, 1 - For Soccer, 2 - For OS, 3 - For RT3
@@ -92,7 +93,7 @@ BEGIN
 				RAISERROR(@Msg, 0, 0) WITH NOWAIT;
 			END;
 
-			EXECUTE dbo.Task_StagingJuice @Debug = @Debug, @GenerateFromDate = @EventDate, @GenerateToDate = @EventDate;
+			EXECUTE dbo.Task_StagingJuice @GenerateFromDate = @EventDate, @GenerateToDate = @EventDate;
 
 			-- Step 3: Job Task_StagingTraderPerformanceByDate after calc daily & juice
 			IF	@Debug = 1
@@ -313,4 +314,4 @@ END;
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="bodbTGRSNet" isFunction="0" isNested="0"></info>*/
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
