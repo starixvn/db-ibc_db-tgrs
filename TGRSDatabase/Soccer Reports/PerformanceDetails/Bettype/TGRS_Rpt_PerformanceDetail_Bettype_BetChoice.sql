@@ -245,7 +245,8 @@ BEGIN
 								)
 							)
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
+					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2
+					OPTION (RECOMPILE);
 				END;
 			ELSE
 				BEGIN
@@ -290,7 +291,8 @@ BEGIN
 								)
 							)
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
+					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive
+					OPTION (RECOMPILE);
 				END;			
 		END;
 	ELSE
@@ -343,7 +345,8 @@ BEGIN
 								)
 							)
 						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
+					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2
+					OPTION (RECOMPILE);
 				END;
 			ELSE -- @IsBetChoiceDetail = 0 or 1
 				BEGIN
