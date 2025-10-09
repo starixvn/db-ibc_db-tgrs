@@ -1,3 +1,4 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice]  	
 		@FromDate			DATE
 	,	@ToDate				DATE
@@ -43,7 +44,7 @@ BEGIN
 	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
 	IF @Sites <> ''
 	BEGIN
-		INSERT INTO @SitesList
+		INSERT INTO @SitesList (SiteId)
 		SELECT SiteId 
 		FROM bodb02.dbo.site WITH (NOLOCK)
 		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
@@ -305,4 +306,3 @@ END;
 
 GO
 
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/

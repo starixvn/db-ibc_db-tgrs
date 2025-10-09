@@ -1,3 +1,4 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE  [dbo].[Task_RobotTrading_StagingDataRealTime]
 		@LookBackTime			DATETIME = NULL
 	,   @Bettypes				VARCHAR(2000) =  '1,3,7,8'
@@ -347,7 +348,7 @@ BEGIN
 		-- "DISTINCT" Prevent Page Splits
 		DELETE b WITH(ROWLOCK)
 		FROM	(	
-					SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+					SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId ASC) AS rn
 					FROM #tmpFilteredBettransByBatch
 				) AS b
 		WHERE b.rn > 1;
@@ -700,4 +701,3 @@ BEGIN
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
