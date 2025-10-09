@@ -1,6 +1,7 @@
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE  [dbo].[Task_RobotTrading_StagingDataRealTime]
-		@LookBackTime			DATETIME = NULL
+		@Debug BIT = 0 --dummy param
+	,	@LookBackTime			DATETIME = NULL
 	,   @Bettypes				VARCHAR(2000) =  '1,3,7,8'
 AS
 /*
