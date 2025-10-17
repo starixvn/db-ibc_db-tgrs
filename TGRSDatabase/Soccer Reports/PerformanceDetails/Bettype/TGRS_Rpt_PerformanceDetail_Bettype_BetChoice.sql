@@ -292,7 +292,7 @@ BEGIN
 						)
 					)
 				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-			GROUP BY bcm.TGRSBetChoice, P.BetChoice, P.IsLive
+			GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive
 			OPTION (RECOMPILE);
 		END;
 		
