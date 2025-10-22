@@ -1,5 +1,7 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE  [dbo].[Task_RobotTrading_StagingDataRealTime]
-		@Debug					BIT = 0
+		@Debug BIT = 0 --dummy param
+	,	@LookBackTime			DATETIME = NULL
 	,   @Bettypes				VARCHAR(2000) =  '1,3,7,8'
 AS
 /*
@@ -20,6 +22,7 @@ AS
 		- 20201112@John.Ngo: TGR - Enhance formula of calculating adjusted odds by Licensee [Redmine ID: 145246]
 		- 20230103@John.Ngo: Fix Odds Spread Setting - ReCalculate Original Winlost [Redmine ID: 182351]
 		- 20240217@Jaden.Tang: Remove TradeCust table (#206895)
+		- 20250917@Jaden.Tang: Improve performance and increase job interval [Redmine ID: #240746]
 		
 	Param's Explanation:
 
@@ -29,28 +32,16 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	-- Common variables
-	DECLARE	@Begin					DATETIME = GETDATE()
-		,	@RowCount				INT
-		,	@Duration				INT
-		,	@Msg					NVARCHAR(MAX)
-		,	@Date					NVARCHAR(250);
+	-- Slightly more than the job interval
+    DECLARE @LookbackMinutes INT = 15;
+    DECLARE @Now DATETIME = GETDATE();
+
+    IF @LookbackTime IS NULL
+        SET @LookbackTime = DATEADD(MINUTE, -@LookbackMinutes, @Now);
 
 	DECLARE @Today					SMALLDATETIME = GETDATE();
 
-	DECLARE	@WinlostDate			DATE;
-	DECLARE @CurrentDate			DATE = CONVERT(DATE, GETDATE());
-	DECLARE @CurrentDateBefore1Hour DATE =  CONVERT(DATE, DATEADD(HOUR, -1, GETDATE()));
 
-	IF	OBJECT_ID('tempdb..#tmpDLFilteredBettypes') IS NOT NULL
-	DROP TABLE	#tmpDLFilteredBettypes;
-
-	CREATE TABLE	#tmpDLFilteredBettypes (
-			BetType					SMALLINT PRIMARY KEY CLUSTERED
-	);
-
-	IF	OBJECT_ID('tempdb..#tmpFilteredBettypes') IS NOT NULL
-		DROP TABLE	#tmpFilteredBettypes;
 
 	CREATE TABLE	#tmpFilteredBettypes (
 			BetType					SMALLINT PRIMARY KEY CLUSTERED
@@ -60,17 +51,10 @@ BEGIN
 	SELECT val FROM dbo.strSplit_Key(@Bettypes,',')
 	
 	-- Filter Site
-	IF	OBJECT_ID('tempdb..#tmpFilteredSite') IS NOT NULL
-		DROP TABLE	#tmpFilteredSite;
-
 	CREATE TABLE	#tmpFilteredSite (
 			SiteId	INT PRIMARY KEY CLUSTERED
 		,	[Site]		VARCHAR(20)
 		,	TypeSiteId	TINYINT
-	);
-
-	CREATE NONCLUSTERED INDEX	#IX_tmpFilteredSite_Site ON #tmpFilteredSite (
-			[Site]				ASC
 	);
 	
 	INSERT INTO #tmpFilteredSite(SiteId, [Site], TypeSiteId)
@@ -83,23 +67,11 @@ BEGIN
 	FROM [bodb02].[dbo].[Site] si (NOLOCK);
 	
 	-- Customer Site
-	IF	OBJECT_ID('tempdb..#tmpCustomerSite') IS NOT NULL
-		DROP TABLE	#tmpCustomerSite;
-
 	CREATE TABLE	#tmpCustomerSite (
 			CustId		INT PRIMARY KEY CLUSTERED
 		,	[Site]		VARCHAR(20)
 		,	TypeSiteId	TINYINT
 	);
-
-	CREATE NONCLUSTERED INDEX	#IX_tmpCustomerSite_Site ON #tmpCustomerSite (
-			[Site]				ASC
-	);
-
-	IF	OBJECT_ID('tempdb..#tmpScanningMatches') IS NOT NULL
-	BEGIN
-		DROP TABLE #tmpScanningMatches;
-	END;
 
 	CREATE TABLE	#tmpScanningMatches (
 			MatchId			INT NOT NULL PRIMARY KEY CLUSTERED
@@ -116,15 +88,6 @@ BEGIN
 		,	HomeName		NVARCHAR(100)
 		,	SpecialType		INT				
 	);
-	
-	CREATE NONCLUSTERED INDEX #NIX_tmpDLScannedMatches_EventDate ON #tmpScanningMatches (
-			EventDate		ASC
-	);
-
-	IF	OBJECT_ID('tempdb..#tmpTraders') IS NOT NULL
-	BEGIN
-		DROP TABLE #tmpTraders;
-	END;
 
 	CREATE TABLE	#tmpTraders (
 			TraderId		INT
@@ -137,34 +100,10 @@ BEGIN
 		,	[Type]			TINYINT
 	);
 
-	CREATE CLUSTERED INDEX	#CIX_tmpDLTraderIdx ON #tmpTraders (
-			MatchId			ASC
-		,	EventDate		ASC
-		,	MainDBBetType	ASC
-	);
-
-	IF	OBJECT_ID('tempdb..#tmp8RMMembers') IS NOT NULL
-	BEGIN
-		DROP TABLE #tmp8RMMembers;
-	END;
-
 	CREATE TABLE	#tmp8RMMembers (
 			CustId			INT PRIMARY KEY CLUSTERED
 	);
 
-	IF	OBJECT_ID('tempdb..#tmpWinlossDates') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpWinlossDates;
-	END;
-
-	CREATE TABLE	#tmpWinlossDates (
-			WinlostDate		DATE
-	);
-
-	IF	OBJECT_ID('tempdb..#tmpFilteredBettransByBatch') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpFilteredBettransByBatch;
-	END;
 
 	CREATE TABLE	#tmpFilteredBettransByBatch (
 			TransId				BIGINT
@@ -205,21 +144,6 @@ BEGIN
 		,	oddstype			TINYINT
 		,	isDecOddsOnly		BIT
 	);
-		
-	CREATE CLUSTERED INDEX	#CIX_tmpFilteredBettransByBatch_CustId ON #tmpFilteredBettransByBatch (
-			CustId				ASC
-	);	
-
-	CREATE NONCLUSTERED INDEX	#IX_tmpDLFilteredBettransByBatchIdx ON #tmpFilteredBettransByBatch (
-			WinlostDate			ASC
-		,	MatchId				ASC
-		,	BetType				ASC
-	);
-
-	IF	OBJECT_ID('tempdb..#tmpRobotTradingPerformance') IS NOT NULL
-	BEGIN
-		DROP TABLE	#tmpRobotTradingPerformance;
-	END;
 
 	CREATE TABLE	#tmpRobotTradingPerformance (
 			TraderId			INT
@@ -250,43 +174,22 @@ BEGIN
 		,	LeagueGroupId		SMALLINT
 		,	[Type]				TINYINT
 	);
-	
-	CREATE CLUSTERED INDEX #CIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
-			EventDate			ASC
-	); 
-
-	CREATE NONCLUSTERED INDEX	#NCIX_tmpDLStagingTraderPerformanceIdx ON #tmpRobotTradingPerformance (
-			CustId				ASC
-	);
 
 	DECLARE @Odds		FLOAT
 		,	@winlost	MONEY
 		,	@UpdateById TINYINT = 1; -- 1: by odds, 2: by winlost
 
-	/*
-	-- START GENERATING DATA --
-	*/
 	INSERT INTO #tmp8RMMembers(CustId)
 	SELECT c.custid
 	FROM bodb02.dbo.custInfo AS c WITH(NOLOCK)
 	WHERE c.recommend = 52466;
 
-	INSERT INTO #tmpWinlossDates (winlostdate)
-	SELECT DISTINCT winlostdate
-	FROM (VALUES (@CurrentDate), (@CurrentDateBefore1Hour)) d(winlostdate);
-
-	WHILE EXISTS (SELECT 1 FROM #tmpWinlossDates)
+	-- Staging data
 	BEGIN
-		SELECT	TOP(1)
-				@WinLostDate = d.winlostdate
-		FROM	#tmpWinlossDates AS d
-		ORDER BY winlostdate DESC;
-		
-		SELECT @Date = CONVERT(NVARCHAR, @WinlostDate, 120);
 
-		-- STAGING DATA
 		-- GET Scanned Match List: Completed Soccer Match
-		INSERT INTO #tmpScanningMatches(MatchId, EventDate, KickOffTime, WorkShift, MatchCode, LeagueId, LeagueGroupId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType)
+		INSERT INTO #tmpScanningMatches WITH (TABLOCK)
+			(MatchId, EventDate, KickOffTime, WorkShift, MatchCode, LeagueId, LeagueGroupId, SportType, HomeId, AwayId, LeagueName, HomeName, SpecialType)
 		SELECT	m.matchid
 			,	m.eventdate
 			,	m.kickofftime
@@ -328,19 +231,17 @@ BEGIN
 		FROM	bodb02.dbo.Match AS m WITH (NOLOCK)
 				INNER JOIN bodb02.dbo.league AS l WITH (NOLOCK) ON l.leagueid = m.leagueid
 				LEFT JOIN bodb02.dbo.team AS t WITH (NOLOCK) ON t.teamid = homeid
-		WHERE	m.EventDate = @WinLostDate
-				AND	m.SportType = 1
+		WHERE	m.SportType = 1
 				AND m.EventStatus = 'completed'
-				AND	m.MatchCode NOT LIKE '%hedge%';
-		
-		-- REMOVE Scanned Match List: if existing any Ticket has not been settled (ruben <> 1)
-		DELETE	sm
-		FROM	#tmpScanningMatches AS sm WITH (ROWLOCK)
-		WHERE	sm.MatchId  IN (	SELECT	TOP(1) b.MatchId
-									FROM	bodb02.dbo.bettrans AS b WITH(NOLOCK) 
-									WHERE	b.matchid = sm.matchid
-											AND b.Currency NOT IN (20, 27, 28)
-											AND b.ruben <> 1);		
+				AND	m.MatchCode NOT LIKE '%hedge%'
+                AND EXISTS (
+					SELECT 1 FROM bodb02.dbo.bettrans b WITH (NOLOCK) 
+					WHERE m.matchid = b.matchid AND b.Settlementtime >= @LookbackTime
+					AND b.Currency NOT IN (20, 27, 28)
+					AND b.statusID IN (111, 112, 113)
+					AND b.ruben = 1
+                )
+        OPTION (RECOMPILE);
 		
 		INSERT INTO	#tmpTraders (TraderId, LeagueId, MatchId, EventDate, MainDBBetType, TeamId, Grade, [Type])
 		SELECT	DISTINCT
@@ -359,40 +260,43 @@ BEGIN
 					AND	m.EventDate BETWEEN td_G.BeginDate AND ISNULL(td_G.EndDate, @Today + 10)
 				LEFT JOIN dbo.TraderTeam_History AS td_T WITH (NOLOCK) ON	td_T.CustID = a.TraderID
 					AND	m.EventDate BETWEEN td_T.BeginDate AND ISNULL(td_T.EndDate, @Today + 10)
-				CROSS APPLY (
-							SELECT dt.TraderID, dt.MatchId, dt.Bettype, dt.[Type],
-								ROW_NUMBER() OVER(PARTITION BY dt.MatchId, dt.BetType, dt.[Type] ORDER BY dt.UpdatedTime DESC, dt.ID DESC) AS Row_Num
-							FROM bodb02.dbo.Dot_Admin_Assignment_Trader AS dt WITH (NOLOCK)
-							WHERE   a.matchid = dt.matchid
-								AND a.bettype = dt.BetType
-								AND a.[Type] = dt.[Type]
-							) dat
-		WHERE		m.EventDate = @WinLostDate
-				AND a.TraderID = dat.TraderID
-				AND a.MatchId = dat.MatchId
-				AND a.Bettype = dat.BetType
-				AND a.[Type] = dat.[Type]
-				AND dat.Row_Num = 1;
-
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
+		WHERE	a.TraderId <> 0
+			AND a.MatchID IN (SELECT MatchID FROM #tmpScanningMatches)
+		OPTION (RECOMPILE);
 		
-		IF	@Debug = 1
-		BEGIN
-			RAISERROR('From Origin - Insert #tmpTraders - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
-		END;
+		-- keep only the latest records by matchid/bettype
+		WITH LatestTraderAssignments AS (
+			SELECT 
+				t.TraderId, 
+				t.MatchId, 
+				t.MainDBBetType,
+				t.[Type],
+				ROW_NUMBER() OVER(PARTITION BY t.MatchId, t.MainDBBetType, t.[Type] ORDER BY a.UpdatedTime DESC, a.ID DESC) AS Row_Num
+			FROM #tmpTraders t
+			INNER JOIN bodb02.dbo.Dot_Admin_Assignment_Trader AS a WITH (NOLOCK) 
+				ON t.MatchId = a.matchid 
+				AND t.MainDBBetType = a.bettype 
+				AND t.TraderId = a.TraderId
+				AND t.[Type] = a.[Type]
+		)
+		DELETE t
+		FROM #tmpTraders t
+		INNER JOIN LatestTraderAssignments lta ON 
+			t.MatchId = lta.MatchId AND 
+			t.MainDBBetType = lta.MainDBBetType AND
+			t.[Type] = lta.[Type] AND
+			lta.Row_Num > 1;
 
 		-- REMOVE Scanned Match List: if not existing any Trader
 		DELETE	sm
 		FROM	#tmpScanningMatches AS sm WITH (ROWLOCK)
 				LEFT JOIN #tmpTraders AS td WITH (NOLOCK) ON sm.MatchId = td.MatchId
 		WHERE	td.MatchId IS NULL;
-
-		TRUNCATE TABLE	#tmpFilteredBettransByBatch;
 		-- Fix Odds Spread Setting - ReCalculate Original Winlost (b.winlost - b.actual_stake)
-		INSERT INTO	#tmpFilteredBettransByBatch (TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds,	VirtualRate, ActualRate, Tpositiontaking,
-					spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, ExtraPT, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost,
-					MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
+		INSERT INTO	#tmpFilteredBettransByBatch WITH (TABLOCK)
+			(TransId, CustId, MatchId, WorkShift, SpecialType, WinlostDate, Bettype, Modds,	VirtualRate, ActualRate, Tpositiontaking,
+				spositiontaking, mpositiontaking, apositiontaking, Srecommend, Scomm, ExtraPT, Stake, actual_stake, winlost, awinlost, mwinlost, swinlost,
+				MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, LiveIndicator, Is8RM, AdjOdds, OriOdds ,statuswinlost, oddstype, isDecOddsOnly)
 		SELECT	[TransId]			= b.transid
 			,	[CustId]			= b.custid
 			,	[MatchId]			= b.matchId
@@ -426,7 +330,7 @@ BEGIN
 			,	[LiveIndicator]		= b.liveindicator
 			,	[Is8RM]				= CASE WHEN t8.CustId IS NULL THEN 0 ELSE 1 END
 			,	[AdjOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN b.odds - 1 ELSE b.odds END
-			,	[OriOdds]			= CASE WHEN fdec.OddsType IS NOT NULL THEN bi.OriginalOdds - 1 ELSE bi.OriginalOdds END
+			,	[OriOdds]			= NULL -- Will be populated in the UPDATE statement
 			,	[statuswinlost]		= b.statuswinlost
 			,	[oddstype]			= b.oddstype
 			,	[isDecOddsOnly]		= CASE WHEN fdec.OddsType IS NOT NULL THEN 1 ELSE 0 END
@@ -436,29 +340,26 @@ BEGIN
 				LEFT JOIN bodb02.dbo.MatchMaxbet AS mm WITH (NOLOCK) ON mm.MatchId = b.matchid
 					AND	mm.BetType = b.bettype
 				LEFT JOIN #tmp8RMMembers AS t8 WITH(NOLOCK) ON b.CustId = t8.CustId
-				LEFT JOIN bodb02.dbo.BettransInfo bi WITH (NOLOCK) ON b.transid = bi.transid
 				LEFT JOIN bodb02.dbo.f_Set_OddsTypeBettypes() fdec  ON b.bettype = fdec.BetType
-		WHERE	b.winlostdate = @WinlostDate
-				AND	b.statusID IN (112, 113)
+		WHERE	b.statusID IN (112, 113)
 				AND	b.Currency NOT IN (20, 27, 28)
 				AND b.liveindicator = 1
 		OPTION (RECOMPILE);
 			
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
-
-		IF	@Debug = 1
-		BEGIN
-			RAISERROR('From Origin - Insert #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
-		END;
-
 		-- "DISTINCT" Prevent Page Splits
 		DELETE b WITH(ROWLOCK)
 		FROM	(	
-					SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId) AS rn
+					SELECT ROW_NUMBER() OVER (PARTITION BY TransId ORDER BY TransId ASC) AS rn
 					FROM #tmpFilteredBettransByBatch
 				) AS b
 		WHERE b.rn > 1;
+
+		-- Update to populate OriOdds from BettransInfo
+		UPDATE b WITH(ROWLOCK, UPDLOCK)
+		SET b.OriOdds = CASE WHEN fdec.OddsType IS NOT NULL THEN bi.OriginalOdds - 1 ELSE bi.OriginalOdds END
+		FROM #tmpFilteredBettransByBatch AS b
+		INNER LOOP JOIN bodb02.dbo.BettransInfo bi WITH (NOLOCK) ON b.transid = bi.transid
+		LEFT JOIN bodb02.dbo.f_Set_OddsTypeBettypes() fdec ON b.bettype = fdec.BetType;
 
 		-- Odds Spread Setting - ReCalculate Original Winlost
 		UPDATE b WITH(ROWLOCK, UPDLOCK)
@@ -496,22 +397,13 @@ BEGIN
 									WHEN 1 THEN b.awinlost * @Odds
 									WHEN 2 THEN b.apositiontaking * @winlost END
 			FROM #tmpFilteredBettransByBatch AS b
-			WHERE b.winlostdate = @winlostdate
-				AND b.OriOdds IS NOT NULL
+			WHERE b.OriOdds IS NOT NULL
 				AND b.OriOdds <> 0
 				AND b.AdjOdds <> 0;
 
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-			;
-
-		IF	@Debug = 1
-		BEGIN
-			-- Force the output to appear immediately
-			RAISERROR('From Origin - ReCalculate Original Winlost #tmpFilteredBettransByBatch - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
-		END;
 			
-		INSERT INTO	#tmpRobotTradingPerformance (TraderId, CustId, Srecommend, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
+		INSERT INTO	#tmpRobotTradingPerformance WITH (TABLOCK)
+			(TraderId, CustId, Srecommend, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, LeagueGroupId, HomeId, AwayId, TeamId, 
 			Grade, BetType, Stake, WinLost, SMAWinLost, Comm, BetCount, ExtraPT, TPositionTaking, VirtualRate, ActualRate, LiveIndicator, Is8RM, [Type])
 		SELECT	[TraderId]			= t.TraderId
 			,	[CustId]			= b.CustId
@@ -587,61 +479,32 @@ BEGIN
 														THEN - 11 --Single Team O/U
 													ELSE b.BetType
 												END
-					) AS ca
-		WHERE	b.winlostdate = @WinlostDate
-				;
-
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
-
-		IF	@Debug = 1
-		BEGIN
-			RAISERROR('From Origin - Insert #tmpRobotTradingPerformance - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
-		END;
+					) AS ca;
 
 		-- Customer Site
-		TRUNCATE TABLE	#tmpCustomerSite;
 		INSERT INTO #tmpCustomerSite (CustId, [Site])
 		SELECT DISTINCT rt.CustId, c.[site]
 		FROM #tmpRobotTradingPerformance rt WITH (NOLOCK)
 			INNER JOIN bodb02.dbo.Customer c WITH (NOLOCK) ON rt.Srecommend = c.custid
 		WHERE c.custid > 0;
-
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-			;
-			
-		IF	@Debug = 1
-		BEGIN
-			RAISERROR('From Origin - Insert #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
-		END;
 			
 		UPDATE ct
 		SET ct.TypeSiteId = fs.TypeSiteId
 		FROM #tmpCustomerSite ct WITH (NOLOCK)
 			INNER JOIN #tmpFilteredSite fs WITH (NOLOCK) ON ct.[Site] = fs.[Site]
 		WHERE fs.SiteId > 0;
+	END;
 
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE())
-			;
-			
-		IF	@Debug = 1
-		BEGIN
-			RAISERROR('From Origin - Update #tmpCustomerSite - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
-		END;
-		
-		-- Delete Bettype
-		TRUNCATE TABLE #tmpDLFilteredBettypes;
-
-		INSERT INTO #tmpDLFilteredBettypes(BetType)
-		SELECT	DISTINCT rt.BetType
-		FROM	#tmpRobotTradingPerformance AS rt WITH(NOLOCK);
-
+	BEGIN TRANSACTION
+		-- Delete existing data for the processed matches
 		DELETE r WITH(ROWLOCK) 
 		FROM dbo.RobotTrading AS r
-			INNER JOIN #tmpDLFilteredBettypes AS b ON r.BetType = b.BetType
-		WHERE EventDate = @WinlostDate;
+		WHERE EXISTS (
+			SELECT 1 FROM #tmpRobotTradingPerformance rt
+			WHERE r.MatchId = rt.MatchId
+			AND r.EventDate = rt.EventDate
+			AND r.BetType = rt.BetType
+		);
 
 		-- Insert RobotTrading
 		INSERT INTO	dbo.RobotTrading (TraderId, WorkShift, MatchId, MatchCode, EventDate, SportType, LeagueId, HomeId, AwayId, TeamId, Grade, BetType,  
@@ -671,20 +534,11 @@ BEGIN
 			,	[TypeSiteId]		= c.TypeSiteId
 		FROM	#tmpRobotTradingPerformance AS t WITH(NOLOCK)
 				INNER JOIN #tmpCustomerSite AS c WITH(NOLOCK) ON t.CustId = c.CustId
-		WHERE	t.EventDate = @WinlostDate
 		GROUP BY t.TraderId, t.WorkShift, t.MatchId, t.MatchCode, t.EventDate, t.SportType, t.LeagueId, t.HomeId, t.AwayId, t.TeamId, t.Grade, t.BetType, t.LiveIndicator, t.Is8RM, t.LeagueGroupId, t.[Type], c.TypeSiteId;
-				
-		SELECT	@RowCount	= @@ROWCOUNT
-			,	@Duration	= DATEDIFF(millisecond, @Begin, GETDATE());
-
-		IF	@Debug = 1
-		BEGIN
-			RAISERROR('From Origin - Insert RobotTrading - Date: "%s" - %d rows - %d ms', 0, 0, @Date, @RowCount, @Duration) WITH NOWAIT;
-		END;
 
 		-- SUM DAILY
 		DELETE [dbo].[RobotTrading_BetTypeDaily] WITH(ROWLOCK)
-		WHERE EventDate = @WinlostDate;
+		WHERE EventDate IN (SELECT DISTINCT EventDate FROM #tmpRobotTradingPerformance);
 
 		INSERT INTO [dbo].[RobotTrading_BetTypeDaily]
 		(
@@ -704,7 +558,7 @@ BEGIN
 			,   [Type]
 			,	[TypeSiteId]
 		)
-		SELECT	[EventDate]		= @Date 
+		SELECT	[EventDate]		= t.[EventDate]
 			,	[BetType]		= t.[BetType]
 			,	[LeagueId]		= t.[LeagueId]
 			,	[LeagueGroupId] = t.[LeagueGroupId]
@@ -720,8 +574,9 @@ BEGIN
 			,	[Type]			= t.[Type]
 			,	[TypeSiteId]	= t.[TypeSiteId]
 		FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
-		WHERE t.EventDate = @WinlostDate
-		GROUP BY t.[BetType]
+		WHERE t.EventDate IN (SELECT DISTINCT EventDate FROM #tmpRobotTradingPerformance)
+		GROUP BY t.[EventDate]
+			,	t.[BetType]
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
 			,	t.[Is8RM]
@@ -729,14 +584,11 @@ BEGIN
 			,	t.[TypeSiteId];
 
 		-- SUM MONTHLY
-		DECLARE @StartDate		DATE
-			,	@EndDate		DATE;
-
-		SELECT @StartDate = DATEADD(DD, -DAY(@WinlostDate) + 1, @WinlostDate);
-		SELECT @EndDate = DATEADD(DD, -1 ,DATEADD(MM, 1, @StartDate));
- 
 		DELETE [dbo].[RobotTrading_BetTypeMonthly] WITH(ROWLOCK)
-		WHERE EventDate = @StartDate;
+		WHERE EventDate IN (
+			SELECT DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0) AS FirstDayOfMonth
+			FROM #tmpRobotTradingPerformance
+		);
 
 		INSERT INTO [dbo].[RobotTrading_BetTypeMonthly]
 		(
@@ -756,7 +608,7 @@ BEGIN
 			,	[Type]
 			,	[TypeSiteId]
 		)
-		SELECT	[EventDate]		= @StartDate 
+		SELECT	[EventDate]		= DATEADD(MONTH, DATEDIFF(MONTH, 0, t.EventDate), 0)
 			,	[BetType]		= t.[BetType]
 			,	[LeagueId]		= t.[LeagueId]
 			,	[LeagueGroupId] = t.[LeagueGroupId]
@@ -772,8 +624,12 @@ BEGIN
 			,	[Type]			= t.[Type]
 			,	[TypeSiteId]	= t.[TypeSiteId]
 		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
-		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
-		 GROUP BY t.[BetType]
+		 WHERE t.EventDate IN (
+			SELECT DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0) AS FirstDayOfMonth
+			FROM #tmpRobotTradingPerformance
+		 )
+		 GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, t.EventDate), 0)
+			,	t.[BetType]
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
 			,	t.[Is8RM]
@@ -781,7 +637,10 @@ BEGIN
 			,	t.[TypeSiteId];
 
 		DELETE [dbo].[RobotTrading_Monthly] WITH(ROWLOCK)
-		WHERE EventDate = @StartDate;
+		WHERE EventDate IN (
+			SELECT DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0) AS FirstDayOfMonth
+			FROM #tmpRobotTradingPerformance
+		);
 
 		INSERT INTO [dbo].[RobotTrading_Monthly]
 		(
@@ -802,7 +661,7 @@ BEGIN
 			,	[TypeSiteId]
 		)
 		SELECT	[TraderId]		= t.TraderId
-			,	[EventDate]		= @StartDate 
+			,	[EventDate]		= DATEADD(MONTH, DATEDIFF(MONTH, 0, t.EventDate), 0)
 			,	[LeagueId]		= t.[LeagueId]
 			,	[LeagueGroupId] = t.[LeagueGroupId]
 			,	[Is8RM]			= t.[Is8RM]
@@ -817,19 +676,29 @@ BEGIN
 			,	[Type]			= t.[Type]
 			,	[TypeSiteId]	= t.[TypeSiteId]
 		 FROM [dbo].[RobotTrading] AS t WITH(NOLOCK)
-		 WHERE t.EventDate BETWEEN @StartDate AND @EndDate
-		 GROUP BY t.TraderId
+		 WHERE t.EventDate IN (
+			SELECT DATEADD(MONTH, DATEDIFF(MONTH, 0, EventDate), 0) AS FirstDayOfMonth
+			FROM #tmpRobotTradingPerformance
+		 )
+		 GROUP BY DATEADD(MONTH, DATEDIFF(MONTH, 0, t.EventDate), 0)
+			,	t.TraderId
 			,	t.[LeagueId]
 			,	t.[LeagueGroupId]
 			,	t.[Is8RM]
 			,	t.[Type]
 			,	t.[TypeSiteId];
 
-		DELETE	d WITH(ROWLOCK)
-		FROM	#tmpWinlossDates AS d
-		WHERE	d.winlostdate = @winlostdate;
-	END;
+	COMMIT;
+
+	-- Cleanup temp tables
+	DROP TABLE #tmpRobotTradingPerformance;
+	DROP TABLE #tmpFilteredBettransByBatch;
+	DROP TABLE #tmpTraders;
+	DROP TABLE #tmpScanningMatches;
+	DROP TABLE #tmpCustomerSite;
+	DROP TABLE #tmpFilteredSite;
+	DROP TABLE #tmpFilteredBettypes;
+	DROP TABLE #tmp8RMMembers;
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/

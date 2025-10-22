@@ -1,3 +1,4 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 ALTER PROCEDURE [dbo].[TGRS_Rpt_PerformanceDetail_Bettype_BetChoice]  	
 		@FromDate			DATE
 	,	@ToDate				DATE
@@ -29,6 +30,7 @@ AS
 		- 20220222@John.Ngo:	Separate League Group for Virtual and SABA PinGoal [Redmine: #161859]
 		- 20250523@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
 		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #213812]
+		- 20251022@Jaden.Tang:	Performance enhance [Redmine: #240746]
 	 Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live
 		- @Sites: List of site names delimited by comma
@@ -43,7 +45,7 @@ BEGIN
 	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
 	IF @Sites <> ''
 	BEGIN
-		INSERT INTO @SitesList
+		INSERT INTO @SitesList (SiteId)
 		SELECT SiteId 
 		FROM bodb02.dbo.site WITH (NOLOCK)
 		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
@@ -198,200 +200,116 @@ BEGIN
 												WHERE b.BetType = @BetType AND b.IsBetChoiceDetail = 1) 
 												THEN 1 ELSE 0 END);
 
-	IF (@LeagueName IS NULL OR @LeagueName = '')		
+	IF @IsFMBetType = 1
 		BEGIN
-			IF @IsFMBetType = 1
-				BEGIN
-					SELECT P.betteam											AS BetTeam
-						,	FM.BetOption										AS BetOption
-						,	P.hdp2												AS hdp2
-						,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
-						,	P.IsLive											AS IsLive
-						,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
-						,	ISNULL(COUNT(DISTINCT P.MatchID), 0)			AS MatchCount
-						,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
-						,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
-						,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal				
-						,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
-						,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
-					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
-						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
-						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId						
-						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
-						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
-					WHERE	P.BetType = @BetType
-						AND P.EventDate BETWEEN @FromDate AND @ToDate
-						AND (@Market = -1 OR P.IsLive = @Market)
-						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
-						AND (
-								@ApplyVRFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempVRSettings vrs
-									WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
-									   OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
-									   OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
-								)
-							)
-						AND (
-								@ApplyMatchGroupFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempMatchGroup mgf
-									WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
-									   OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
-									   OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
-									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
-								)
-							)
-						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
-				END;
-			ELSE
-				BEGIN
-					SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)				AS BetChoice
-						,	P.IsLive											AS IsLive
-						,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
-						,	ISNULL(COUNT(DISTINCT P.MatchID), 0)			AS MatchCount
-						,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
-						,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
-						,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal				
-						,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
-						,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
-					FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
-						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = P.BetType
-						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
-						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
-					WHERE	P.BetType = @BetType
-						AND P.EventDate BETWEEN @FromDate AND @ToDate
-						AND (@Market = -1 OR P.IsLive = @Market)
-						AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
-						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
-						AND (
-								@ApplyVRFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempVRSettings vrs
-									WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
-									   OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
-									   OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
-								)
-							)
-						AND (
-								@ApplyMatchGroupFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempMatchGroup mgf
-									WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
-									   OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
-									   OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
-									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
-								)
-							)
-						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
-				END;			
+			SELECT P.betteam											AS BetTeam
+				,	FM.BetOption										AS BetOption
+				,	P.hdp2												AS hdp2
+				,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
+				,	P.IsLive											AS IsLive
+				,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
+				,	ISNULL(COUNT(DISTINCT P.MatchID), 0)				AS MatchCount
+				,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
+				,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
+				,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal				
+				,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
+				,	ISNULL(SUM(P.BetCount), 0)							AS BetCount
+			FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
+				INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+				INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
+				LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId						
+				INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
+				LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
+			WHERE	P.BetType = @BetType
+				AND P.EventDate BETWEEN @FromDate AND @ToDate
+				AND (@LeagueName IS NULL OR @LeagueName = '' OR L.LeagueName LIKE '%' + @LeagueName + '%')
+				AND (@Market = -1 OR P.IsLive = @Market)
+				AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+				AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
+				AND (
+						@ApplyVRFilter = 0 OR
+						EXISTS (
+							SELECT 1 FROM #TempVRSettings vrs
+							WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
+							   OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
+							   OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
+						)
+					)
+				AND (
+						@ApplyMatchGroupFilter = 0 OR
+						EXISTS (
+							SELECT 1 FROM #TempMatchGroup mgf
+							WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
+							   OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
+							   OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
+							   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
+						)
+					)
+				AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
+			GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2
+			OPTION (RECOMPILE);
 		END;
 	ELSE
 		BEGIN
-			IF @IsFMBetType = 1
-				BEGIN
-					SELECT P.betteam										AS BetTeam
-					,	FM.BetOption										AS BetOption
-					,	P.hdp2												AS hdp2
-					,	(CASE WHEN @BetType IN(221,222) THEN P.oddsspread ELSE -1 END)	AS OddsSpread
-					,	P.IsLive											AS IsLive
-					,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
-					,	ISNULL(COUNT(DISTINCT P.MatchId), 0)				AS MatchCount
-					,	ISNULL(COUNT(DISTINCT P.MatchID), 0)			AS MatchCount
-					,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
-					,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
-					,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal
-					,	ISNULL(SUM(P.WinLost_Real),0) 						AS WinLossReal
-					,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
-					,	ISNULL(SUM(P.BetCount), 0)							AS BetCount				
-					FROM dbo.TraderPerformance_BetChoice_Detail AS P WITH (NOLOCK)
-						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						INNER JOIN dbo.BetChoice_FastMarketMapping AS FM WITH (NOLOCK) ON FM.BetType = P.BetType AND FM.betteam = P.betteam AND FM.hdp2 = P.hdp2
-						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId						
-						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
-						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
-					WHERE	P.BetType = @BetType
-						AND P.EventDate BETWEEN @FromDate AND @ToDate
-						AND L.LeagueName LIKE '%' + @LeagueName + '%'
-						AND (@Market = -1 OR P.IsLive = @Market)						
-						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
-						AND (
-								@ApplyVRFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempVRSettings vrs
-									WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
-									   OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
-									   OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
-								)
-							)
-						AND (
-								@ApplyMatchGroupFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempMatchGroup mgf
-									WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
-									   OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
-									   OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
-									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
-								)
-							)
-						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY P.betteam, FM.BetOption, P.oddsspread, P.IsLive, P.hdp2;
-				END;
-			ELSE -- @IsBetChoiceDetail = 0 or 1
-				BEGIN
-					SELECT ISNULL(bcm.TGRSBetChoice, P.BetChoice)			AS BetChoice
-					,	P.IsLive											AS IsLive
-					,	ISNULL(COUNT(DISTINCT P.LeagueId), 0)				AS LeagueCount
-					,	ISNULL(COUNT(DISTINCT P.MatchID), 0)			AS MatchCount
-					,	ISNULL(SUM(P.Stake), 0)								AS Turnover 
-					,	ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM (P.Comm), 0)	AS WinLoss
-					,	ISNULL(SUM(P.Stake_Real),0) 						AS TurnoverReal
-					,	ISNULL(SUM(P.WinLost_Real),0) 						AS WinLossReal
-					,	ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END),0) AS WinLossReal
-					,	ISNULL(SUM(P.BetCount), 0)							AS BetCount				
-					FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
-						INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
-						LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = P.BetType
-						LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
-						INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
-						LEFT JOIN #RootMatches RM ON P.MatchId = RM.ChildMatchID
-					WHERE	P.BetType = @BetType
-						AND P.EventDate BETWEEN @FromDate AND @ToDate
-						AND L.LeagueName LIKE '%' + @LeagueName + '%'
-						AND (@Market = -1 OR P.IsLive = @Market)
-						AND (P.BetChoice = bcm.BetChoice OR bcm.BetChoice IS NULL)
-						AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
-						AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
-						AND (
-								@ApplyVRFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempVRSettings vrs
-									WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
-									   OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
-									   OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
-								)
-							)
-						AND (
-								@ApplyMatchGroupFilter = 0 OR
-								EXISTS (
-									SELECT 1 FROM #TempMatchGroup mgf
-									WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
-									   OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
-									   OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
-									   OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
-								)
-							)
-						AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
-					GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive;
-				END;
+			-- Performance helper table to filter custid-first since cluster index TraderPerformance_BetChoice starts with CustID
+			CREATE TABLE #CustIdPartitions (CustId INT, MatchID INT, BetType SMALLINT, EventDate DATE);
+
+			-- There is a non clustered index on EventDate and BetType we can use to look up CustID
+			INSERT INTO #CustIdPartitions (CustId, MatchID, BetType, EventDate)
+			SELECT DISTINCT 
+				P.CustId,
+                P.MatchID,
+				P.BetType,
+				P.EventDate
+			FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK)
+			INNER JOIN #AllMatches AS M ON P.MatchId = M.matchid
+			WHERE P.BetType = @BetType
+				AND P.EventDate BETWEEN @FromDate AND @ToDate
+				AND (
+						@ApplyMatchGroupFilter = 0 OR
+						EXISTS (
+							SELECT 1 FROM #TempMatchGroup mgf
+							WHERE (mgf.Setting = 'NORMAL' AND M.IsPenaltyMatch = 0 AND M.IsExtraTimeMatch = 0 AND M.IsHedgeMatch = 0)
+								OR (mgf.Setting = 'PENALTY' AND M.IsPenaltyMatch = 1)
+								OR (mgf.Setting = 'EXTRA_TIME' AND M.IsExtraTimeMatch = 1)
+								OR (mgf.Setting = 'HEDGE' AND M.IsHedgeMatch = 1)
+						)
+					)
+			OPTION (RECOMPILE)
+
+			CREATE CLUSTERED INDEX IX_CustIdPartitions ON #CustIdPartitions (CustId, MatchID, BetType, EventDate);
+		
+            SELECT  
+                ISNULL(bcm.TGRSBetChoice, P.BetChoice) AS BetChoice,
+                P.IsLive AS IsLive,
+                ISNULL(COUNT(DISTINCT P.LeagueId), 0) AS LeagueCount,
+                ISNULL(COUNT(DISTINCT P.MatchID), 0) AS MatchCount,
+                ISNULL(SUM(P.Stake), 0) AS Turnover,
+                ISNULL(SUM(P.WinLost), 0) - ISNULL(SUM(P.Comm), 0) AS WinLoss,
+                ISNULL(SUM(P.Stake_Real), 0) AS TurnoverReal,
+                ISNULL(SUM(CASE WHEN P.Is8RM = 0 THEN P.WinLost_Real ELSE 0 END), 0) AS WinLossReal,
+                ISNULL(SUM(P.BetCount), 0) AS BetCount
+            FROM dbo.TraderPerformance_BetChoice AS P WITH (NOLOCK, FORCESEEK)
+                INNER JOIN bodb02.dbo.League AS L WITH (NOLOCK) ON P.LeagueId = L.LeagueId
+                LEFT JOIN dbo.BetChoiceMapping AS bcm WITH (NOLOCK) ON bcm.BetType = P.BetType AND P.BetChoice = bcm.BetChoice
+                LEFT JOIN dbo.LeagueExclusion le WITH(NOLOCK) ON P.LeagueId = le.LeagueId
+            WHERE EXISTS (SELECT 1 FROM #CustIdPartitions c WHERE c.CustId = P.CustId AND c.MatchID = P.MatchID AND c.BetType = P.BetType AND c.EventDate = P.EventDate)
+                AND (@LeagueName IS NULL OR @LeagueName = '' OR L.LeagueName LIKE '%' + @LeagueName + '%')
+                AND (@Market = -1 OR P.IsLive = @Market)
+                AND (@IsExcludeLeagues = 0 OR le.LeagueId IS NULL)
+                AND (@LeagueGroupIds = '' OR L.LeagueGroupId IN (SELECT ID FROM #TempLeagueGroupIDs))
+                AND (
+                        @ApplyVRFilter = 0 OR
+                        EXISTS (
+                            SELECT 1 FROM #TempVRSettings vrs
+                            WHERE (vrs.Setting = 'VR_PLUS' AND P.VarianceVR > 0)
+                                OR (vrs.Setting = 'NO_VR' AND (P.VarianceVR IS NULL OR P.VarianceVR = 0))
+                                OR (vrs.Setting = 'VR_MINUS' AND P.VarianceVR < 0)
+                        )
+                    )
+                AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteID))
+            GROUP BY ISNULL(bcm.TGRSBetChoice, P.BetChoice), P.IsLive
+            OPTION (RECOMPILE, MAX_GRANT_PERCENT=10);
 		END;
 		
 		SELECT @IsFMBetType AS IsFMBetType, @IsBetChoiceDetail AS IsBetChoiceDetail;
@@ -404,4 +322,3 @@ END;
 
 GO
 
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
