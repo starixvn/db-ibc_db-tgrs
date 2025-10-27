@@ -1,7 +1,7 @@
 /*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
 
 -- =============================================
--- Script: Upgrade SportType Columns from TINYINT to INT
+-- Script: Upgrade SportType Columns from TINYINT to SMALLINT
 -- =============================================
 
 SET NOCOUNT ON;
@@ -44,8 +44,8 @@ IF EXISTS (
         AND COLUMN_NAME = 'SportType_New'
 )
 BEGIN
-    PRINT 'Step 1.1: Adding new SportType_New column (INT)...'
-    ALTER TABLE dbo.TraderPerformance ADD SportType_New INT NULL;
+    PRINT 'Step 1.1: Adding new SportType_New column (SMALLINT)...'
+    ALTER TABLE dbo.TraderPerformance ADD SportType_New SMALLINT NULL;
     PRINT 'SUCCESS: Added SportType_New column'
 END
 
@@ -78,7 +78,7 @@ BEGIN
     WHILE @RowsUpdated < @TotalRows
     BEGIN
         UPDATE TOP (@BatchSize) dbo.TraderPerformance 
-        SET SportType_New = CAST(SportType AS INT)
+        SET SportType_New = CAST(SportType AS SMALLINT)
         WHERE SportType IS NOT NULL 
             AND SportType_New IS NULL;
         
@@ -97,7 +97,7 @@ BEGIN
     PRINT 'Step 1.4: Renaming SportType_New to SportType...'
     EXEC sp_rename 'dbo.TraderPerformance.SportType_New', 'SportType', 'COLUMN';
     
-    PRINT 'SUCCESS: TraderPerformance.SportType upgraded to INT'
+    PRINT 'SUCCESS: TraderPerformance.SportType upgraded to SMALLINT'
 END
 ELSE
 BEGIN
@@ -125,8 +125,8 @@ IF EXISTS (
         AND COLUMN_NAME = 'SportType_New'
 )
 BEGIN
-    PRINT 'Step 2.1: Adding new SportType_New column (INT)...'
-    ALTER TABLE dbo.TraderPerformance_BK ADD SportType_New INT NULL;
+    PRINT 'Step 2.1: Adding new SportType_New column (SMALLINT)...'
+    ALTER TABLE dbo.TraderPerformance_BK ADD SportType_New SMALLINT NULL;
     PRINT 'SUCCESS: Added SportType_New column'
 END
 
@@ -159,7 +159,7 @@ BEGIN
     WHILE @RowsUpdated < @TotalRows
     BEGIN
         UPDATE TOP (@BatchSize) dbo.TraderPerformance_BK 
-        SET SportType_New = CAST(SportType AS INT)
+        SET SportType_New = CAST(SportType AS SMALLINT)
         WHERE SportType IS NOT NULL 
             AND SportType_New IS NULL;
         
@@ -178,7 +178,7 @@ BEGIN
     PRINT 'Step 2.4: Renaming SportType_New to SportType...'
     EXEC sp_rename 'dbo.TraderPerformance_BK.SportType_New', 'SportType', 'COLUMN';
     
-    PRINT 'SUCCESS: TraderPerformance_BK.SportType upgraded to INT'
+    PRINT 'SUCCESS: TraderPerformance_BK.SportType upgraded to SMALLINT'
 END
 ELSE
 BEGIN
@@ -214,8 +214,8 @@ PRINT '============================================='
 PRINT 'SportType Column Upgrade Process Complete!'
 PRINT '============================================='
 PRINT 'Summary:'
-PRINT '- TraderPerformance.SportType: TINYINT → INT'
-PRINT '- TraderPerformance_BK.SportType: TINYINT → INT'
+PRINT '- TraderPerformance.SportType: TINYINT → SMALLINT'
+PRINT '- TraderPerformance_BK.SportType: TINYINT → SMALLINT'
 PRINT '============================================='
 
 GO
