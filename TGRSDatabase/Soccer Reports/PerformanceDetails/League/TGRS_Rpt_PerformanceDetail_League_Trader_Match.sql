@@ -1,3 +1,5 @@
+/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
+
 ALTER PROCEDURE dbo.TGRS_Rpt_PerformanceDetail_League_Trader_Match  	
 		@FromDate			DATE
 	,	@ToDate				DATE
@@ -24,6 +26,7 @@ AS
 		- 20210825@Adam.Tran: 	Sports - Performance Real Figures [Redmine: #158981]
 		- 20250524@Jaden.Tang:	Support new filter VR Settings and Match Group [Redmine: #227903]
 		- 20250707@Jaden.Tang:	Add Site (company) filter [Redmine: #235099]
+        - 20251107@Jaden.Tang:	Grade performance report does not pass Sites filter causing empty [Redmine: #235099]
 	Param's Explanation:  	
 		- @Market: -1 All; 0 Nonlive; 1 Live 
 	
@@ -67,7 +70,7 @@ BEGIN
 	DECLARE @SitesList AS TABLE (SiteId INT PRIMARY KEY CLUSTERED);
 	IF @Sites <> ''
 	BEGIN
-		INSERT INTO @SitesList
+		INSERT INTO @SitesList (SiteId)
 		SELECT SiteId 
 		FROM bodb02.dbo.site WITH (NOLOCK)
 		WHERE [site] IN (SELECT DISTINCT [value] FROM string_split(@Sites,','));
@@ -198,7 +201,7 @@ BEGIN
 	                   OR (mgf.Setting = 'HEDGE' AND AM.IsHedgeMatch = 1)
 	            )
 	        )
-			AND EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteId)
+			AND (@Sites = '' OR EXISTS (SELECT 1 FROM @SitesList sl WHERE sl.SiteId = P.SiteId))
 	GROUP BY P.MatchId, P.HomeId, P.AwayId, P.EventDate, P.IsLive
 	ORDER BY Margin DESC, P.EventDate ASC;
 
@@ -208,4 +211,3 @@ BEGIN
 END;
 
 GO
-/*<info serverAlias="DBTGRS-bodb_TGRS" executers="wsv_tgrs" isFunction="0" isNested="0"></info>*/
